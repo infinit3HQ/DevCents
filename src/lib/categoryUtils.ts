@@ -91,11 +91,32 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "amazon prime",
     "book",
   ],
+  shopping: [
+    "amazon",
+    "walmart",
+    "target",
+    "clothing",
+    "shoes",
+    "electronics",
+    "store",
+    "mall",
+  ],
+  health: [
+    "doctor",
+    "dentist",
+    "pharmacy",
+    "hospital",
+    "clinic",
+    "gym",
+    "fitness",
+    "therapy",
+    "medical",
+    "medicine",
+  ],
   salary: [
     "salary",
     "payroll",
     "wage",
-    "bonus",
     "commission",
     "freelance",
     "income",
@@ -106,6 +127,8 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "consulting",
     "contract",
   ],
+  bonus: ["bonus", "gift", "reward"],
+  investment: ["dividend", "interest", "investment", "stock", "crypto"],
   other: [],
 };
 
@@ -133,13 +156,26 @@ export function suggestCategory(description: string): string {
   return bestMatch;
 }
 
-export const CATEGORIES = [
-  { value: "food", label: "Food" },
-  { value: "transport", label: "Transport" },
-  { value: "utilities", label: "Utilities" },
-  { value: "entertainment", label: "Entertainment" },
+export const INCOME_CATEGORIES = [
   { value: "salary", label: "Salary" },
-  { value: "other", label: "Other" },
+  { value: "bonus", label: "Bonus & Gift" },
+  { value: "investment", label: "Investment" },
+  { value: "other", label: "Other Income" },
+] as const;
+
+export const EXPENSE_CATEGORIES = [
+  { value: "food", label: "Food & Dining" },
+  { value: "transport", label: "Transport" },
+  { value: "utilities", label: "Utilities & Bills" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "shopping", label: "Shopping" },
+  { value: "health", label: "Health & Fitness" },
+  { value: "other", label: "Other Expense" },
+] as const;
+
+export const CATEGORIES = [
+  ...EXPENSE_CATEGORIES,
+  ...INCOME_CATEGORIES,
 ] as const;
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -147,6 +183,10 @@ export const CATEGORY_COLORS: Record<string, string> = {
   transport: "#3b82f6",
   utilities: "#a855f7",
   entertainment: "#ec4899",
+  shopping: "#f43f5e",
+  health: "#14b8a6",
   salary: "#22c55e",
+  bonus: "#10b981",
+  investment: "#34d399",
   other: "#6b7280",
 };

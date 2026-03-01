@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { suggestCategory, CATEGORIES } from '@/lib/categoryUtils';
+import { suggestCategory, INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '@/lib/categoryUtils';
 import { useEncryption } from '@/components/EncryptionProvider';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import {
   DrawerClose,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -55,6 +54,9 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   });
 
   const description = form.watch('description');
+  const type = form.watch('type');
+  const activeCategories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
   useEffect(() => {
     if (description && description.length > 2) {
       const suggested = suggestCategory(description);
@@ -63,6 +65,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       }
     }
   }, [description, form]);
+
+  useEffect(() => {
+    const currentCategory = form.getValues('category');
+    if (!activeCategories.find(c => c.value === currentCategory)) {
+      form.setValue('category', activeCategories[0].value);
+    }
+  }, [type, activeCategories, form]);
 
   async function onSubmit(values: TransactionFormValues) {
     const shouldEncrypt = isEnabled && isUnlocked;
@@ -88,8 +97,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
             whileTap={{ scale: 0.95 }}
             className="fixed bottom-8 right-8 z-50 hidden md:block"
           >
-            <Button size="icon" className="h-16 w-16 bg-foreground text-background border-2 border-foreground hover:bg-background hover:text-foreground rounded-none shadow-[6px_6px_0_0_hsl(var(--foreground))] hover:shadow-none hover:translate-x-[6px] hover:translate-y-[6px] transition-all duration-200">
-              <Plus className="h-8 w-8" />
+            <Button size="icon" className="h-14 w-14 rounded-full border border-primary/30 transition-all duration-300 shadow-[0_0_30px_hsl(142_60%_52%/0.15)] hover:shadow-[0_0_40px_hsl(142_60%_52%/0.25)]" style={{ background: 'hsl(142 60% 52% / 0.1)', color: 'hsl(142 55% 55%)' }}>
+              <Plus className="h-6 w-6" />
               <span className="sr-only">New Record</span>
             </Button>
           </motion.div>
@@ -103,24 +112,24 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
             whileTap={{ scale: 0.95 }}
             className="md:hidden"
           >
-            <Button size="icon" className="h-14 w-14 -mt-6 bg-foreground text-background rounded-none border-2 border-foreground shadow-[4px_4px_0_0_hsl(var(--background))] hover:bg-background hover:text-foreground">
-              <Plus className="h-6 w-6" />
+            <Button size="icon" className="h-12 w-12 -mt-6 rounded-full border border-primary/30 shadow-[0_0_20px_hsl(142_60%_52%/0.15)] transition-all" style={{ background: 'hsl(142 60% 52% / 0.1)', color: 'hsl(142 55% 55%)' }}>
+              <Plus className="h-5 w-5" />
               <span className="sr-only">New Record</span>
             </Button>
           </motion.div>
         </DrawerTrigger>
       )}
 
-      <DrawerContent className="rounded-none border-t-4 border-foreground font-mono">
+      <DrawerContent className="rounded-t-[20px] border-t border-white/10" style={{ background: 'hsl(0 0% 6%)' }}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="mx-auto w-full max-w-lg mb-8"
         >
-          <DrawerHeader className="border-b-2 border-border pb-6 mt-4">
-            <DrawerTitle className="font-serif text-4xl tracking-tight text-center">New Entry</DrawerTitle>
-            <DrawerDescription className="font-mono text-[10px] uppercase tracking-widest text-center mt-2">Append record to ledger</DrawerDescription>
+          <DrawerHeader className="border-b pb-6 mt-4" style={{ borderColor: 'hsl(0 0% 12%)' }}>
+            <DrawerTitle className="font-mono text-lg tracking-[0.2em] text-center text-foreground uppercase">new_entry::</DrawerTitle>
+            <DrawerDescription className="font-mono text-[9px] uppercase tracking-widest text-center mt-2" style={{ color: 'hsl(0 0% 40%)' }}>append_record_to_ledger</DrawerDescription>
           </DrawerHeader>
           
           <div className="p-6 md:p-8">
@@ -134,14 +143,14 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       name="type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] uppercase tracking-widest">Type</FormLabel>
+                          <FormLabel className="text-[9px] uppercase tracking-[0.2em]" style={{ color: 'hsl(0 0% 40%)' }}>Type</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-12 rounded-none border-2 border-border bg-transparent focus:border-foreground focus:ring-0 uppercase text-xs tracking-wider">
+                              <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest" style={{ border: '1px solid hsl(0 0% 14%)', color: 'hsl(0 0% 70%)' }}>
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="rounded-none border-2 border-border font-mono text-xs uppercase tracking-wider">
+                            <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest" style={{ border: '1px solid hsl(0 0% 14%)', background: 'hsl(0 0% 6%)', color: 'hsl(0 0% 70%)' }}>
                               <SelectItem value="expense">Expense</SelectItem>
                               <SelectItem value="income">Income</SelectItem>
                             </SelectContent>
@@ -158,16 +167,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       name="amount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] uppercase tracking-widest">Amount</FormLabel>
+                          <FormLabel className="text-[9px] uppercase tracking-[0.2em]" style={{ color: 'hsl(0 0% 40%)' }}>Amount</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg opacity-50">$</span>
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-sm" style={{ color: 'hsl(0 0% 40%)' }}>$</span>
                               <Input 
                                 autoFocus 
                                 type="number" 
                                 step="0.01" 
                                 placeholder="0.00" 
-                                className="h-12 pl-8 rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-foreground font-serif text-lg" 
+                                className="h-12 pl-8 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display" 
+                                style={{ border: '1px solid hsl(0 0% 14%)', color: 'hsl(120 3% 88%)' }}
                                 {...field} 
                               />
                             </div>
@@ -185,11 +195,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] uppercase tracking-widest">Description</FormLabel>
+                        <FormLabel className="text-[9px] uppercase tracking-[0.2em]" style={{ color: 'hsl(0 0% 40%)' }}>Description</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="Invoice, Groceries, Rent..." 
-                            className="h-12 rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-foreground font-serif text-lg placeholder:font-sans placeholder:text-sm placeholder:opacity-50"
+                            placeholder="invoice, groceries, rent..." 
+                            className="h-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-xs placeholder:text-[10px] placeholder:uppercase placeholder:tracking-widest"
+                            style={{ border: '1px solid hsl(0 0% 14%)', color: 'hsl(120 3% 88%)' }}
                             {...field} 
                           />
                         </FormControl>
@@ -205,15 +216,15 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] uppercase tracking-widest">Category</FormLabel>
+                        <FormLabel className="text-[9px] uppercase tracking-[0.2em]" style={{ color: 'hsl(0 0% 40%)' }}>Category</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className="h-12 rounded-none border-2 border-border bg-transparent focus:border-foreground focus:ring-0 uppercase text-xs tracking-wider">
+                            <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest" style={{ border: '1px solid hsl(0 0% 14%)', color: 'hsl(0 0% 70%)' }}>
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="rounded-none border-2 border-border font-mono text-xs uppercase tracking-wider">
-                            {CATEGORIES.map(c => (
+                          <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest" style={{ border: '1px solid hsl(0 0% 14%)', background: 'hsl(0 0% 6%)', color: 'hsl(0 0% 70%)' }}>
+                            {activeCategories.map(c => (
                               <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                             ))}
                           </SelectContent>
@@ -226,9 +237,9 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
 
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="pt-4 grid grid-cols-[1fr_2fr] gap-4">
                   <DrawerClose asChild>
-                    <Button variant="outline" type="button" className="h-14 rounded-none border-2 border-border uppercase tracking-widest text-xs">Abort</Button>
+                    <Button variant="outline" type="button" className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5" style={{ border: '1px solid hsl(0 0% 20%)', color: 'hsl(0 0% 60%)', background: 'transparent' }}>Abort</Button>
                   </DrawerClose>
-                  <Button type="submit" className="h-14 rounded-none bg-foreground text-background hover:bg-background hover:text-foreground border-2 border-foreground uppercase tracking-widest text-sm font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all">Submit Entry</Button>
+                  <Button type="submit" className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all" style={{ background: 'hsl(142 60% 52% / 0.15)', color: 'hsl(142 55% 55%)', border: '1px solid hsl(142 60% 52% / 0.3)' }} onMouseEnter={e => e.currentTarget.style.background = 'hsl(142 60% 52% / 0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'hsl(142 60% 52% / 0.15)'}>Submit Entry</Button>
                 </motion.div>
               </form>
             </Form>

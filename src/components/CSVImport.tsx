@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { suggestCategory, CATEGORIES } from '@/lib/categoryUtils';
+import { suggestCategory, INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '@/lib/categoryUtils';
 import { useEncryption } from '@/components/EncryptionProvider';
 
 interface ParsedRow {
@@ -354,7 +354,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="rounded-none border-2 border-border font-mono text-[10px] uppercase">
-                                {CATEGORIES.map(c => (
+                                {(row.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => (
                                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                                 ))}
                               </SelectContent>
