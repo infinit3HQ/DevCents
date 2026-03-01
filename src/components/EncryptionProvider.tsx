@@ -84,9 +84,10 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
     let timer: ReturnType<typeof setTimeout>;
     const lock = async () => {
       setCryptoKey(null);
-      // If biometric registered, keep IndexedDB key (biometric will re-unlock)
-      // Otherwise clear it so passphrase is required
-      if (!hasBio) await clearKey(user.id);
+      // Always clear the key from IndexedDB on inactivity 
+      // so a page refresh doesn't auto-unlock.
+      // The user must manually click biometric unlock to load it again.
+      await clearKey(user.id);
       setShowUnlock(true);
     };
     const reset = () => { clearTimeout(timer); timer = setTimeout(lock, INACTIVITY_MS); };
