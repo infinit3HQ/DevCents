@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { useUser } from '@clerk/tanstack-react-start';
 import { api } from '../../convex/_generated/api';
@@ -457,16 +457,6 @@ function UnlockDialog({
   const [bioLoading, setBioLoading] = useState(false);
   const [error,    setError]    = useState('');
   const [showPass, setShowPass] = useState(!hasBiometric);
-  const triedBioRef = useRef(false);
-
-  // Auto-trigger biometric on open if available
-  useEffect(() => {
-    if (hasBiometric && !triedBioRef.current) {
-      triedBioRef.current = true;
-      handleBiometric();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleBiometric = async () => {
     setBioLoading(true);
