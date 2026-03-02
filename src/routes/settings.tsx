@@ -1,8 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/tanstack-react-start';
-import { Settings } from '@/components/Settings';
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  SignedIn,
+  SignedOut,
+  RedirectToSignIn,
+} from "@clerk/tanstack-react-start";
+import { Settings } from "@/components/Settings";
 
-export const Route = createFileRoute('/settings')({
+export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
