@@ -12,6 +12,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEncryption } from "@/contexts/EncryptionContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { SUPPORTED_CURRENCIES } from "@/lib/currencyUtils";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -415,6 +417,7 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
 export function Settings() {
   const { user } = useUser();
   const { isEnabled, isUnlocked, setupEncryption } = useEncryption();
+  const { baseCurrency, setBaseCurrency } = useCurrency();
   const [bioAvail, setBioAvail] = useState(false);
   const [bioEnabled, setBioEnabled] = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
@@ -582,6 +585,48 @@ export function Settings() {
                 label="key storage"
                 value="IndexedDB (browser-local, cleared on inactivity lock)"
               />
+            </Section>
+
+            {/* ── Preferences ─────────────────────────────────── */}
+            <Section title="preferences">
+              <div
+                className="flex items-center justify-between py-3 px-4 transition-colors"
+                style={{
+                  border: "1px solid hsl(0 0% 13%)",
+                  background: "hsl(0 0% 6%)",
+                }}
+              >
+                <div>
+                  <p className="font-mono text-[12px] text-foreground/90">
+                    base currency
+                  </p>
+                  <p
+                    className="font-mono text-[10px] mt-0.5"
+                    style={{ color: "hsl(0 0% 38%)" }}
+                  >
+                    values converted to this globally
+                  </p>
+                </div>
+                <select
+                  value={baseCurrency}
+                  onChange={(e) => setBaseCurrency(e.target.value)}
+                  className="bg-transparent font-mono text-[10px] uppercase tracking-widest outline-none cursor-pointer"
+                  style={{ color: "hsl(142 55% 52%)" }}
+                >
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option
+                      key={c.code}
+                      value={c.code}
+                      style={{
+                        background: "hsl(0 0% 5%)",
+                        color: "hsl(0 0% 80%)",
+                      }}
+                    >
+                      {c.code} ({c.symbol})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </Section>
 
             {/* ── Account ─────────────────────────────────────── */}

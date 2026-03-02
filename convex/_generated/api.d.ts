@@ -9,6 +9,7 @@
  */
 
 import type * as encryptionSettings from "../encryptionSettings.js";
+import type * as settings from "../settings.js";
 import type * as transactions from "../transactions.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   encryptionSettings: typeof encryptionSettings;
+  settings: typeof settings;
   transactions: typeof transactions;
 }>;
 

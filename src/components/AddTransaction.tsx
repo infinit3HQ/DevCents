@@ -12,6 +12,8 @@ import {
   EXPENSE_CATEGORIES,
 } from "@/lib/categoryUtils";
 import { useEncryption } from "@/contexts/EncryptionContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { SUPPORTED_CURRENCIES, getCurrencySymbol } from "@/lib/currencyUtils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +44,7 @@ import {
 
 const formSchema = z.object({
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
+  currency: z.string(),
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   type: z.enum(["income", "expense"]),
@@ -53,6 +56,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const createTransaction = useMutation(api.transactions.create);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
+  const { baseCurrency } = useCurrency();
 
   useEffect(() => {
     const handleOpenAddTransaction = () => setOpen(true);
@@ -68,6 +72,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       amount: 0,
+      currency: baseCurrency,
       description: "",
       category: "food",
       type: "expense",
@@ -89,19 +94,26 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }, [description, form]);
 
   useEffect(() => {
+    if (open) {
+      form.setValue("currency", baseCurrency);
+    }
+  }, [open, baseCurrency, form]);
+
+  useEffect(() => {
     const currentCategory = form.getValues("category");
     if (!activeCategories.find((c) => c.value === currentCategory)) {
       form.setValue("category", activeCategories[0].value);
     }
   }, [type, activeCategories, form]);
 
-  async function onSubmit(values: TransactionFormValues) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     const shouldEncrypt = isEnabled && isUnlocked;
 
     await createTransaction({
       amount: shouldEncrypt
         ? await encryptValue(String(values.amount))
         : values.amount,
+      currency: values.currency,
       description: shouldEncrypt
         ? await encryptValue(values.description)
         : values.description,
@@ -255,24 +267,66 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Amount
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <span
-                                className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-sm"
-                                style={{ color: "hsl(0 0% 40%)" }}
+                            <div className="relative flex items-center">
+                              <div
+                                className="absolute left-0 top-0 bottom-0 flex items-center justify-center pointer-events-none"
+                                style={{
+                                  width: "36px",
+                                  borderRight: "1px solid hsl(0 0% 14%)",
+                                  color: "hsl(0 0% 40%)",
+                                }}
                               >
-                                $
-                              </span>
+                                {getCurrencySymbol(form.watch("currency"))}
+                              </div>
                               <Input
                                 autoFocus
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
-                                className="h-12 pl-8 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display"
+                                className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border-r-0"
                                 style={{
                                   border: "1px solid hsl(0 0% 14%)",
+                                  borderRight: "none",
                                   color: "hsl(120 3% 88%)",
                                 }}
                                 {...field}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="currency"
+                                render={({ field: currencyField }) => (
+                                  <Select
+                                    onValueChange={currencyField.onChange}
+                                    defaultValue={currencyField.value}
+                                    value={currencyField.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger
+                                        className="h-12 w-[72px] rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest px-2"
+                                        style={{
+                                          border: "1px solid hsl(0 0% 14%)",
+                                          color: "hsl(0 0% 70%)",
+                                        }}
+                                      >
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent
+                                      className="rounded-none font-mono text-[10px] uppercase tracking-widest min-w-[72px]"
+                                      style={{
+                                        border: "1px solid hsl(0 0% 14%)",
+                                        background: "hsl(0 0% 6%)",
+                                        color: "hsl(0 0% 70%)",
+                                      }}
+                                    >
+                                      {SUPPORTED_CURRENCIES.map((c) => (
+                                        <SelectItem key={c.code} value={c.code}>
+                                          {c.code}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
                               />
                             </div>
                           </FormControl>

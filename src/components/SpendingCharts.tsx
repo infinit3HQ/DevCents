@@ -1,44 +1,64 @@
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { useDecryptedTransactions } from '@/hooks/useDecryptedTransactions';
+import { useMemo } from "react";
+import { motion } from "framer-motion";
+import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { getCurrencySymbol } from "@/lib/currencyUtils";
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
-} from 'recharts';
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 // Phosphor-style palette: green → cyan → white gradations
 const CAT_COLORS: Record<string, string> = {
-  housing:        'hsl(142 60% 52%)',
-  food:           'hsl(162 55% 48%)',
-  transportation: 'hsl(180 50% 46%)',
-  utilities:      'hsl(200 48% 50%)',
-  entertainment:  'hsl(220 40% 55%)',
-  shopping:       'hsl(240 30% 55%)',
-  health:         'hsl(130 50% 45%)',
-  education:      'hsl(100 40% 48%)',
-  personal:       'hsl(155 45% 50%)',
-  other:          'hsl(0 0% 40%)',
+  housing: "hsl(142 60% 52%)",
+  food: "hsl(162 55% 48%)",
+  transportation: "hsl(180 50% 46%)",
+  utilities: "hsl(200 48% 50%)",
+  entertainment: "hsl(220 40% 55%)",
+  shopping: "hsl(240 30% 55%)",
+  health: "hsl(130 50% 45%)",
+  education: "hsl(100 40% 48%)",
+  personal: "hsl(155 45% 50%)",
+  other: "hsl(0 0% 40%)",
 };
 
 const TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(0 0% 8%)',
-  border: '1px solid hsl(0 0% 16%)',
-  borderRadius: '0px',
-  color: 'hsl(120 3% 88%)',
-  fontSize: '10px',
-  fontFamily: 'JetBrains Mono, monospace',
-  boxShadow: '4px 4px 0px 0px hsl(0 0% 10%)',
-  padding: '8px 12px',
+  backgroundColor: "hsl(0 0% 8%)",
+  border: "1px solid hsl(0 0% 16%)",
+  borderRadius: "0px",
+  color: "hsl(120 3% 88%)",
+  fontSize: "10px",
+  fontFamily: "JetBrains Mono, monospace",
+  boxShadow: "4px 4px 0px 0px hsl(0 0% 10%)",
+  padding: "8px 12px",
 };
 
 export function SpendingCharts() {
   const transactions = useDecryptedTransactions();
+  const { baseCurrency, convertAmount } = useCurrency();
+  const currencySymbol = getCurrencySymbol(baseCurrency);
 
   const categoryData = useMemo(() => {
     if (!transactions?.length) return [];
     const byCategory: Record<string, number> = {};
     for (const t of transactions) {
-      if (t.type === 'expense') byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
+      if (t.type === "expense") {
+        const converted = convertAmount(
+          t.amount,
+          t.currency || "USD",
+          baseCurrency,
+        );
+        byCategory[t.category] = (byCategory[t.category] ?? 0) + converted;
+      }
     }
     return Object.entries(byCategory)
       .map(([name, value]) => ({
@@ -54,30 +74,41 @@ export function SpendingCharts() {
     const byMonth: Record<string, { income: number; expenses: number }> = {};
     for (const t of transactions) {
       const d = new Date(t.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
-      if (t.type === 'income') byMonth[key].income += t.amount;
-      else byMonth[key].expenses += t.amount;
+
+      const converted = convertAmount(
+        t.amount,
+        t.currency || "USD",
+        baseCurrency,
+      );
+      if (t.type === "income") byMonth[key].income += converted;
+      else byMonth[key].expenses += converted;
     }
     return Object.entries(byMonth)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-6)
       .map(([month, data]) => {
-        const [year, m] = month.split('-');
-        const label = new Date(parseInt(year), parseInt(m) - 1).toLocaleString('default', { month: 'short' });
+        const [year, m] = month.split("-");
+        const label = new Date(parseInt(year), parseInt(m) - 1).toLocaleString(
+          "default",
+          { month: "short" },
+        );
         return {
           name: `${label}'${year.slice(2)}`,
-          income:   Math.round(data.income   * 100) / 100,
+          income: Math.round(data.income * 100) / 100,
           expenses: Math.round(data.expenses * 100) / 100,
         };
       });
-  }, [transactions]);
+  }, [transactions, convertAmount, baseCurrency]);
 
-  if (!transactions?.length) return (
-    <div className="py-16 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
-      <span style={{ color: 'hsl(142 55% 52%)' }}>$</span> no data — add transactions
-    </div>
-  );
+  if (!transactions?.length)
+    return (
+      <div className="py-16 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <span style={{ color: "hsl(142 55% 52%)" }}>{currencySymbol}</span> no
+        data — add transactions
+      </div>
+    );
 
   const totalExpenses = categoryData.reduce((s, d) => s + d.value, 0);
 
@@ -95,7 +126,10 @@ export function SpendingCharts() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
           className="p-5"
-          style={{ border: '1px solid hsl(0 0% 13%)', background: 'hsl(0 0% 6%)' }}
+          style={{
+            border: "1px solid hsl(0 0% 13%)",
+            background: "hsl(0 0% 6%)",
+          }}
         >
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
             // spending_by_category
@@ -104,20 +138,30 @@ export function SpendingCharts() {
             <PieChart>
               <Pie
                 data={categoryData}
-                cx="50%" cy="50%"
-                innerRadius={60} outerRadius={90}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
                 paddingAngle={2}
                 dataKey="value"
                 animationBegin={0}
                 animationDuration={600}
               >
                 {categoryData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} stroke="hsl(0 0% 5%)" strokeWidth={2} />
+                  <Cell
+                    key={i}
+                    fill={entry.fill}
+                    stroke="hsl(0 0% 5%)"
+                    strokeWidth={2}
+                  />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(2)}`, 'amount']}
+                formatter={(v: number | undefined) => [
+                  `${currencySymbol}${(v ?? 0).toFixed(2)}`,
+                  "amount",
+                ]}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -125,12 +169,18 @@ export function SpendingCharts() {
           {/* Legend */}
           <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 justify-center">
             {categoryData.map((e, i) => (
-              <div key={i} className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider"
-                   style={{ color: 'hsl(0 0% 55%)' }}>
+              <div
+                key={i}
+                className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider"
+                style={{ color: "hsl(0 0% 55%)" }}
+              >
                 <div className="w-2 h-2" style={{ background: e.fill }} />
                 {e.name}
                 <span className="opacity-60">
-                  {totalExpenses > 0 ? Math.round((e.value / totalExpenses) * 100) : 0}%
+                  {totalExpenses > 0
+                    ? Math.round((e.value / totalExpenses) * 100)
+                    : 0}
+                  %
                 </span>
               </div>
             ))}
@@ -145,7 +195,10 @@ export function SpendingCharts() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="p-5"
-          style={{ border: '1px solid hsl(0 0% 13%)', background: 'hsl(0 0% 6%)' }}
+          style={{
+            border: "1px solid hsl(0 0% 13%)",
+            background: "hsl(0 0% 6%)",
+          }}
         >
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
             // monthly_overview
@@ -159,35 +212,55 @@ export function SpendingCharts() {
               />
               <XAxis
                 dataKey="name"
-                tick={{ fill: 'hsl(0 0% 38%)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
-                axisLine={{ stroke: 'hsl(0 0% 18%)', strokeWidth: 1 }}
+                tick={{
+                  fill: "hsl(0 0% 38%)",
+                  fontSize: 10,
+                  fontFamily: "JetBrains Mono, monospace",
+                }}
+                axisLine={{ stroke: "hsl(0 0% 18%)", strokeWidth: 1 }}
                 tickLine={false}
                 dy={8}
               />
               <YAxis
-                tick={{ fill: 'hsl(0 0% 38%)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+                tick={{
+                  fill: "hsl(0 0% 38%)",
+                  fontSize: 10,
+                  fontFamily: "JetBrains Mono, monospace",
+                }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={v => `$${v}`}
+                tickFormatter={(v) => `${currencySymbol}${v}`}
                 dx={-4}
                 width={52}
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(2)}`]}
+                formatter={(v: number | undefined) => [
+                  `${currencySymbol}${(v ?? 0).toFixed(2)}`,
+                ]}
               />
               <Legend
                 wrapperStyle={{
-                  fontSize: '10px',
-                  color: 'hsl(0 0% 40%)',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  textTransform: 'uppercase',
-                  paddingTop: '8px',
-                  letterSpacing: '0.1em',
+                  fontSize: "10px",
+                  color: "hsl(0 0% 40%)",
+                  fontFamily: "JetBrains Mono, monospace",
+                  textTransform: "uppercase",
+                  paddingTop: "8px",
+                  letterSpacing: "0.1em",
                 }}
               />
-              <Bar dataKey="income"   fill="hsl(142 60% 52%)" radius={[2, 2, 0, 0]} name="income"   />
-              <Bar dataKey="expenses" fill="hsl(3 80% 52%)"   radius={[2, 2, 0, 0]} name="expenses" />
+              <Bar
+                dataKey="income"
+                fill="hsl(142 60% 52%)"
+                radius={[2, 2, 0, 0]}
+                name="income"
+              />
+              <Bar
+                dataKey="expenses"
+                fill="hsl(3 80% 52%)"
+                radius={[2, 2, 0, 0]}
+                name="expenses"
+              />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>

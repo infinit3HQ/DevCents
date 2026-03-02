@@ -5,6 +5,7 @@ export default defineSchema({
   transactions: defineTable({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
+    currency: v.optional(v.string()), // USD, LKR, JPY
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -22,5 +23,10 @@ export default defineSchema({
     userId: v.string(),
     salt: v.string(), // base64-encoded PBKDF2 salt
     verificationHash: v.string(), // encrypted verification string
+  }).index("by_user", ["userId"]),
+
+  user_settings: defineTable({
+    userId: v.string(),
+    currency: v.string(), // Base currency preference, e.g., "USD", "LKR", "JPY"
   }).index("by_user", ["userId"]),
 });

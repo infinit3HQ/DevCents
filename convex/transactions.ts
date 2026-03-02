@@ -18,6 +18,7 @@ export const get = query({
 export const create = mutation({
   args: {
     amount: v.union(v.number(), v.string()),
+    currency: v.optional(v.string()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(),
@@ -40,6 +41,7 @@ export const createMany = mutation({
     transactions: v.array(
       v.object({
         amount: v.union(v.number(), v.string()),
+        currency: v.optional(v.string()),
         type: v.union(v.literal("income"), v.literal("expense")),
         category: v.string(),
         description: v.string(),

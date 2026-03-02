@@ -13,6 +13,7 @@ export interface DecryptedTransaction {
   description: string;
   date: number;
   encrypted?: boolean;
+  currency?: string;
 }
 
 export function useDecryptedTransactions() {

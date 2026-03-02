@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import { ConvexClientProvider } from "../components/ConvexClientProvider";
 import { CommandPalette } from "../components/CommandPalette";
 import { EncryptionProvider } from "../components/EncryptionProvider";
+import { CurrencyProvider } from "../contexts/CurrencyContext";
 import appCss from "../app.css?url";
 
 export const Route = createRootRoute({
@@ -71,11 +72,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </head>
         <body>
           <ConvexClientProvider>
-            <EncryptionProvider>
-              <Header />
-              <CommandPalette />
-              {children}
-            </EncryptionProvider>
+            <CurrencyProvider>
+              <EncryptionProvider>
+                <Header />
+                <CommandPalette />
+                {children}
+              </EncryptionProvider>
+            </CurrencyProvider>
           </ConvexClientProvider>
           <TanStackDevtools
             config={{

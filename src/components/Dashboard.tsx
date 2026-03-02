@@ -13,6 +13,8 @@ import { TransactionList } from "@/components/TransactionList";
 import { SpendingCharts } from "@/components/SpendingCharts";
 import { MobileNav } from "@/components/MobileNav";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatAmountOnly } from "@/lib/currencyUtils";
 
 type MobileTab = "overview" | "transactions" | "analytics";
 
@@ -22,11 +24,8 @@ const TABS: { id: MobileTab; label: string; icon: React.ElementType }[] = [
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(n));
+const fmt = (n: number, currencyCode: string) =>
+  formatAmountOnly(Math.abs(n), currencyCode);
 
 const Tag = ({
   children,
@@ -67,23 +66,32 @@ export function Dashboard() {
   const userName = user?.firstName ?? "user";
   const transactions = useDecryptedTransactions();
   const [activeTab, setActiveTab] = useState<MobileTab>("overview");
+  const { baseCurrency, convertAmount } = useCurrency();
 
   const stats = useMemo(() => {
     if (!transactions)
       return { balance: 0, income: 0, expenses: 0, txCount: 0 };
     const income = transactions
       .filter((t) => t.type === "income")
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce(
+        (s, t) =>
+          s + convertAmount(t.amount, t.currency || "USD", baseCurrency),
+        0,
+      );
     const expenses = transactions
       .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce(
+        (s, t) =>
+          s + convertAmount(t.amount, t.currency || "USD", baseCurrency),
+        0,
+      );
     return {
       balance: income - expenses,
       income,
       expenses,
       txCount: transactions.length,
     };
-  }, [transactions]);
+  }, [transactions, convertAmount, baseCurrency]);
 
   return (
     <div className="bg-background text-foreground min-h-dvh flex flex-col overflow-x-hidden">
@@ -142,10 +150,11 @@ export function Dashboard() {
                           : {}
                       }
                     >
-                      {stats.balance < 0 ? "-" : ""}${fmt(stats.balance)}
+                      {stats.balance < 0 ? "-" : ""}
+                      {fmt(stats.balance, baseCurrency)}
                     </span>
                     <span className="font-mono text-xs text-muted-foreground uppercase">
-                      USD
+                      {baseCurrency}
                     </span>
                   </div>
                 </div>
@@ -158,7 +167,8 @@ export function Dashboard() {
                     ) : (
                       <ArrowDownRight className="h-3 w-3" />
                     )}
-                    {stats.balance >= 0 ? "+" : "-"}${fmt(stats.balance)} net
+                    {stats.balance >= 0 ? "+" : "-"}
+                    {fmt(stats.balance, baseCurrency)} net
                   </Tag>
                   <Tag color="muted">{stats.txCount} tx</Tag>
                 </div>
@@ -199,7 +209,7 @@ export function Dashboard() {
                 </span>
               </div>
               <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
-                ${fmt(stats.income)}
+                {fmt(stats.income, baseCurrency)}
               </p>
             </div>
 
@@ -222,7 +232,7 @@ export function Dashboard() {
                 </span>
               </div>
               <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
-                ${fmt(stats.expenses)}
+                {fmt(stats.expenses, baseCurrency)}
               </p>
             </div>
 
@@ -244,7 +254,8 @@ export function Dashboard() {
               <p
                 className={`font-mono text-base sm:text-2xl lg:text-3xl num-display ${stats.balance < 0 ? "text-destructive" : "text-foreground"}`}
               >
-                {stats.balance < 0 ? "-" : ""}${fmt(stats.balance)}
+                {stats.balance < 0 ? "-" : ""}
+                {fmt(stats.balance, baseCurrency)}
               </p>
             </div>
           </div>
