@@ -94,6 +94,7 @@ export function EncryptionProvider({
   // ── Restore key from IndexedDB on mount ──────────────────────
   useEffect(() => {
     if (!user?.id || !settings) return;
+
     let cancelled = false;
     loadKey(user.id)
       .then((key) => {
@@ -127,10 +128,11 @@ export function EncryptionProvider({
     let timer: ReturnType<typeof setTimeout>;
     const lock = async () => {
       setCryptoKey(null);
-      // Always clear the key from IndexedDB on inactivity
-      // so a page refresh doesn't auto-unlock.
-      // The user must manually click biometric unlock to load it again.
-      await clearKey(user.id);
+      // Clear the local key entry if they don't have biometric auth
+      // to ensure a refresh requires typing the passphrase.
+      if (!hasBio) {
+        await clearKey(user.id);
+      }
       setShowUnlock(true);
     };
     const reset = () => {
