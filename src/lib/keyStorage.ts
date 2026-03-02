@@ -4,7 +4,7 @@
  * are never accessible to JavaScript, even with extractable: false.
  */
 
-const DB_NAME = "centstack-enc";
+const DB_NAME = "devcents-enc";
 const STORE_NAME = "keys";
 const DB_VERSION = 1;
 

@@ -132,7 +132,7 @@ export function LandingPage() {
                     session::
                   </span>
                   <span className="font-mono text-[10px] text-primary/70">
-                    user@centstack
+                    user@devcents
                   </span>
                 </div>
 
@@ -297,7 +297,7 @@ export function LandingPage() {
                 <span className="text-primary">Your rules.</span>
               </h2>
               <p className="text-xl text-muted-foreground">
-                Financial data is deeply personal. CentStack is built on the
+                Financial data is deeply personal. DevCents is built on the
                 philosophy that you should own your data without compromising on
                 user experience.
               </p>
@@ -538,16 +538,15 @@ export function LandingPage() {
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <span className="text-xl font-bold font-mono tracking-tight">
-              CentStack
+              DevCents
             </span>
           </div>
           <p className="text-sm text-muted-foreground text-center md:text-left">
-            © {new Date().getFullYear()} CentStack. Open source money
-            management.
+            © {new Date().getFullYear()} DevCents. Open source money management.
           </p>
           <div className="flex gap-4">
             <a
-              href="https://github.com/infinit3HQ/CentStack"
+              href="https://github.com/infinit3HQ/DevCents"
               target="_blank"
               rel="noopener noreferrer"
             >

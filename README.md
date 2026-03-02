@@ -1,4 +1,4 @@
-# CentStack
+# DevCents
 
 Smart, self-hosted money management built with **TanStack Start**, **Convex**, and **Clerk**.
 

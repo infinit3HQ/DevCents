@@ -86,7 +86,7 @@ export async function decrypt(
 // ─── Verification Hash ──────────────────────────────────────────
 // Used to check if passphrase is correct without storing the key.
 
-const VERIFICATION_PLAINTEXT = "centstack-verify";
+const VERIFICATION_PLAINTEXT = "devcents-verify";
 
 export async function createVerificationHash(key: CryptoKey): Promise<string> {
   return encrypt(VERIFICATION_PLAINTEXT, key);

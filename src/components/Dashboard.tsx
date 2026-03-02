@@ -1,32 +1,62 @@
-import { useUser } from '@clerk/tanstack-react-start';
-import { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, ReceiptText, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useUser } from "@clerk/tanstack-react-start";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Wallet,
+  ReceiptText,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 
-import { TransactionList } from '@/components/TransactionList';
-import { SpendingCharts } from '@/components/SpendingCharts';
-import { MobileNav } from '@/components/MobileNav';
-import { useDecryptedTransactions } from '@/hooks/useDecryptedTransactions';
+import { TransactionList } from "@/components/TransactionList";
+import { SpendingCharts } from "@/components/SpendingCharts";
+import { MobileNav } from "@/components/MobileNav";
+import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 
-type MobileTab = 'overview' | 'transactions' | 'analytics';
+type MobileTab = "overview" | "transactions" | "analytics";
 
 const TABS: { id: MobileTab; label: string; icon: React.ElementType }[] = [
-  { id: 'overview', label: 'Overview', icon: Wallet },
-  { id: 'transactions', label: 'Ledger', icon: ReceiptText },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: "overview", label: "Overview", icon: Wallet },
+  { id: "transactions", label: "Ledger", icon: ReceiptText },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+  new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(n));
 
-const Tag = ({ children, color = 'green' }: { children: React.ReactNode; color?: 'green' | 'red' | 'muted' }) => {
+const Tag = ({
+  children,
+  color = "green",
+}: {
+  children: React.ReactNode;
+  color?: "green" | "red" | "muted";
+}) => {
   const styles = {
-    green: { border: '1px solid hsl(142 60% 52% / 0.25)', background: 'hsl(142 60% 52% / 0.08)', color: 'hsl(142 55% 58%)' },
-    red:   { border: '1px solid hsl(3 90% 58% / 0.25)',   background: 'hsl(3 90% 58% / 0.08)',   color: 'hsl(3 85% 62%)'   },
-    muted: { border: '1px solid hsl(0 0% 18%)',            background: 'transparent',              color: 'hsl(0 0% 42%)'    },
+    green: {
+      border: "1px solid hsl(142 60% 52% / 0.25)",
+      background: "hsl(142 60% 52% / 0.08)",
+      color: "hsl(142 55% 58%)",
+    },
+    red: {
+      border: "1px solid hsl(3 90% 58% / 0.25)",
+      background: "hsl(3 90% 58% / 0.08)",
+      color: "hsl(3 85% 62%)",
+    },
+    muted: {
+      border: "1px solid hsl(0 0% 18%)",
+      background: "transparent",
+      color: "hsl(0 0% 42%)",
+    },
   }[color];
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest" style={styles}>
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest"
+      style={styles}
+    >
       {children}
     </span>
   );
@@ -34,29 +64,45 @@ const Tag = ({ children, color = 'green' }: { children: React.ReactNode; color?:
 
 export function Dashboard() {
   const { user } = useUser();
-  const userName = user?.firstName ?? 'user';
+  const userName = user?.firstName ?? "user";
   const transactions = useDecryptedTransactions();
-  const [activeTab, setActiveTab] = useState<MobileTab>('overview');
+  const [activeTab, setActiveTab] = useState<MobileTab>("overview");
 
   const stats = useMemo(() => {
-    if (!transactions) return { balance: 0, income: 0, expenses: 0, txCount: 0 };
-    const income   = transactions.filter(t => t.type === 'income' ).reduce((s, t) => s + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    return { balance: income - expenses, income, expenses, txCount: transactions.length };
+    if (!transactions)
+      return { balance: 0, income: 0, expenses: 0, txCount: 0 };
+    const income = transactions
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const expenses = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
+    return {
+      balance: income - expenses,
+      income,
+      expenses,
+      txCount: transactions.length,
+    };
   }, [transactions]);
 
   return (
     <div className="bg-background text-foreground min-h-dvh flex flex-col overflow-x-hidden">
-
       <main className="grow flex flex-col pb-16 md:pb-0">
-
         {/* ── HERO ──────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden" style={{ borderBottom: '1px solid hsl(0 0% 14%)' }}>
+        <section
+          className="relative overflow-hidden"
+          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
+        >
           {/* Background dot grid */}
           <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
           {/* Subtle green radial glow at top-right */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none"
-               style={{ background: 'radial-gradient(ellipse, hsl(142 60% 52% / 0.06) 0%, transparent 70%)' }} />
+          <div
+            className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse, hsl(142 60% 52% / 0.06) 0%, transparent 70%)",
+            }}
+          />
 
           <div className="max-w-7xl mx-auto w-full px-5 sm:px-8 py-10 sm:py-14 relative z-10">
             <motion.div
@@ -70,7 +116,9 @@ export function Dashboard() {
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   session::
                 </span>
-                <span className="font-mono text-[10px] text-primary/70">{userName}@centstack</span>
+                <span className="font-mono text-[10px] text-primary/70">
+                  {userName}@devcents
+                </span>
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
@@ -82,27 +130,37 @@ export function Dashboard() {
                   <div className="flex items-baseline gap-3">
                     <span
                       className={`font-mono text-5xl sm:text-6xl lg:text-7xl num-display leading-none ${
-                        stats.balance < 0 ? 'text-destructive' : 'text-foreground'
+                        stats.balance < 0
+                          ? "text-destructive"
+                          : "text-foreground"
                       }`}
-                      style={stats.balance >= 0 ? {
-                        textShadow: '0 0 30px hsl(120 3% 88% / 0.08)'
-                      } : {}}
+                      style={
+                        stats.balance >= 0
+                          ? {
+                              textShadow: "0 0 30px hsl(120 3% 88% / 0.08)",
+                            }
+                          : {}
+                      }
                     >
-                      {stats.balance < 0 ? '-' : ''}${fmt(stats.balance)}
+                      {stats.balance < 0 ? "-" : ""}${fmt(stats.balance)}
                     </span>
-                    <span className="font-mono text-xs text-muted-foreground uppercase">USD</span>
+                    <span className="font-mono text-xs text-muted-foreground uppercase">
+                      USD
+                    </span>
                   </div>
                 </div>
 
                 {/* Quick badges */}
                 <div className="flex flex-wrap gap-2">
-                  <Tag color={stats.balance >= 0 ? 'green' : 'red'}>
-                    {stats.balance >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    {stats.balance >= 0 ? '+' : '-'}${fmt(stats.balance)} net
+                  <Tag color={stats.balance >= 0 ? "green" : "red"}>
+                    {stats.balance >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats.balance >= 0 ? "+" : "-"}${fmt(stats.balance)} net
                   </Tag>
-                  <Tag color="muted">
-                    {stats.txCount} tx
-                  </Tag>
+                  <Tag color="muted">{stats.txCount} tx</Tag>
                 </div>
               </div>
             </motion.div>
@@ -113,20 +171,32 @@ export function Dashboard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, delay: 0.12 }}
-          style={{ borderBottom: '1px solid hsl(0 0% 14%)' }}
+          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
         >
           <div className="grid grid-cols-3">
-
             {/* Income */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
-                 style={{ borderRight: '1px solid hsl(0 0% 14%)' }}>
-              <div className="absolute left-0 top-3 bottom-3 w-px"
-                   style={{ background: 'hsl(142 60% 52% / 0.4)' }} />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">inflow</p>
+            <div
+              className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
+              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
+            >
+              <div
+                className="absolute left-0 top-3 bottom-3 w-px"
+                style={{ background: "hsl(142 60% 52% / 0.4)" }}
+              />
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                inflow
+              </p>
               <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
-                <ArrowUpRight className="h-3 w-3 shrink-0" style={{ color: 'hsl(142 55% 52%)' }} />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline"
-                      style={{ color: 'hsl(142 55% 52%)' }}>income</span>
+                <ArrowUpRight
+                  className="h-3 w-3 shrink-0"
+                  style={{ color: "hsl(142 55% 52%)" }}
+                />
+                <span
+                  className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline"
+                  style={{ color: "hsl(142 55% 52%)" }}
+                >
+                  income
+                </span>
               </div>
               <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
                 ${fmt(stats.income)}
@@ -134,14 +204,22 @@ export function Dashboard() {
             </div>
 
             {/* Expenses */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
-                 style={{ borderRight: '1px solid hsl(0 0% 14%)' }}>
-              <div className="absolute left-0 top-3 bottom-3 w-px"
-                   style={{ background: 'hsl(3 90% 58% / 0.5)' }} />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">outflow</p>
+            <div
+              className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
+              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
+            >
+              <div
+                className="absolute left-0 top-3 bottom-3 w-px"
+                style={{ background: "hsl(3 90% 58% / 0.5)" }}
+              />
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                outflow
+              </p>
               <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
                 <ArrowDownRight className="h-3 w-3 shrink-0 text-destructive" />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-destructive hidden sm:inline">expenses</span>
+                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-destructive hidden sm:inline">
+                  expenses
+                </span>
               </div>
               <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
                 ${fmt(stats.expenses)}
@@ -150,24 +228,39 @@ export function Dashboard() {
 
             {/* Net */}
             <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default">
-              <div className="absolute left-0 top-3 bottom-3 w-px"
-                   style={{ background: 'hsl(0 0% 28%)' }} />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">balance</p>
+              <div
+                className="absolute left-0 top-3 bottom-3 w-px"
+                style={{ background: "hsl(0 0% 28%)" }}
+              />
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                balance
+              </p>
               <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
                 <Wallet className="h-3 w-3 shrink-0 text-muted-foreground" />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:inline">net_pos</span>
+                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:inline">
+                  net_pos
+                </span>
               </div>
-              <p className={`font-mono text-base sm:text-2xl lg:text-3xl num-display ${stats.balance < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                {stats.balance < 0 ? '-' : ''}${fmt(stats.balance)}
+              <p
+                className={`font-mono text-base sm:text-2xl lg:text-3xl num-display ${stats.balance < 0 ? "text-destructive" : "text-foreground"}`}
+              >
+                {stats.balance < 0 ? "-" : ""}${fmt(stats.balance)}
               </p>
             </div>
           </div>
         </motion.div>
 
         {/* ── MOBILE TABS ─────────────────────────────────────────────── */}
-        <div className="md:hidden sticky z-30" style={{ top: '48px', borderBottom: '1px solid hsl(0 0% 14%)', background: 'hsl(0 0% 5%)' }}>
+        <div
+          className="md:hidden sticky z-30"
+          style={{
+            top: "48px",
+            borderBottom: "1px solid hsl(0 0% 14%)",
+            background: "hsl(0 0% 5%)",
+          }}
+        >
           <div className="flex">
-            {TABS.map(tab => {
+            {TABS.map((tab) => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
               return (
@@ -175,8 +268,12 @@ export function Dashboard() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 flex flex-col items-center gap-1 py-3 text-[9px] font-mono uppercase tracking-widest transition-colors
-                    ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                  style={{ borderBottom: active ? '1px solid hsl(142 60% 52% / 0.7)' : '1px solid transparent' }}
+                    ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  style={{
+                    borderBottom: active
+                      ? "1px solid hsl(142 60% 52% / 0.7)"
+                      : "1px solid transparent",
+                  }}
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
@@ -189,21 +286,41 @@ export function Dashboard() {
         {/* ── MOBILE CONTENT ──────────────────────────────────────────── */}
         <div className="md:hidden grow">
           <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
-              <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="p-5">
+            {activeTab === "overview" && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="p-5"
+              >
                 <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
                   // recent_activity
                 </p>
                 <TransactionList limit={5} compact />
               </motion.div>
             )}
-            {activeTab === 'transactions' && (
-              <motion.div key="transactions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            {activeTab === "transactions" && (
+              <motion.div
+                key="transactions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
                 <TransactionList />
               </motion.div>
             )}
-            {activeTab === 'analytics' && (
-              <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="p-5">
+            {activeTab === "analytics" && (
+              <motion.div
+                key="analytics"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="p-5"
+              >
                 <SpendingCharts />
               </motion.div>
             )}
@@ -211,15 +328,25 @@ export function Dashboard() {
         </div>
 
         {/* ── DESKTOP 2-COL ───────────────────────────────────────────── */}
-        <div className="hidden md:flex grow" style={{ borderBottom: '1px solid hsl(0 0% 14%)' }}>
+        <div
+          className="hidden md:flex grow"
+          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
+        >
           <div className="grid grid-cols-12 w-full">
-
             {/* Left: Charts (8 cols) */}
-            <div className="col-span-8 flex flex-col" style={{ borderRight: '1px solid hsl(0 0% 14%)' }}>
+            <div
+              className="col-span-8 flex flex-col"
+              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
+            >
               {/* Pane header */}
-              <div className="flex items-center gap-2 px-6 py-3" style={{ borderBottom: '1px solid hsl(0 0% 14%)' }}>
+              <div
+                className="flex items-center gap-2 px-6 py-3"
+                style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
+              >
                 <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">analytics.view</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  analytics.view
+                </span>
               </div>
               <div className="p-6 lg:p-8 grow overflow-y-auto">
                 <SpendingCharts />
@@ -227,24 +354,35 @@ export function Dashboard() {
             </div>
 
             {/* Right: Ledger (4 cols) */}
-            <div className="col-span-4 flex flex-col" style={{ background: 'hsl(0 0% 6%)' }}>
+            <div
+              className="col-span-4 flex flex-col"
+              style={{ background: "hsl(0 0% 6%)" }}
+            >
               {/* Pane header */}
-              <div className="flex items-center justify-between px-5 py-3 sticky z-10"
-                   style={{ top: '48px', borderBottom: '1px solid hsl(0 0% 14%)', background: 'hsl(0 0% 6%)' }}>
+              <div
+                className="flex items-center justify-between px-5 py-3 sticky z-10"
+                style={{
+                  top: "48px",
+                  borderBottom: "1px solid hsl(0 0% 14%)",
+                  background: "hsl(0 0% 6%)",
+                }}
+              >
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">ledger.recent</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    ledger.recent
+                  </span>
                 </div>
-                <span className="font-mono text-[9px] text-muted-foreground">{stats.txCount}_records</span>
+                <span className="font-mono text-[9px] text-muted-foreground">
+                  {stats.txCount}_records
+                </span>
               </div>
               <div className="grow overflow-y-auto">
                 <TransactionList />
               </div>
             </div>
-
           </div>
         </div>
-
       </main>
 
       {/* ── MOBILE NAV ──────────────────────────────────────────────── */}

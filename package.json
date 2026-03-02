@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "devcents",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "convex:local": "convex dev --url http://127.0.0.1:3210 --admin-key \"centstack|0140945e8143d1473961c863359f3b33509101fa5deb2e7615065bcb0f4418556937d0f476\"",
+    "convex:local": "convex dev --url http://127.0.0.1:3210 --admin-key \"devcents|0140945e8143d1473961c863359f3b33509101fa5deb2e7615065bcb0f4418556937d0f476\"",
     "dev:all": "bash scripts/dev.sh"
   },
   "dependencies": {

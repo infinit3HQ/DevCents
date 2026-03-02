@@ -9,7 +9,7 @@
  *    no private key material ever touches JS.
  */
 
-const RP_NAME = "CentStack";
+const RP_NAME = "DevCents";
 
 function rpId(): string {
   return typeof window !== "undefined" ? window.location.hostname : "localhost";

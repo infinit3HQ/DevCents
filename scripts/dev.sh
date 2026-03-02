@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── CentStack Dev Environment ──────────────────────────────────────────────
+# ─── DevCents Dev Environment ──────────────────────────────────────────────
 # Starts Docker (Convex backend), Convex sync, and the Vite dev server.
 # Press Ctrl+C to tear everything down.
 # ─────────────────────────────────────────────────────────────────────────────

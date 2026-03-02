@@ -11,7 +11,7 @@ services:
       - CONVEX_SITE_PORT=3211
       - CLERK_ISSUER_URL=${CLERK_ISSUER_URL}
       - INSTANCE_SECRET=1db4845241f79989e9ee82e9c652eb2364a1826b733620f51b390ff7313b76d4
-      - INSTANCE_NAME=centstack
+      - INSTANCE_NAME=devcents
 
 volumes:
   convex-data:
