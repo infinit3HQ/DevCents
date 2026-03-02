@@ -1,38 +1,66 @@
-import { ClerkProvider } from '@clerk/tanstack-react-start'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import { ClerkProvider } from "@clerk/tanstack-react-start";
+import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { TanStackDevtools } from "@tanstack/react-devtools";
 
-import Header from '../components/Header'
-import { ConvexClientProvider } from '../components/ConvexClientProvider'
-import { CommandPalette } from '../components/CommandPalette'
-import { EncryptionProvider } from '../components/EncryptionProvider'
-import appCss from '../app.css?url'
+import Header from "../components/Header";
+import { ConvexClientProvider } from "../components/ConvexClientProvider";
+import { CommandPalette } from "../components/CommandPalette";
+import { EncryptionProvider } from "../components/EncryptionProvider";
+import appCss from "../app.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charSet: 'utf-8',
+        charSet: "utf-8",
       },
       {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
       },
       {
-        title: 'CentStack — Self-hosted Money Management',
+        title: "CentStack — Self-hosted Money Management",
       },
     ],
     links: [
       {
-        rel: 'stylesheet',
+        rel: "stylesheet",
         href: appCss,
       },
     ],
   }),
 
   shellComponent: RootDocument,
-})
+  notFoundComponent: NotFound,
+});
+
+function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-8 gap-4 text-center">
+      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+        <span className="font-mono text-2xl">404</span>
+      </div>
+      <h2 className="text-xl font-mono text-foreground uppercase tracking-widest">
+        Page Not Found
+      </h2>
+      <p className="text-sm font-mono text-muted-foreground mt-2">
+        The location you are trying to visit was not found.
+      </p>
+      <a
+        href="/"
+        className="mt-6 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors hover:bg-primary/20"
+        style={{
+          border: "1px solid hsl(142 60% 52% / 0.3)",
+          color: "hsl(142 60% 52%)",
+          background: "hsl(142 60% 52% / 0.1)",
+        }}
+      >
+        return home
+      </a>
+    </div>
+  );
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -51,11 +79,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </ConvexClientProvider>
           <TanStackDevtools
             config={{
-              position: 'bottom-right',
+              position: "bottom-right",
             }}
             plugins={[
               {
-                name: 'Tanstack Router',
+                name: "Tanstack Router",
                 render: <TanStackRouterDevtoolsPanel />,
               },
             ]}
@@ -64,5 +92,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }

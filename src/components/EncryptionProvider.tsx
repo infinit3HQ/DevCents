@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/tanstack-react-start";
 import { api } from "../../convex/_generated/api";
@@ -52,25 +46,7 @@ const ACTIVITY_EVENTS = [
   "touchstart",
 ] as const;
 
-// ─── Context ─────────────────────────────────────────────────────
-
-interface EncryptionContextType {
-  isEnabled: boolean;
-  isUnlocked: boolean;
-  encryptValue: (plaintext: string) => Promise<string>;
-  decryptValue: (ciphertext: string) => Promise<string>;
-  setupEncryption: () => void;
-}
-
-const EncryptionContext = createContext<EncryptionContextType>({
-  isEnabled: false,
-  isUnlocked: false,
-  encryptValue: async (v) => v,
-  decryptValue: async (v) => v,
-  setupEncryption: () => {},
-});
-
-export const useEncryption = () => useContext(EncryptionContext);
+import { EncryptionContext } from "@/contexts/EncryptionContext";
 
 // ─── Provider ────────────────────────────────────────────────────
 

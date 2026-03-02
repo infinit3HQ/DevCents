@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEncryption } from "@/components/EncryptionProvider";
+import { useEncryption } from "@/contexts/EncryptionContext";
 import { useState, useEffect } from "react";
 
 export interface DecryptedTransaction {
