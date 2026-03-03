@@ -64,7 +64,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
           gh release create "${{ steps.create_tag.outputs.tag }}" \
-            --title "Release ${{ steps.create_tag.outputs.tag }}" \
-            --notes "Automated release from push to main. Docker image published to ghcr.io." \
+            --title "$COMMIT_MSG" \
+            --generate-notes \
             --target "${{ github.sha }}"
