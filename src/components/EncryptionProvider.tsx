@@ -352,14 +352,18 @@ function StrengthBar({ passphrase }: { passphrase: string }) {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-0.5 w-8 transition-all duration-300"
-              style={{ background: i < s.score ? s.color : "hsl(0 0% 18%)" }}
+              className={cn(
+                "h-0.5 w-8 rounded-sm transition-all duration-300",
+                i < s.score ? s.bgClass : "bg-border",
+              )}
             />
           ))}
         </div>
         <span
-          className="font-mono text-[9px] uppercase tracking-widest transition-colors"
-          style={{ color: s.color }}
+          className={cn(
+            "font-mono text-[9px] uppercase tracking-widest transition-colors",
+            s.colorClass,
+          )}
         >
           {s.label}
         </span>
@@ -517,10 +521,7 @@ function SetupDialog({
             placeholder="repeat your passphrase"
           />
           {confirm && pass && confirm !== pass && (
-            <p
-              className="font-mono text-[9px]"
-              style={{ color: "hsl(3 85% 60%)" }}
-            >
+            <p className="text-destructive font-mono text-[9px]">
               ↳ passphrases do not match
             </p>
           )}
@@ -531,16 +532,12 @@ function SetupDialog({
           <button
             type="button"
             onClick={() => setRegisterBio(!registerBio)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 font-mono text-[10px] transition-all"
-            style={{
-              border: registerBio
-                ? "1px solid hsl(142 60% 52% / 0.4)"
-                : "1px solid hsl(0 0% 16%)",
-              background: registerBio
-                ? "hsl(142 60% 52% / 0.07)"
-                : "transparent",
-              color: registerBio ? "hsl(142 55% 55%)" : "hsl(0 0% 42%)",
-            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 font-mono text-[10px] transition-all border",
+              registerBio
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-transparent text-muted-foreground",
+            )}
           >
             <Fingerprint className="h-4 w-4 shrink-0" />
             <span className="text-left uppercase tracking-widest">
@@ -631,10 +628,7 @@ function UnlockDialog({
   return (
     <Overlay>
       {/* Header */}
-      <div
-        className="px-6 py-4 flex items-center gap-3"
-        style={{ borderBottom: "1px solid hsl(0 0% 13%)" }}
-      >
+      <div className="px-6 py-4 flex items-center gap-3 border-b border-border">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
         <div>
           <p className="font-mono text-sm text-foreground">unlock_session</p>
@@ -645,10 +639,7 @@ function UnlockDialog({
       </div>
 
       {/* Cipher spec */}
-      <div
-        className="px-6 py-3 flex gap-6"
-        style={{ borderBottom: "1px solid hsl(0 0% 11%)" }}
-      >
+      <div className="px-6 py-3 flex gap-6 border-b border-border">
         {[
           ["cipher", "AES-256-GCM"],
           ["kdf", "PBKDF2 SHA-256"],
@@ -670,13 +661,7 @@ function UnlockDialog({
             type="button"
             onClick={handleBiometric}
             disabled={bioLoading}
-            className="w-full flex items-center justify-center gap-2.5 py-3 font-mono text-[11px]
-                       uppercase tracking-widest transition-all disabled:opacity-50"
-            style={{
-              border: "1px solid hsl(142 60% 52% / 0.3)",
-              background: "hsl(142 60% 52% / 0.07)",
-              color: "hsl(142 55% 55%)",
-            }}
+            className="w-full h-11 flex items-center justify-center gap-3 rounded-md font-mono text-[10px] uppercase tracking-widest transition-all border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 disabled:opacity-50"
           >
             {bioLoading ? (
               <span className="animate-spin">◌</span>
@@ -691,10 +676,7 @@ function UnlockDialog({
         {(!hasBiometric || showPass) && (
           <>
             {hasBiometric && (
-              <p
-                className="font-mono text-[9px] uppercase tracking-widest text-center"
-                style={{ color: "hsl(0 0% 32%)" }}
-              >
+              <p className="font-mono text-[9px] uppercase tracking-widest text-center text-muted-foreground">
                 — or use passphrase —
               </p>
             )}
@@ -725,12 +707,7 @@ function UnlockDialog({
                 />
               </div>
               {error && (
-                <p
-                  className="font-mono text-[10px]"
-                  style={{ color: "hsl(3 85% 60%)" }}
-                >
-                  {error}
-                </p>
+                <p className="text-destructive font-mono text-[9px]">{error}</p>
               )}
               <div className="flex gap-3">
                 <TermBtn onClick={onSkip} variant="ghost">
@@ -760,14 +737,7 @@ function UnlockDialog({
             onClick={() => {
               onLockBiometric();
             }}
-            className="w-full font-mono text-[9px] uppercase tracking-widest transition-colors"
-            style={{ color: "hsl(0 0% 28%)" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "hsl(3 85% 60%)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "hsl(0 0% 28%)")
-            }
+            className="w-full font-mono text-[9px] uppercase tracking-widest transition-colors text-muted-foreground hover:text-destructive mt-4"
           >
             remove biometric registration
           </button>

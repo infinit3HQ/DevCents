@@ -66,7 +66,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             trigger={
               <motion.button
                 whileTap={{ scale: 0.9 }}
-                className="w-11 h-11 flex items-center justify-center font-mono bg-primary text-primary-foreground shadow-[0_0_16px_hsl(var(--primary)/0.4)]"
+                className="w-11 h-11 flex items-center justify-center font-mono bg-primary text-primary-foreground shadow-[0_0_16px_color-mix(in oklch, var(--color-primary), transparent 96%)]"
                 aria-label="Add transaction"
               >
                 <Plus className="h-5 w-5" strokeWidth={2.5} />

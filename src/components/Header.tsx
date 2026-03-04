@@ -74,7 +74,7 @@ export default function Header() {
       <Link to="/" className="flex items-center gap-2 group shrink-0">
         <Terminal className="w-4 h-4 text-primary" />
         <span className="font-mono text-sm font-medium tracking-tight text-foreground group-hover:text-primary transition-colors duration-150">
-          cent<span className="text-primary">stack</span>
+          dev<span className="text-primary">cents</span>
           <span className="text-muted-foreground ml-0.5">_</span>
         </span>
       </Link>

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.28.1",
+    "@clerk/ui": "^1.0.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",

@@ -51,8 +51,7 @@ export function TransactionList({
     <div className={cn("pb-20 md:pb-4", compact && "pb-0")}>
       {/* ── MOBILE LIST ─────────────────────────────────────────── */}
       <div
-        className="md:hidden divide-y"
-        style={{ borderColor: "hsl(0 0% 11%)" }}
+        className="md:hidden divide-y border-border"
       >
         <AnimatePresence mode="popLayout">
           {transactions.map((t, index) => (
@@ -137,7 +136,7 @@ export function TransactionList({
         className="hidden md:table w-full text-sm text-left border-collapse"
       >
         <thead>
-          <tr style={{ borderBottom: "1px solid hsl(0 0% 12%)" }}>
+          <tr className="border-b border-border">
             {["date", "category", "description", "amount", ""].map((h, i) => (
               <th
                 key={i}
@@ -161,8 +160,7 @@ export function TransactionList({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15, delay: index * 0.02 }}
-                className="group cursor-default tr-hover"
-                style={{ borderBottom: "1px solid hsl(0 0% 10%)" }}
+                className="group cursor-default tr-hover border-b border-border/80"
               >
                 <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-muted-foreground">
                   {new Date(t.date).toLocaleDateString(undefined, {

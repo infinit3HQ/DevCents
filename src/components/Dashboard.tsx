@@ -84,13 +84,7 @@ export function Dashboard() {
           {/* Background dot grid */}
           <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
           {/* Subtle green radial glow at top-right */}
-          <div
-            className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse, hsl(var(--primary) / 0.06) 0%, transparent 70%)",
-            }}
-          />
+          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_94%)_0%,transparent_70%)] opacity-100" />
 
           <div className="max-w-7xl mx-auto w-full px-5 sm:px-8 py-10 sm:py-14 relative z-10">
             <motion.div
@@ -126,7 +120,7 @@ export function Dashboard() {
                         stats.balance >= 0
                           ? {
                               textShadow:
-                                "0 0 30px hsl(var(--foreground) / 0.08)",
+                                "0 0 30px color-mix(in oklch, var(--color-foreground), transparent 92%)",
                             }
                           : {}
                       }
@@ -222,12 +216,7 @@ export function Dashboard() {
         </motion.div>
 
         {/* ── MOBILE TABS ─────────────────────────────────────────────── */}
-        <div
-          className="md:hidden sticky z-30 border-b border-border bg-background"
-          style={{
-            top: "48px",
-          }}
-        >
+        <div className="md:hidden sticky z-30 border-b border-border bg-background top-12">
           <div className="flex">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -315,12 +304,7 @@ export function Dashboard() {
             {/* Right: Ledger (4 cols) */}
             <div className="col-span-4 flex flex-col bg-card">
               {/* Pane header */}
-              <div
-                className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card"
-                style={{
-                  top: "48px",
-                }}
-              >
+              <div className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card top-12">
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">

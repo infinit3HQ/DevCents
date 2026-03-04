@@ -520,7 +520,8 @@ export type StrengthLabel =
 export interface StrengthResult {
   score: 0 | 1 | 2 | 3 | 4;
   label: StrengthLabel;
-  color: string;
+  colorClass: string;
+  bgClass: string;
   pct: number;
   tips: string[];
 }
@@ -548,18 +549,28 @@ export function checkStrength(p: string): StrengthResult {
     "strong",
     "very strong",
   ];
-  const colors = [
-    "hsl(0 80% 52%)",
-    "hsl(20 80% 52%)",
-    "hsl(42 80% 52%)",
-    "hsl(90 60% 46%)",
-    "hsl(142 60% 52%)",
+
+  const textClasses = [
+    "text-muted-foreground",
+    "text-destructive",
+    "text-strength-2",
+    "text-strength-3",
+    "text-strength-4",
+  ];
+
+  const bgClasses = [
+    "bg-border",
+    "bg-destructive",
+    "bg-strength-2",
+    "bg-strength-3",
+    "bg-strength-4",
   ];
 
   return {
     score: clamped,
     label: labels[clamped],
-    color: colors[clamped],
+    colorClass: textClasses[clamped],
+    bgClass: bgClasses[clamped],
     pct: (clamped / 4) * 100,
     tips,
   };

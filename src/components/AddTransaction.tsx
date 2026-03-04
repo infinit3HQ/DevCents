@@ -138,7 +138,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           >
             <Button
               size="icon"
-              className="h-14 w-14 rounded-full border border-primary/30 transition-all duration-300 shadow-[0_0_30px_hsl(var(--primary)/0.15)] hover:shadow-[0_0_40px_hsl(var(--primary)/0.25)] bg-primary/10 text-primary"
+              className="h-14 w-14 rounded-full border border-primary/30 transition-all duration-300 shadow-[0_0_30px_color-mix(in oklch, var(--color-primary), transparent 85%)] hover:shadow-[0_0_40px_color-mix(in oklch, var(--color-primary), transparent 75%)] bg-primary/10 text-primary"
             >
               <Plus className="h-6 w-6" />
               <span className="sr-only">New Record</span>
@@ -153,7 +153,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           <motion.div whileTap={{ scale: 0.95 }} className="md:hidden">
             <Button
               size="icon"
-              className="h-12 w-12 -mt-6 rounded-full border border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-all bg-primary/10 text-primary"
+              className="h-12 w-12 -mt-6 rounded-full border border-primary/30 shadow-[0_0_20px_color-mix(in oklch, var(--color-primary), transparent 85%)] transition-all bg-primary/10 text-primary"
             >
               <Plus className="h-5 w-5" />
               <span className="sr-only">New Record</span>

@@ -286,19 +286,18 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
                     {[0, 1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="h-0.5 w-8 transition-all duration-300"
-                        style={{
-                          background:
-                            i < strength.score
-                              ? strength.color
-                              : "hsl(0 0% 18%)",
-                        }}
+                        className={cn(
+                          "h-0.5 w-8 rounded-sm transition-all duration-300",
+                          i < strength.score ? strength.bgClass : "bg-border",
+                        )}
                       />
                     ))}
                   </div>
                   <span
-                    className="font-mono text-[9px] uppercase tracking-widest"
-                    style={{ color: strength.color }}
+                    className={cn(
+                      "font-mono text-[9px] uppercase tracking-widest transition-colors",
+                      strength.colorClass,
+                    )}
                   >
                     {strength.label}
                   </span>
@@ -404,12 +403,7 @@ export function Settings() {
     <>
       <div className="min-h-dvh bg-background">
         {/* Page header */}
-        <div
-          className="sticky z-20 border-b border-border bg-background"
-          style={{
-            top: "48px",
-          }}
-        >
+        <div className="sticky z-20 border-b border-border bg-background top-12">
           <div className="max-w-2xl mx-auto px-6 py-4">
             <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
               config

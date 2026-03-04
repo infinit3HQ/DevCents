@@ -2,72 +2,144 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
+@import "@clerk/themes/shadcn.css";
 
-@theme {
+@theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Berkeley Mono", "Fira Code", monospace;
   --font-serif: "JetBrains Mono", "Berkeley Mono", monospace;
   --radius: 0rem;
 
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-strength-2: var(--strength-2);
+  --color-strength-3: var(--strength-3);
+  --color-strength-4: var(--strength-4);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
 }
 
-/* ── Always dark — developer-first terminal aesthetic ── */
+/* ── Light Mode (Terminal Aesthetic) ── */
 :root {
-  --background: 0 0% 5%;       /* #0D0D0D */
-  --foreground: 120 3% 88%;    /* #E0E3DF off-white */
-  --card: 0 0% 7%;             /* #121212 */
-  --card-foreground: 120 3% 88%;
-  --popover: 0 0% 8%;
-  --popover-foreground: 120 3% 88%;
-  --primary: 142 60% 52%;      /* Phosphor green #3FD068 */
-  --primary-foreground: 0 0% 5%;
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 120 3% 88%;
-  --muted: 0 0% 11%;
-  --muted-foreground: 0 0% 42%;
-  --accent: 142 40% 18%;       /* Green tinted dark */
-  --accent-foreground: 142 60% 65%;
-  --destructive: 3 90% 58%;    /* #F43F3F */
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 14%;
-  --input: 0 0% 14%;
-  --ring: 142 60% 52%;
+  --background: oklch(0.98 0.01 120); /* Off-white with a tiny tint of green */
+  --foreground: oklch(0.15 0 0); /* Very dark gray */
+  --card: oklch(0.95 0.01 120); /* Slightly darker paper */
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(0.98 0.01 120);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.55 0.15 142); /* Darker phosphor green for contrast on light */
+  --primary-foreground: oklch(0.98 0.01 120); /* primary text */
+  --secondary: oklch(0.90 0.02 120);
+  --secondary-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.90 0.01 120);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.85 0.08 142); /* Light green tint */
+  --accent-foreground: oklch(0.3 0.1 142); /* Deep green text */
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.85 0.02 120); /* Visible border */
+  --input: oklch(0.85 0.02 120);
+  --ring: oklch(0.55 0.15 142);
+  --chart-1: oklch(0.55 0.15 142);
+  --chart-2: oklch(0.65 0.1 142);
+  --chart-3: oklch(0.75 0.08 142);
+  --chart-4: oklch(0.80 0.05 142);
+  --chart-5: oklch(0.85 0.03 142);
+  --strength-2: hsl(20 80% 52%);
+  --strength-3: hsl(42 80% 52%);
+  --strength-4: hsl(90 60% 46%);
+  --sidebar: oklch(0.95 0.01 120);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: oklch(0.55 0.15 142);
+  --sidebar-primary-foreground: oklch(0.98 0.01 120);
+  --sidebar-accent: oklch(0.90 0.02 120);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-border: oklch(0.85 0.02 120);
+  --sidebar-ring: oklch(0.55 0.15 142);
+}
+
+/* ── Dark Mode (Terminal Aesthetic) ── */
+.dark {
+  --background: oklch(0.18 0 0);      
+  --foreground: oklch(0.9 0.02 120);
+  --card: oklch(0.2 0 0);
+  --card-foreground: oklch(0.9 0.02 120);
+  --popover: oklch(0.21 0 0);
+  --popover-foreground: oklch(0.9 0.02 120);
+  --primary: oklch(0.75 0.15 142);
+  --primary-foreground: oklch(0.18 0 0);
+  --secondary: oklch(0.24 0 0);
+  --secondary-foreground: oklch(0.9 0.02 120);
+  --muted: oklch(0.23 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.3 0.05 142);
+  --accent-foreground: oklch(0.85 0.15 142);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.26 0 0);
+  --input: oklch(0.26 0 0);
+  --ring: oklch(0.75 0.15 142);
+  --chart-1: oklch(0.75 0.15 142);
+  --chart-2: oklch(0.55 0.1 142);
+  --chart-3: oklch(0.45 0.08 142);
+  --chart-4: oklch(0.35 0.05 142);
+  --chart-5: oklch(0.27 0.03 142);
+  --strength-2: hsl(20 80% 52%);
+  --strength-3: hsl(42 80% 52%);
+  --strength-4: hsl(90 60% 46%);
+  --sidebar: oklch(0.2 0 0);
+  --sidebar-foreground: oklch(0.9 0.02 120);
+  --sidebar-primary: oklch(0.75 0.15 142);
+  --sidebar-primary-foreground: oklch(0.18 0 0);
+  --sidebar-accent: oklch(0.24 0 0);
+  --sidebar-accent-foreground: oklch(0.9 0.02 120);
+  --sidebar-border: oklch(0.26 0 0);
+  --sidebar-ring: oklch(0.75 0.15 142);
 }
 
 @layer base {
   * {
     @apply border-border;
     box-sizing: border-box;
-  }
-  html {
-    color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground;
@@ -76,22 +148,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
   ::selection {
-    background: hsl(142 60% 52% / 0.25);
-    color: hsl(142 60% 70%);
+    background: color-mix(in oklch, var(--primary), transparent 75%);
+    color: var(--primary);
   }
   
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: hsl(0 0% 20%); }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(142 50% 30%); }
+  ::-webkit-scrollbar-thumb { background: oklch(0.3 0 0); }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in oklch, var(--primary), transparent 40%); }
 }
 
 @layer utilities {
 
   /* ── Dot-grid background ─────────────────────────── */
   .dot-grid {
-    background-image: radial-gradient(circle, hsl(0 0% 22%) 1px, transparent 1px);
+    background-image: radial-gradient(circle, oklch(0.32 0 0) 1px, transparent 1px);
     background-size: 24px 24px;
   }
 
@@ -104,8 +176,8 @@
       to bottom,
       transparent 0px,
       transparent 3px,
-      hsl(0 0% 0% / 0.06) 3px,
-      hsl(0 0% 0% / 0.06) 4px
+      color-mix(in oklch, oklch(0 0 0), transparent 94%) 3px,
+      color-mix(in oklch, oklch(0 0 0), transparent 94%) 4px
     );
     pointer-events: none;
     z-index: 1;
@@ -113,17 +185,17 @@
 
   /* ── Phosphor text glow ──────────────────────────── */
   .text-glow {
-    text-shadow: 0 0 20px hsl(142 60% 52% / 0.5), 0 0 40px hsl(142 60% 52% / 0.2);
+    text-shadow: 0 0 20px color-mix(in oklch, var(--primary), transparent 50%), 0 0 40px color-mix(in oklch, var(--primary), transparent 80%);
   }
 
   .text-glow-sm {
-    text-shadow: 0 0 8px hsl(142 60% 52% / 0.4);
+    text-shadow: 0 0 8px color-mix(in oklch, var(--primary), transparent 60%);
   }
 
   /* ── Terminal prompt prefix ──────────────────────── */
   .terminal-prompt::before {
     content: '> ';
-    color: hsl(142 60% 52%);
+    color: var(--primary);
     opacity: 0.7;
   }
 
@@ -136,7 +208,7 @@
 
   /* ── Terminal border box ─────────────────────────── */
   .term-box {
-    border: 1px solid hsl(0 0% 14%);
+    border: 1px solid oklch(0.24 0 0);
     position: relative;
   }
 
@@ -144,13 +216,13 @@
     content: '';
     position: absolute;
     inset: 0;
-    border: 1px solid hsl(142 60% 52% / 0.06);
+    border: 1px solid color-mix(in oklch, var(--primary), transparent 94%);
     pointer-events: none;
   }
 
   /* ── Subtle green left accent line ──────────────── */
   .accent-left {
-    border-left: 2px solid hsl(142 60% 52% / 0.6);
+    border-left: 2px solid color-mix(in oklch, var(--primary), transparent 40%);
   }
 
   /* ── Status indicator ─────────────────────────────── */
@@ -158,14 +230,14 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: hsl(142 60% 52%);
-    box-shadow: 0 0 0 2px hsl(142 60% 52% / 0.2);
+    background: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary), transparent 80%);
     animation: pulse-dot 2.5s ease-in-out infinite;
   }
 
   @keyframes pulse-dot {
-    0%, 100% { box-shadow: 0 0 0 2px hsl(142 60% 52% / 0.2); }
-    50%       { box-shadow: 0 0 0 4px hsl(142 60% 52% / 0.08); }
+    0%, 100% { box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary), transparent 80%); }
+    50%       { box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary), transparent 92%); }
   }
 
   /* ── Row hover: terminal reverse video ──────────── */
@@ -173,7 +245,7 @@
     transition: background 0.1s ease;
   }
   .tr-hover:hover {
-    background: hsl(142 60% 52% / 0.06);
-    border-color: hsl(142 60% 52% / 0.2);
+    background: color-mix(in oklch, var(--primary), transparent 94%);
+    border-color: color-mix(in oklch, var(--primary), transparent 80%);
   }
 }

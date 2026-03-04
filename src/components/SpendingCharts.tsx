@@ -19,26 +19,27 @@ import {
 
 // Phosphor-style palette: Monochrome terminal green gradations
 const CAT_COLORS: Record<string, string> = {
-  housing: "hsl(var(--primary))",
-  food: "hsl(var(--primary))",
-  transportation: "hsl(var(--primary))",
-  utilities: "hsl(var(--primary))",
-  entertainment: "hsl(var(--primary))",
-  shopping: "hsl(var(--primary))",
-  health: "hsl(var(--primary))",
-  education: "hsl(var(--primary))",
-  personal: "hsl(var(--primary))",
-  other: "hsl(var(--primary))",
+  housing: "var(--color-primary)",
+  food: "var(--color-primary)",
+  transportation: "var(--color-primary)",
+  utilities: "var(--color-primary)",
+  entertainment: "var(--color-primary)",
+  shopping: "var(--color-primary)",
+  health: "var(--color-primary)",
+  education: "var(--color-primary)",
+  personal: "var(--color-primary)",
+  other: "var(--color-primary)",
 };
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
+  backgroundColor: "var(--color-popover)",
+  border: "1px solid var(--color-border)",
   borderRadius: "0px",
-  color: "hsl(var(--popover-foreground))",
+  color: "var(--color-popover-foreground)",
   fontSize: "10px",
   fontFamily: "var(--font-mono)",
-  boxShadow: "4px 4px 0px 0px hsl(var(--foreground)/0.1)",
+  boxShadow:
+    "4px 4px 0px 0px color-mix(in oklch, var(--color-foreground), transparent 99%)",
   padding: "8px 12px",
 };
 
@@ -139,7 +140,7 @@ export function SpendingCharts() {
                   <Cell
                     key={i}
                     fill={entry.fill}
-                    stroke="hsl(var(--card))"
+                    stroke="var(--color-card)"
                     strokeWidth={2}
                     className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
                   />
@@ -147,7 +148,7 @@ export function SpendingCharts() {
               </Pie>
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                itemStyle={{ color: "hsl(var(--primary))" }}
+                itemStyle={{ color: "var(--color-primary)" }}
                 formatter={(v: number | undefined) => [
                   `${currencySymbol}${(v ?? 0).toFixed(2)}`,
                   "amount",
@@ -192,23 +193,23 @@ export function SpendingCharts() {
             <BarChart data={monthlyData} barGap={3} barCategoryGap="32%">
               <CartesianGrid
                 strokeDasharray="2 2"
-                stroke="hsl(var(--border))"
+                stroke="var(--color-border)"
                 vertical={false}
               />
               <XAxis
                 dataKey="name"
                 tick={{
-                  fill: "hsl(var(--muted-foreground))",
+                  fill: "var(--color-muted-foreground)",
                   fontSize: 10,
                   fontFamily: "var(--font-mono)",
                 }}
-                axisLine={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                axisLine={{ stroke: "var(--color-border)", strokeWidth: 1 }}
                 tickLine={false}
                 dy={8}
               />
               <YAxis
                 tick={{
-                  fill: "hsl(var(--muted-foreground))",
+                  fill: "var(--color-muted-foreground)",
                   fontSize: 10,
                   fontFamily: "var(--font-mono)",
                 }}
@@ -220,8 +221,8 @@ export function SpendingCharts() {
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-                itemStyle={{ color: "hsl(var(--foreground))" }}
+                cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
+                itemStyle={{ color: "var(--color-foreground)" }}
                 formatter={(v: number | undefined) => [
                   `${currencySymbol}${(v ?? 0).toFixed(2)}`,
                 ]}
@@ -229,7 +230,7 @@ export function SpendingCharts() {
               <Legend
                 wrapperStyle={{
                   fontSize: "10px",
-                  color: "hsl(var(--muted-foreground))",
+                  color: "var(--color-muted-foreground)",
                   fontFamily: "var(--font-mono)",
                   textTransform: "uppercase",
                   paddingTop: "8px",
@@ -238,14 +239,14 @@ export function SpendingCharts() {
               />
               <Bar
                 dataKey="income"
-                fill="hsl(var(--primary))"
+                fill="var(--color-primary)"
                 radius={[2, 2, 0, 0]}
                 name="income"
                 className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
               />
               <Bar
                 dataKey="expenses"
-                fill="hsl(var(--destructive))"
+                fill="var(--color-destructive)"
                 radius={[2, 2, 0, 0]}
                 name="expenses"
                 className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
