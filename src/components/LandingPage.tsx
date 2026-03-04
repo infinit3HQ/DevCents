@@ -81,18 +81,25 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 pt-2"
           >
             <SignUpButton mode="modal">
-              <Button size="lg" className="text-lg px-8 h-12 group">
+              <Button
+                size="lg"
+                className="text-lg h-12 rounded-lg group shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300 w-52"
+              >
                 Get Started
                 <motion.span className="ml-2 inline-block group-hover:translate-x-1 transition-transform">
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
                 </motion.span>
               </Button>
             </SignUpButton>
             <SignInButton mode="modal">
-              <Button size="lg" variant="outline" className="text-lg px-8 h-12">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg h-12 rounded-lg border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 hover:text-primary hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300 w-52"
+              >
                 Sign In
               </Button>
             </SignInButton>
