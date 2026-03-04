@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { TransactionList } from "@/components/TransactionList";
 import { SpendingCharts } from "@/components/SpendingCharts";
 import { MobileNav } from "@/components/MobileNav";
@@ -35,26 +36,16 @@ const Tag = ({
   color?: "green" | "red" | "muted";
 }) => {
   const styles = {
-    green: {
-      border: "1px solid hsl(142 60% 52% / 0.25)",
-      background: "hsl(142 60% 52% / 0.08)",
-      color: "hsl(142 55% 58%)",
-    },
-    red: {
-      border: "1px solid hsl(3 90% 58% / 0.25)",
-      background: "hsl(3 90% 58% / 0.08)",
-      color: "hsl(3 85% 62%)",
-    },
-    muted: {
-      border: "1px solid hsl(0 0% 18%)",
-      background: "transparent",
-      color: "hsl(0 0% 42%)",
-    },
+    green: "border-primary/25 bg-primary/10 text-primary",
+    red: "border-destructive/25 bg-destructive/10 text-destructive",
+    muted: "border-border bg-transparent text-muted-foreground",
   }[color];
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest"
-      style={styles}
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border",
+        styles,
+      )}
     >
       {children}
     </span>
@@ -73,18 +64,10 @@ export function Dashboard() {
       return { balance: 0, income: 0, expenses: 0, txCount: 0 };
     const income = transactions
       .filter((t) => t.type === "income")
-      .reduce(
-        (s, t) =>
-          s + convertAmount(t.amount, t.currency || "USD", baseCurrency),
-        0,
-      );
+      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
     const expenses = transactions
       .filter((t) => t.type === "expense")
-      .reduce(
-        (s, t) =>
-          s + convertAmount(t.amount, t.currency || "USD", baseCurrency),
-        0,
-      );
+      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
     return {
       balance: income - expenses,
       income,
@@ -97,10 +80,7 @@ export function Dashboard() {
     <div className="bg-background text-foreground min-h-dvh flex flex-col overflow-x-hidden">
       <main className="grow flex flex-col pb-16 md:pb-0">
         {/* ── HERO ──────────────────────────────────────────────────────── */}
-        <section
-          className="relative overflow-hidden"
-          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
-        >
+        <section className="relative overflow-hidden border-b border-border">
           {/* Background dot grid */}
           <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
           {/* Subtle green radial glow at top-right */}
@@ -108,7 +88,7 @@ export function Dashboard() {
             className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none"
             style={{
               background:
-                "radial-gradient(ellipse, hsl(142 60% 52% / 0.06) 0%, transparent 70%)",
+                "radial-gradient(ellipse, hsl(var(--primary) / 0.06) 0%, transparent 70%)",
             }}
           />
 
@@ -145,7 +125,8 @@ export function Dashboard() {
                       style={
                         stats.balance >= 0
                           ? {
-                              textShadow: "0 0 30px hsl(120 3% 88% / 0.08)",
+                              textShadow:
+                                "0 0 30px hsl(var(--foreground) / 0.08)",
                             }
                           : {}
                       }
@@ -181,30 +162,18 @@ export function Dashboard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, delay: 0.12 }}
-          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
+          className="border-b border-border"
         >
           <div className="grid grid-cols-3">
             {/* Income */}
-            <div
-              className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
-              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
-            >
-              <div
-                className="absolute left-0 top-3 bottom-3 w-px"
-                style={{ background: "hsl(142 60% 52% / 0.4)" }}
-              />
+            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border">
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-primary/40" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 inflow
               </p>
               <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
-                <ArrowUpRight
-                  className="h-3 w-3 shrink-0"
-                  style={{ color: "hsl(142 55% 52%)" }}
-                />
-                <span
-                  className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline"
-                  style={{ color: "hsl(142 55% 52%)" }}
-                >
+                <ArrowUpRight className="h-3 w-3 shrink-0 text-primary" />
+                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline text-primary">
                   income
                 </span>
               </div>
@@ -214,14 +183,8 @@ export function Dashboard() {
             </div>
 
             {/* Expenses */}
-            <div
-              className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default"
-              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
-            >
-              <div
-                className="absolute left-0 top-3 bottom-3 w-px"
-                style={{ background: "hsl(3 90% 58% / 0.5)" }}
-              />
+            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border">
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-destructive/50" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 outflow
               </p>
@@ -238,10 +201,7 @@ export function Dashboard() {
 
             {/* Net */}
             <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default">
-              <div
-                className="absolute left-0 top-3 bottom-3 w-px"
-                style={{ background: "hsl(0 0% 28%)" }}
-              />
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-muted-foreground/50" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 balance
               </p>
@@ -263,11 +223,9 @@ export function Dashboard() {
 
         {/* ── MOBILE TABS ─────────────────────────────────────────────── */}
         <div
-          className="md:hidden sticky z-30"
+          className="md:hidden sticky z-30 border-b border-border bg-background"
           style={{
             top: "48px",
-            borderBottom: "1px solid hsl(0 0% 14%)",
-            background: "hsl(0 0% 5%)",
           }}
         >
           <div className="flex">
@@ -278,13 +236,12 @@ export function Dashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 text-[9px] font-mono uppercase tracking-widest transition-colors
-                    ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                  style={{
-                    borderBottom: active
-                      ? "1px solid hsl(142 60% 52% / 0.7)"
-                      : "1px solid transparent",
-                  }}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-1 py-3 text-[9px] font-mono uppercase tracking-widest transition-colors border-b",
+                    active
+                      ? "text-primary border-primary/70"
+                      : "text-muted-foreground hover:text-foreground border-transparent",
+                  )}
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
@@ -339,21 +296,12 @@ export function Dashboard() {
         </div>
 
         {/* ── DESKTOP 2-COL ───────────────────────────────────────────── */}
-        <div
-          className="hidden md:flex grow"
-          style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
-        >
+        <div className="hidden md:flex grow border-b border-border">
           <div className="grid grid-cols-12 w-full">
             {/* Left: Charts (8 cols) */}
-            <div
-              className="col-span-8 flex flex-col"
-              style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
-            >
+            <div className="col-span-8 flex flex-col border-r border-border">
               {/* Pane header */}
-              <div
-                className="flex items-center gap-2 px-6 py-3"
-                style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
-              >
+              <div className="flex items-center gap-2 px-6 py-3 border-b border-border">
                 <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   analytics.view
@@ -365,17 +313,12 @@ export function Dashboard() {
             </div>
 
             {/* Right: Ledger (4 cols) */}
-            <div
-              className="col-span-4 flex flex-col"
-              style={{ background: "hsl(0 0% 6%)" }}
-            >
+            <div className="col-span-4 flex flex-col bg-card">
               {/* Pane header */}
               <div
-                className="flex items-center justify-between px-5 py-3 sticky z-10"
+                className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card"
                 style={{
                   top: "48px",
-                  borderBottom: "1px solid hsl(0 0% 14%)",
-                  background: "hsl(0 0% 6%)",
                 }}
               >
                 <div className="flex items-center gap-2">

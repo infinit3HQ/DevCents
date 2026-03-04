@@ -50,12 +50,7 @@ function NotFound() {
       </p>
       <a
         href="/"
-        className="mt-6 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors hover:bg-primary/20"
-        style={{
-          border: "1px solid hsl(142 60% 52% / 0.3)",
-          color: "hsl(142 60% 52%)",
-          background: "hsl(142 60% 52% / 0.1)",
-        }}
+        className="mt-6 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors hover:bg-primary/20 border border-primary/30 text-primary bg-primary/10"
       >
         return home
       </a>

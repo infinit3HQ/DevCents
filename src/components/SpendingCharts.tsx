@@ -17,28 +17,28 @@ import {
   Legend,
 } from "recharts";
 
-// Phosphor-style palette: green → cyan → white gradations
+// Phosphor-style palette: Monochrome terminal green gradations
 const CAT_COLORS: Record<string, string> = {
-  housing: "hsl(142 60% 52%)",
-  food: "hsl(162 55% 48%)",
-  transportation: "hsl(180 50% 46%)",
-  utilities: "hsl(200 48% 50%)",
-  entertainment: "hsl(220 40% 55%)",
-  shopping: "hsl(240 30% 55%)",
-  health: "hsl(130 50% 45%)",
-  education: "hsl(100 40% 48%)",
-  personal: "hsl(155 45% 50%)",
-  other: "hsl(0 0% 40%)",
+  housing: "hsl(var(--primary))",
+  food: "hsl(var(--primary))",
+  transportation: "hsl(var(--primary))",
+  utilities: "hsl(var(--primary))",
+  entertainment: "hsl(var(--primary))",
+  shopping: "hsl(var(--primary))",
+  health: "hsl(var(--primary))",
+  education: "hsl(var(--primary))",
+  personal: "hsl(var(--primary))",
+  other: "hsl(var(--primary))",
 };
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "hsl(0 0% 8%)",
-  border: "1px solid hsl(0 0% 16%)",
+  backgroundColor: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
   borderRadius: "0px",
-  color: "hsl(120 3% 88%)",
+  color: "hsl(var(--popover-foreground))",
   fontSize: "10px",
-  fontFamily: "JetBrains Mono, monospace",
-  boxShadow: "4px 4px 0px 0px hsl(0 0% 10%)",
+  fontFamily: "var(--font-mono)",
+  boxShadow: "4px 4px 0px 0px hsl(var(--foreground)/0.1)",
   padding: "8px 12px",
 };
 
@@ -52,11 +52,7 @@ export function SpendingCharts() {
     const byCategory: Record<string, number> = {};
     for (const t of transactions) {
       if (t.type === "expense") {
-        const converted = convertAmount(
-          t.amount,
-          t.currency || "USD",
-          baseCurrency,
-        );
+        const converted = convertAmount(t.amount, t.currency || "USD");
         byCategory[t.category] = (byCategory[t.category] ?? 0) + converted;
       }
     }
@@ -77,11 +73,7 @@ export function SpendingCharts() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
 
-      const converted = convertAmount(
-        t.amount,
-        t.currency || "USD",
-        baseCurrency,
-      );
+      const converted = convertAmount(t.amount, t.currency || "USD");
       if (t.type === "income") byMonth[key].income += converted;
       else byMonth[key].expenses += converted;
     }
@@ -105,8 +97,8 @@ export function SpendingCharts() {
   if (!transactions?.length)
     return (
       <div className="py-16 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
-        <span style={{ color: "hsl(142 55% 52%)" }}>{currencySymbol}</span> no
-        data — add transactions
+        <span className="text-primary">{currencySymbol}</span> no data — add
+        transactions
       </div>
     );
 
@@ -125,11 +117,7 @@ export function SpendingCharts() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="p-5"
-          style={{
-            border: "1px solid hsl(0 0% 13%)",
-            background: "hsl(0 0% 6%)",
-          }}
+          className="p-5 border border-border bg-card"
         >
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
             // spending_by_category
@@ -151,13 +139,15 @@ export function SpendingCharts() {
                   <Cell
                     key={i}
                     fill={entry.fill}
-                    stroke="hsl(0 0% 5%)"
+                    stroke="hsl(var(--card))"
                     strokeWidth={2}
+                    className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
                   />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
+                itemStyle={{ color: "hsl(var(--primary))" }}
                 formatter={(v: number | undefined) => [
                   `${currencySymbol}${(v ?? 0).toFixed(2)}`,
                   "amount",
@@ -171,8 +161,7 @@ export function SpendingCharts() {
             {categoryData.map((e, i) => (
               <div
                 key={i}
-                className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider"
-                style={{ color: "hsl(0 0% 55%)" }}
+                className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
               >
                 <div className="w-2 h-2" style={{ background: e.fill }} />
                 {e.name}
@@ -194,11 +183,7 @@ export function SpendingCharts() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="p-5"
-          style={{
-            border: "1px solid hsl(0 0% 13%)",
-            background: "hsl(0 0% 6%)",
-          }}
+          className="p-5 border border-border bg-card"
         >
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
             // monthly_overview
@@ -207,25 +192,25 @@ export function SpendingCharts() {
             <BarChart data={monthlyData} barGap={3} barCategoryGap="32%">
               <CartesianGrid
                 strokeDasharray="2 2"
-                stroke="hsl(0 0% 14%)"
+                stroke="hsl(var(--border))"
                 vertical={false}
               />
               <XAxis
                 dataKey="name"
                 tick={{
-                  fill: "hsl(0 0% 38%)",
+                  fill: "hsl(var(--muted-foreground))",
                   fontSize: 10,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                 }}
-                axisLine={{ stroke: "hsl(0 0% 18%)", strokeWidth: 1 }}
+                axisLine={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
                 tickLine={false}
                 dy={8}
               />
               <YAxis
                 tick={{
-                  fill: "hsl(0 0% 38%)",
+                  fill: "hsl(var(--muted-foreground))",
                   fontSize: 10,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                 }}
                 axisLine={false}
                 tickLine={false}
@@ -235,6 +220,8 @@ export function SpendingCharts() {
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+                itemStyle={{ color: "hsl(var(--foreground))" }}
                 formatter={(v: number | undefined) => [
                   `${currencySymbol}${(v ?? 0).toFixed(2)}`,
                 ]}
@@ -242,8 +229,8 @@ export function SpendingCharts() {
               <Legend
                 wrapperStyle={{
                   fontSize: "10px",
-                  color: "hsl(0 0% 40%)",
-                  fontFamily: "JetBrains Mono, monospace",
+                  color: "hsl(var(--muted-foreground))",
+                  fontFamily: "var(--font-mono)",
                   textTransform: "uppercase",
                   paddingTop: "8px",
                   letterSpacing: "0.1em",
@@ -251,15 +238,17 @@ export function SpendingCharts() {
               />
               <Bar
                 dataKey="income"
-                fill="hsl(142 60% 52%)"
+                fill="hsl(var(--primary))"
                 radius={[2, 2, 0, 0]}
                 name="income"
+                className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
               />
               <Bar
                 dataKey="expenses"
-                fill="hsl(3 80% 52%)"
+                fill="hsl(var(--destructive))"
                 radius={[2, 2, 0, 0]}
                 name="expenses"
+                className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
               />
             </BarChart>
           </ResponsiveContainer>
