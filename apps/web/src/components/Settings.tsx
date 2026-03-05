@@ -21,7 +21,7 @@ import {
   getCredentialId,
   clearCredentialId,
 } from "@/lib/webauthn";
-import { generatePassphrase, checkStrength } from "@/lib/passphrase";
+import { generatePassphrase, checkStrength } from "@devcents/shared";
 import {
   deriveKey,
   base64ToSalt,
@@ -29,8 +29,8 @@ import {
   createVerificationHash,
   generateSalt,
   saltToBase64,
-} from "@/lib/encryption";
-import { saveKey, clearKey } from "@/lib/keyStorage";
+} from "@devcents/shared";
+import { saveKey, clearKey } from "@devcents/shared";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -356,6 +356,128 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── API Token Helpers ────────────────────────────────────────────
+
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function generateRawToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `dct_live_${hex}`;
+}
+
+// ─── API & AI Access Section ──────────────────────────────────────
+
+function ApiAccessSection() {
+  const tokens = useQuery(api.mcp.listTokens) || [];
+  const generateTokenMutation = useMutation(api.mcp.generateToken);
+  const revokeTokenMutation = useMutation(api.mcp.revokeToken);
+
+  const [newToken, setNewToken] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleCreateToken = async () => {
+    setLoading(true);
+    try {
+      const raw = generateRawToken();
+      const hash = await hashToken(raw);
+      await generateTokenMutation({
+        name: `Token ${tokens.length + 1}`,
+        tokenHash: hash,
+      });
+      setNewToken(raw);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(newToken);
+  };
+
+  const clearNewToken = () => setNewToken("");
+
+  return (
+    <Section
+      title="api & ai access"
+      subtitle="Manage MCP Server access tokens."
+    >
+      {newToken ? (
+        <div className="border border-primary bg-primary/5 p-4 space-y-3">
+          <p className="font-mono text-[11px] text-primary">
+            New token created. Copy it now, you won't be able to see it again.
+          </p>
+          <div className="flex gap-2 items-center">
+            <code className="flex-1 font-mono text-[10px] bg-background border border-border p-2">
+              {newToken}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="p-2 border border-border hover:bg-muted transition-colors text-primary"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          </div>
+          <button
+            onClick={clearNewToken}
+            className="w-full font-mono text-[10px] uppercase tracking-widest text-muted-foreground pt-2 border-t border-border mt-2"
+          >
+            done
+          </button>
+        </div>
+      ) : (
+        <Row
+          label="generate token"
+          value="create a new token for local MCP and AI Agents"
+          action={loading ? "generating..." : "generate"}
+          onClick={loading ? undefined : handleCreateToken}
+        />
+      )}
+
+      {tokens.length > 0 && (
+        <div className="mt-4 border border-border">
+          {tokens.map((t, idx) => (
+            <div
+              key={t._id}
+              className={cn(
+                "flex items-center justify-between p-3 bg-card",
+                idx < tokens.length - 1 && "border-b border-border",
+              )}
+            >
+              <div>
+                <p className="font-mono text-[11px] text-foreground">
+                  {t.name}
+                </p>
+                <p className="font-mono text-[9px] text-muted-foreground mt-0.5">
+                  created {new Date(t.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => revokeTokenMutation({ id: t._id })}
+                className="font-mono text-[9px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity"
+              >
+                revoke
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 // ─── Main Settings component ──────────────────────────────────────
 
 export function Settings() {
@@ -546,6 +668,9 @@ export function Settings() {
               />
               <Row label="user id" value={user?.id} />
             </Section>
+
+            {/* ── API Access ──────────────────────────────────── */}
+            <ApiAccessSection />
 
             {/* ── Danger zone ─────────────────────────────────── */}
             {isEnabled && (

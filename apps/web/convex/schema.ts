@@ -29,4 +29,13 @@ export default defineSchema({
     userId: v.string(),
     currency: v.string(), // Base currency preference, e.g., "USD", "LKR", "JPY"
   }).index("by_user", ["userId"]),
+
+  apiTokens: defineTable({
+    userId: v.string(),
+    tokenHash: v.string(),
+    name: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_hash", ["tokenHash"]),
 });

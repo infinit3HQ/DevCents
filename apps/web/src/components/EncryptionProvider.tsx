@@ -11,8 +11,8 @@ import {
   verifyPassphrase,
   encrypt,
   decrypt,
-} from "@/lib/encryption";
-import { saveKey, loadKey, clearKey } from "@/lib/keyStorage";
+} from "@devcents/shared";
+import { saveKey, loadKey, clearKey } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -20,7 +20,7 @@ import {
   getCredentialId,
   clearCredentialId,
 } from "@/lib/webauthn";
-import { generatePassphrase, checkStrength } from "@/lib/passphrase";
+import { generatePassphrase, checkStrength } from "@devcents/shared";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
