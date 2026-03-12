@@ -82,5 +82,18 @@ jobs:
         env:
           CONVEX_DEPLOY_URL: ${{ env.VITE_CONVEX_URL }}
         run: |
-          sleep 5
+          echo "Waiting for Convex backend to be ready..."
+          for i in $(seq 1 24); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$CONVEX_DEPLOY_URL/version" || true)
+            if [ "$status" = "200" ]; then
+              echo "Convex backend is ready (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: got HTTP $status, retrying in 5s..."
+            sleep 5
+          done
+          if [ "$status" != "200" ]; then
+            echo "Convex backend did not become ready after 2 minutes"
+            exit 1
+          fi
           npx convex deploy --url "$CONVEX_DEPLOY_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY"
