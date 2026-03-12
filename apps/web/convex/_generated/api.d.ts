@@ -8,13 +8,23 @@
  * @module
  */
 
+import type * as encryptionSettings from "../encryptionSettings.js";
+import type * as mcp from "../mcp.js";
+import type * as settings from "../settings.js";
+import type * as transactions from "../transactions.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  encryptionSettings: typeof encryptionSettings;
+  mcp: typeof mcp;
+  settings: typeof settings;
+  transactions: typeof transactions;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.

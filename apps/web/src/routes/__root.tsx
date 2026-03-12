@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
+import { shadcn } from "@clerk/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -50,12 +51,7 @@ function NotFound() {
       </p>
       <a
         href="/"
-        className="mt-6 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors hover:bg-primary/20"
-        style={{
-          border: "1px solid hsl(142 60% 52% / 0.3)",
-          color: "hsl(142 60% 52%)",
-          background: "hsl(142 60% 52% / 0.1)",
-        }}
+        className="mt-6 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors hover:bg-primary/20 border border-primary/30 text-primary bg-primary/10"
       >
         return home
       </a>
@@ -65,7 +61,11 @@ function NotFound() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        theme: shadcn,
+      }}
+    >
       <html lang="en" className="dark">
         <head>
           <HeadContent />

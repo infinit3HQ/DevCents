@@ -22,12 +22,7 @@ function EncryptionBadge() {
     return (
       <button
         onClick={setupEncryption}
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 mr-2 transition-all"
-        style={{
-          border: "1px solid hsl(0 0% 18%)",
-          background: "transparent",
-          color: "hsl(0 0% 38%)",
-        }}
+        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 mr-2 transition-all border border-border bg-transparent text-muted-foreground"
         title="Click to enable AES-256-GCM encryption"
       >
         <ShieldOff className="h-3 w-3" />
@@ -41,12 +36,7 @@ function EncryptionBadge() {
   if (isEnabled && !isUnlocked) {
     return (
       <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7"
-        style={{
-          border: "1px solid hsl(40 80% 50% / 0.25)",
-          background: "hsl(40 80% 50% / 0.06)",
-          color: "hsl(40 75% 55%)",
-        }}
+        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-amber-500/25 bg-amber-500/5 text-amber-500"
         title="Encryption enabled but locked"
       >
         <ShieldAlert className="h-3 w-3" />
@@ -60,12 +50,7 @@ function EncryptionBadge() {
   // Enabled + unlocked
   return (
     <div
-      className="hidden md:flex items-center gap-1.5 px-2.5 h-7"
-      style={{
-        border: "1px solid hsl(142 60% 52% / 0.2)",
-        background: "hsl(142 60% 52% / 0.06)",
-        color: "hsl(142 55% 52%)",
-      }}
+      className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-primary/20 bg-primary/5 text-primary"
       title="AES-256-GCM client-side encryption active"
     >
       <ShieldCheck className="h-3 w-3" />
@@ -83,14 +68,13 @@ export default function Header() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
       className="sticky top-0 z-50 w-full h-12 flex items-center justify-between px-4 sm:px-6
-                 bg-background/95 backdrop-blur"
-      style={{ borderBottom: "1px solid hsl(0 0% 11%)" }}
+                 bg-background/95 backdrop-blur border-b border-border"
     >
       {/* ── Brand ──────────────────────────────────────────────────── */}
       <Link to="/" className="flex items-center gap-2 group shrink-0">
         <Terminal className="w-4 h-4 text-primary" />
         <span className="font-mono text-sm font-medium tracking-tight text-foreground group-hover:text-primary transition-colors duration-150">
-          cent<span className="text-primary">stack</span>
+          dev<span className="text-primary">cents</span>
           <span className="text-muted-foreground ml-0.5">_</span>
         </span>
       </Link>
@@ -135,17 +119,7 @@ export default function Header() {
           {/* Settings */}
           <Link
             to="/settings"
-            className="hidden sm:flex h-7 w-7 items-center justify-center transition-colors"
-            style={{
-              border: "1px solid hsl(0 0% 16%)",
-              color: "hsl(0 0% 38%)",
-            }}
-            activeProps={{
-              style: {
-                borderColor: "hsl(142 60% 52% / 0.4)",
-                color: "hsl(142 55% 52%)",
-              },
-            }}
+            className="hidden sm:flex h-7 w-7 items-center justify-center transition-colors border border-border text-muted-foreground [&.active]:border-primary/40 [&.active]:text-primary"
             title="Settings"
           >
             <Settings className="h-3.5 w-3.5" />

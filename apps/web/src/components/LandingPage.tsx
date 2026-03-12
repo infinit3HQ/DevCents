@@ -1,5 +1,6 @@
 import { SignUpButton, SignInButton } from "@clerk/tanstack-react-start";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -80,18 +81,25 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 pt-2"
           >
             <SignUpButton mode="modal">
-              <Button size="lg" className="text-lg px-8 h-12 group">
+              <Button
+                size="lg"
+                className="text-lg h-12 rounded-lg group shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300 w-52"
+              >
                 Get Started
                 <motion.span className="ml-2 inline-block group-hover:translate-x-1 transition-transform">
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
                 </motion.span>
               </Button>
             </SignUpButton>
             <SignInButton mode="modal">
-              <Button size="lg" variant="outline" className="text-lg px-8 h-12">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg h-12 rounded-lg border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 hover:text-primary hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300 w-52"
+              >
                 Sign In
               </Button>
             </SignInButton>
@@ -106,15 +114,9 @@ export function LandingPage() {
           className="mt-20 max-w-5xl mx-auto relative cursor-default"
         >
           <div className="absolute inset-0 bg-linear-to-t from-background via-transparent to-transparent z-10 pointer-events-none" />
-          <div
-            className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm shadow-2xl overflow-hidden"
-            style={{ background: "hsl(0 0% 5%)", borderColor: "hsl(0 0% 14%)" }}
-          >
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-2xl overflow-hidden">
             {/* Window Controls */}
-            <div
-              className="h-8 flex items-center px-4 gap-2 border-b border-border/50"
-              style={{ background: "hsl(0 0% 6%)" }}
-            >
+            <div className="h-8 flex items-center px-4 gap-2 border-b border-border bg-background">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
               <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50" />
               <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
@@ -122,10 +124,7 @@ export function LandingPage() {
 
             <div className="opacity-80">
               {/* HERO Section skeleton */}
-              <div
-                className="p-6 md:p-8"
-                style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
-              >
+              <div className="p-6 md:p-8 border-b border-border">
                 <div className="flex items-center gap-2 mb-6">
                   <span className="w-2 h-2 rounded-full bg-green-500/50 animate-pulse" />
                   <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -149,17 +148,14 @@ export function LandingPage() {
               </div>
 
               {/* 3 columns Stats */}
-              <div
-                className="grid grid-cols-3"
-                style={{ borderBottom: "1px solid hsl(0 0% 14%)" }}
-              >
+              <div className="grid grid-cols-3 border-b border-border">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="p-4 md:p-6"
-                    style={{
-                      borderRight: i !== 3 ? "1px solid hsl(0 0% 14%)" : "none",
-                    }}
+                    className={cn(
+                      "p-4 md:p-6",
+                      i !== 3 && "border-r border-border",
+                    )}
                   >
                     <div className="h-2 w-16 bg-muted-foreground/30 rounded mb-3" />
                     <div className="h-3 w-20 bg-foreground/30 rounded mb-4" />
@@ -170,10 +166,7 @@ export function LandingPage() {
 
               {/* Layout Content */}
               <div className="grid grid-cols-1 md:grid-cols-12">
-                <div
-                  className="md:col-span-8 p-6 md:p-8"
-                  style={{ borderRight: "1px solid hsl(0 0% 14%)" }}
-                >
+                <div className="md:col-span-8 p-6 md:p-8 border-r border-border">
                   <div className="h-3 w-32 bg-muted-foreground/30 rounded mb-8" />
                   <div className="flex items-end gap-3 h-32 opacity-50">
                     {[40, 70, 45, 90, 65, 80, 50, 100, 60, 30, 85].map(
@@ -190,10 +183,7 @@ export function LandingPage() {
                     )}
                   </div>
                 </div>
-                <div
-                  className="md:col-span-4 p-5 md:p-6"
-                  style={{ background: "hsl(0 0% 6%)" }}
-                >
+                <div className="md:col-span-4 p-5 md:p-6 bg-background">
                   <div className="flex justify-between items-center mb-6">
                     <div className="h-3 w-24 bg-muted-foreground/30 rounded" />
                     <div className="h-2 w-12 bg-muted-foreground/20 rounded" />

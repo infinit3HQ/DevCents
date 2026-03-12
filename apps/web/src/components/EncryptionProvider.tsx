@@ -11,8 +11,8 @@ import {
   verifyPassphrase,
   encrypt,
   decrypt,
-} from "@/lib/encryption";
-import { saveKey, loadKey, clearKey } from "@/lib/keyStorage";
+} from "@devcents/shared";
+import { saveKey, loadKey, clearKey } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -20,7 +20,7 @@ import {
   getCredentialId,
   clearCredentialId,
 } from "@/lib/webauthn";
-import { generatePassphrase, checkStrength } from "@/lib/passphrase";
+import { generatePassphrase, checkStrength } from "@devcents/shared";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -34,6 +34,8 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -246,21 +248,14 @@ function Overlay({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "hsl(0 0% 0% / 0.78)", backdropFilter: "blur(6px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
     >
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.97 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-md"
-        style={{
-          background: "hsl(0 0% 7%)",
-          border: "1px solid hsl(0 0% 16%)",
-          boxShadow:
-            "0 0 0 1px hsl(142 60% 52% / 0.08), 0 32px 64px hsl(0 0% 0% / 0.7)",
-        }}
+        className="w-full max-w-md bg-card border border-border shadow-2xl"
       >
         {children}
       </motion.div>
@@ -291,17 +286,12 @@ function TermInput({
         placeholder={placeholder}
         autoFocus={autoFocus}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent font-mono text-sm text-foreground
-                   placeholder:text-muted-foreground/35 outline-none px-3 py-2.5"
-        style={{
-          border: "1px solid hsl(0 0% 16%)",
-          borderRadius: 0,
-          paddingRight: rightSlot ? "5rem" : "0.75rem",
-        }}
-        onFocus={(e) =>
-          (e.currentTarget.style.borderColor = "hsl(142 60% 52% / 0.45)")
-        }
-        onBlur={(e) => (e.currentTarget.style.borderColor = "hsl(0 0% 16%)")}
+        className={cn(
+          "w-full bg-transparent font-mono text-sm text-foreground",
+          "placeholder:text-muted-foreground/35 outline-none px-3 py-2.5",
+          "border border-border focus:border-primary/45",
+          rightSlot ? "pr-20" : "pr-3",
+        )}
       />
       {rightSlot && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -327,31 +317,24 @@ function TermBtn({
   variant?: "primary" | "ghost" | "danger";
   className?: string;
 }) {
-  const styles: Record<string, React.CSSProperties> = {
-    primary: {
-      background: "hsl(142 60% 52%)",
-      color: "hsl(0 0% 5%)",
-      border: "none",
-    },
-    ghost: {
-      background: "transparent",
-      color: "hsl(0 0% 42%)",
-      border: "1px solid hsl(0 0% 18%)",
-    },
-    danger: {
-      background: "transparent",
-      color: "hsl(3 85% 60%)",
-      border: "1px solid hsl(3 85% 60% / 0.3)",
-    },
+  const styles: Record<string, string> = {
+    primary: "bg-primary text-primary-foreground border-none hover:opacity-80",
+    ghost:
+      "bg-transparent text-muted-foreground border border-border hover:text-foreground",
+    danger:
+      "bg-transparent text-destructive border border-destructive/30 hover:bg-destructive/10",
   };
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`flex-1 h-9 font-mono text-[11px] uppercase tracking-widest transition-opacity
-                  disabled:opacity-40 flex items-center justify-center gap-1.5 ${className}`}
-      style={styles[variant]}
+      className={cn(
+        "flex-1 h-9 font-mono text-[11px] uppercase tracking-widest transition-opacity",
+        "disabled:opacity-40 flex items-center justify-center gap-1.5",
+        styles[variant],
+        className,
+      )}
     >
       {children}
     </button>
@@ -369,20 +352,24 @@ function StrengthBar({ passphrase }: { passphrase: string }) {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-0.5 w-8 transition-all duration-300"
-              style={{ background: i < s.score ? s.color : "hsl(0 0% 18%)" }}
+              className={cn(
+                "h-0.5 w-8 rounded-sm transition-all duration-300",
+                i < s.score ? s.bgClass : "bg-border",
+              )}
             />
           ))}
         </div>
         <span
-          className="font-mono text-[9px] uppercase tracking-widest transition-colors"
-          style={{ color: s.color }}
+          className={cn(
+            "font-mono text-[9px] uppercase tracking-widest transition-colors",
+            s.colorClass,
+          )}
         >
           {s.label}
         </span>
       </div>
       {s.tips.length > 0 && s.score < 3 && (
-        <p className="font-mono text-[9px]" style={{ color: "hsl(0 0% 35%)" }}>
+        <p className="font-mono text-[9px] text-muted-foreground">
           → {s.tips[0]}
         </p>
       )}
@@ -448,10 +435,7 @@ function SetupDialog({
   return (
     <Overlay>
       {/* Header */}
-      <div
-        className="px-6 py-4 flex items-center gap-3"
-        style={{ borderBottom: "1px solid hsl(0 0% 13%)" }}
-      >
+      <div className="px-6 py-4 flex items-center gap-3 border-b border-border">
         <Shield className="h-4 w-4 text-primary shrink-0" />
         <div>
           <p className="font-mono text-sm text-foreground">enable_encryption</p>
@@ -462,14 +446,7 @@ function SetupDialog({
       </div>
 
       {/* Warning */}
-      <div
-        className="mx-6 mt-5 px-3 py-2.5 font-mono text-[10px] leading-relaxed flex gap-2"
-        style={{
-          border: "1px solid hsl(40 80% 50% / 0.2)",
-          background: "hsl(40 80% 50% / 0.06)",
-          color: "hsl(40 75% 60%)",
-        }}
-      >
+      <div className="mx-6 mt-5 px-3 py-2.5 font-mono text-[10px] leading-relaxed flex gap-2 border border-amber-500/20 bg-amber-500/5 text-amber-500">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <span>
           <strong>no recovery path.</strong> Your key is derived from this
@@ -489,8 +466,7 @@ function SetupDialog({
             <button
               type="button"
               onClick={handleGenerate}
-              className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest transition-colors"
-              style={{ color: "hsl(142 55% 52%)" }}
+              className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest transition-colors text-primary hover:text-primary/80"
             >
               <RefreshCw className="h-2.5 w-2.5" /> generate
             </button>
@@ -545,10 +521,7 @@ function SetupDialog({
             placeholder="repeat your passphrase"
           />
           {confirm && pass && confirm !== pass && (
-            <p
-              className="font-mono text-[9px]"
-              style={{ color: "hsl(3 85% 60%)" }}
-            >
+            <p className="text-destructive font-mono text-[9px]">
               ↳ passphrases do not match
             </p>
           )}
@@ -559,16 +532,12 @@ function SetupDialog({
           <button
             type="button"
             onClick={() => setRegisterBio(!registerBio)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 font-mono text-[10px] transition-all"
-            style={{
-              border: registerBio
-                ? "1px solid hsl(142 60% 52% / 0.4)"
-                : "1px solid hsl(0 0% 16%)",
-              background: registerBio
-                ? "hsl(142 60% 52% / 0.07)"
-                : "transparent",
-              color: registerBio ? "hsl(142 55% 55%)" : "hsl(0 0% 42%)",
-            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 font-mono text-[10px] transition-all border",
+              registerBio
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-transparent text-muted-foreground",
+            )}
           >
             <Fingerprint className="h-4 w-4 shrink-0" />
             <span className="text-left uppercase tracking-widest">
@@ -580,12 +549,7 @@ function SetupDialog({
         )}
 
         {error && (
-          <p
-            className="font-mono text-[10px]"
-            style={{ color: "hsl(3 85% 60%)" }}
-          >
-            {error}
-          </p>
+          <p className="font-mono text-[10px] text-destructive">{error}</p>
         )}
 
         <div className="flex gap-3 pt-1">
@@ -664,10 +628,7 @@ function UnlockDialog({
   return (
     <Overlay>
       {/* Header */}
-      <div
-        className="px-6 py-4 flex items-center gap-3"
-        style={{ borderBottom: "1px solid hsl(0 0% 13%)" }}
-      >
+      <div className="px-6 py-4 flex items-center gap-3 border-b border-border">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
         <div>
           <p className="font-mono text-sm text-foreground">unlock_session</p>
@@ -678,10 +639,7 @@ function UnlockDialog({
       </div>
 
       {/* Cipher spec */}
-      <div
-        className="px-6 py-3 flex gap-6"
-        style={{ borderBottom: "1px solid hsl(0 0% 11%)" }}
-      >
+      <div className="px-6 py-3 flex gap-6 border-b border-border">
         {[
           ["cipher", "AES-256-GCM"],
           ["kdf", "PBKDF2 SHA-256"],
@@ -703,13 +661,7 @@ function UnlockDialog({
             type="button"
             onClick={handleBiometric}
             disabled={bioLoading}
-            className="w-full flex items-center justify-center gap-2.5 py-3 font-mono text-[11px]
-                       uppercase tracking-widest transition-all disabled:opacity-50"
-            style={{
-              border: "1px solid hsl(142 60% 52% / 0.3)",
-              background: "hsl(142 60% 52% / 0.07)",
-              color: "hsl(142 55% 55%)",
-            }}
+            className="w-full h-11 flex items-center justify-center gap-3 rounded-md font-mono text-[10px] uppercase tracking-widest transition-all border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 disabled:opacity-50"
           >
             {bioLoading ? (
               <span className="animate-spin">◌</span>
@@ -724,10 +676,7 @@ function UnlockDialog({
         {(!hasBiometric || showPass) && (
           <>
             {hasBiometric && (
-              <p
-                className="font-mono text-[9px] uppercase tracking-widest text-center"
-                style={{ color: "hsl(0 0% 32%)" }}
-              >
+              <p className="font-mono text-[9px] uppercase tracking-widest text-center text-muted-foreground">
                 — or use passphrase —
               </p>
             )}
@@ -758,12 +707,7 @@ function UnlockDialog({
                 />
               </div>
               {error && (
-                <p
-                  className="font-mono text-[10px]"
-                  style={{ color: "hsl(3 85% 60%)" }}
-                >
-                  {error}
-                </p>
+                <p className="text-destructive font-mono text-[9px]">{error}</p>
               )}
               <div className="flex gap-3">
                 <TermBtn onClick={onSkip} variant="ghost">
@@ -793,14 +737,7 @@ function UnlockDialog({
             onClick={() => {
               onLockBiometric();
             }}
-            className="w-full font-mono text-[9px] uppercase tracking-widest transition-colors"
-            style={{ color: "hsl(0 0% 28%)" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "hsl(3 85% 60%)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "hsl(0 0% 28%)")
-            }
+            className="w-full font-mono text-[9px] uppercase tracking-widest transition-colors text-muted-foreground hover:text-destructive mt-4"
           >
             remove biometric registration
           </button>

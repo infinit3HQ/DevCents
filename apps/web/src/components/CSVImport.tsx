@@ -516,7 +516,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
               <Button
                 onClick={handleImport}
                 disabled={importing || validCount === 0}
-                className="w-full gap-3 h-14 rounded-none border-2 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background font-mono uppercase tracking-widest font-bold shadow-[4px_4px_0_0_hsl(var(--foreground))] hover:translate-y-1 hover:shadow-none transition-all"
+                className="w-full gap-3 h-14 rounded-none border-2 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background font-mono uppercase tracking-widest font-bold shadow-[4px_4px_0_0_var(--color-foreground)] hover:translate-y-1 hover:shadow-none transition-all"
               >
                 {importing ? (
                   <>
