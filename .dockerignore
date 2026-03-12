@@ -1,0 +1,16 @@
+.git
+.github
+.DS_Store
+.env
+.env.*
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+.output
+apps/web/.output
+dist
+dist-ssr
+.nitro
+.tanstack
+.vinxi
+coverage

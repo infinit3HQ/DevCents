@@ -5,6 +5,7 @@ dist-ssr
 *.local
 count.txt
 .env
+.env.*
 .nitro
 .tanstack
 .wrangler
@@ -12,3 +13,4 @@ count.txt
 .vinxi
 todos.json
 .agent
+!.env.example

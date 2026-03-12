@@ -41,20 +41,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare deployment secrets
+        env:
+          INSTANCE_SECRET: ${{ secrets.INSTANCE_SECRET }}
+        run: |
+          ADMIN_KEY="${INSTANCE_NAME}|${INSTANCE_SECRET}"
+          echo "::add-mask::$ADMIN_KEY"
+          {
+            printf 'INSTANCE_SECRET=%s\n' "$INSTANCE_SECRET"
+            printf 'CONVEX_SELF_HOSTED_ADMIN_KEY=%s\n' "$ADMIN_KEY"
+          } >> "$GITHUB_ENV"
+
       - name: Create required environment files
         run: |
-          cat > .env <<EOF
-          CLERK_ISSUER_URL=${{ secrets.CLERK_ISSUER_URL }}
-          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
-          INSTANCE_SECRET=${{ secrets.INSTANCE_SECRET }}
-          INSTANCE_NAME=${{ env.INSTANCE_NAME }}
-          WEB_IMAGE=${{ env.WEB_IMAGE }}
-          VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
-          VITE_CONVEX_URL=${{ env.VITE_CONVEX_URL }}
-          CONVEX_SELF_HOSTED_ADMIN_KEY=${{ env.INSTANCE_NAME }}|${{ secrets.INSTANCE_SECRET }}
-          TRAEFIK_WEB_HOST=${{ env.TRAEFIK_WEB_HOST }}
-          TRAEFIK_CONVEX_HOST=${{ env.TRAEFIK_CONVEX_HOST }}
-          EOF
+          {
+            printf 'CLERK_ISSUER_URL=%s\n' '${{ secrets.CLERK_ISSUER_URL }}'
+            printf 'CLERK_SECRET_KEY=%s\n' '${{ secrets.CLERK_SECRET_KEY }}'
+            printf 'INSTANCE_SECRET=%s\n' "$INSTANCE_SECRET"
+            printf 'INSTANCE_NAME=%s\n' '${{ env.INSTANCE_NAME }}'
+            printf 'WEB_IMAGE=%s\n' '${{ env.WEB_IMAGE }}'
+            printf 'VITE_CLERK_PUBLISHABLE_KEY=%s\n' '${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}'
+            printf 'VITE_CONVEX_URL=%s\n' '${{ env.VITE_CONVEX_URL }}'
+            printf 'CONVEX_SELF_HOSTED_ADMIN_KEY=%s\n' "$CONVEX_SELF_HOSTED_ADMIN_KEY"
+            printf 'TRAEFIK_WEB_HOST=%s\n' '${{ env.TRAEFIK_WEB_HOST }}'
+            printf 'TRAEFIK_CONVEX_HOST=%s\n' '${{ env.TRAEFIK_CONVEX_HOST }}'
+          } > .env
 
       - name: Install dependencies
         run: npm ci
@@ -70,7 +81,6 @@ jobs:
         working-directory: apps/web
         env:
           CONVEX_DEPLOY_URL: ${{ env.VITE_CONVEX_URL }}
-          CONVEX_DEPLOY_ADMIN_KEY: ${{ env.INSTANCE_NAME }}|${{ secrets.INSTANCE_SECRET }}
         run: |
           sleep 5
-          npx convex deploy --url "$CONVEX_DEPLOY_URL" --admin-key "$CONVEX_DEPLOY_ADMIN_KEY"
+          npx convex deploy --url "$CONVEX_DEPLOY_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY"
