@@ -13,7 +13,7 @@ Smart, self-hosted money management built with **TanStack Start**, **Convex**, a
 # Install dependencies
 npm install
 
-# Start everything (Docker + Convex + Vite)
+# Start everything for local development (Convex + Vite)
 npm run dev:all
 ```
 
@@ -23,13 +23,13 @@ Press `Ctrl+C` to tear down all services.
 
 ## Scripts
 
-| Script                 | Description                                         |
-| ---------------------- | --------------------------------------------------- |
-| `npm run dev:all`      | Start full dev environment (Docker → Convex → Vite) |
-| `npm run dev`          | Start Vite dev server only (port 3000)              |
-| `npm run convex:local` | Start Convex local sync only                        |
-| `npm run build`        | Production build                                    |
-| `npm run test`         | Run tests with Vitest                               |
+| Script                 | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `npm run dev:all`      | Start local Convex and the Vite dev server         |
+| `npm run dev`          | Start the Vite dev server only                     |
+| `npm run convex:local` | Start Convex sync against the local Docker backend |
+| `npm run build`        | Build the production web app                       |
+| `npm run test`         | Run tests with Vitest                              |
 
 ## Tech Stack
 
@@ -42,19 +42,24 @@ Press `Ctrl+C` to tear down all services.
 ## Project Structure
 
 ```
-├── convex/             # Convex schema, functions, and auth config
-├── public/             # Static assets (favicon, manifest)
-├── scripts/            # Dev tooling scripts
-│   └── dev.sh          # Full dev environment orchestrator
-├── src/
-│   ├── components/     # React components
-│   │   └── ui/         # shadcn/ui primitives
-│   ├── lib/            # Utility functions
-│   ├── routes/         # TanStack file-based routes
-│   ├── app.css         # Global styles & design tokens
-│   ├── router.tsx      # Router configuration
-│   └── start.ts        # TanStack Start entry point
-├── docker-compose.yml  # Convex backend container
-├── package.json
-└── vite.config.ts
+├── apps/
+│   ├── mcp/            # MCP service
+│   └── web/            # TanStack Start app and Convex functions
+├── packages/
+│   └── shared/         # Shared utilities
+├── deployment/
+│   ├── Dockerfile      # Canonical production image build
+│   └── start.sh        # Runtime env injection for the web image
+├── scripts/
+│   └── dev.sh          # Local Convex + Vite orchestrator
+├── docker-compose.dev.yml
+├── docker-compose.yml  # Production stack for the self-hosted server
+└── package.json
 ```
+
+## Deployment
+
+- `docker-compose.yml` is the production stack consumed by the self-hosted deploy workflow.
+- `docker-compose.dev.yml` is only for local development.
+- `.github/workflows/docker-release.yml` publishes the production web image to GHCR.
+- `.github/workflows/deploy.yml` runs after a successful release and pulls that published image onto the server.

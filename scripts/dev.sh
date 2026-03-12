@@ -8,6 +8,16 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
+COMPOSE_FILE="docker-compose.dev.yml"
+
+: "${INSTANCE_NAME:=devcents}"
+if [ -z "${INSTANCE_SECRET:-}" ]; then
+  INSTANCE_SECRET="$(printf '%s' "${USER:-devcents}:${HOSTNAME:-localhost}:devcents" | shasum -a 256 | awk '{print $1}')"
+fi
+: "${CONVEX_SELF_HOSTED_URL:=http://127.0.0.1:3210}"
+: "${CONVEX_SELF_HOSTED_ADMIN_KEY:=${INSTANCE_NAME}|${INSTANCE_SECRET}}"
+
+export INSTANCE_NAME INSTANCE_SECRET CONVEX_SELF_HOSTED_URL CONVEX_SELF_HOSTED_ADMIN_KEY
 
 # Colors
 RED='\033[0;31m'
@@ -34,7 +44,7 @@ cleanup() {
   fi
 
   log "Stopping Docker containers..."
-  docker compose down --remove-orphans 2>/dev/null || true
+  docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
 
   ok "All services stopped. Goodbye!"
   exit 0
@@ -51,7 +61,7 @@ done
 
 # ─── 1. Start Docker (Convex backend) ───────────────────────────────────────
 log "Starting Docker containers..."
-docker compose up -d
+docker compose -f "$COMPOSE_FILE" up -d
 
 log "Waiting for Convex backend on port 3210..."
 MAX_WAIT=30

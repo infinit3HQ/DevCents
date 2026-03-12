@@ -1,0 +1,18 @@
+services:
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    ports:
+      - "3210:3210"
+      - "3211:3211"
+    volumes:
+      - convex-data-dev:/var/lib/convex/storage
+    environment:
+      CONVEX_LISTEN_PORT: 3210
+      CONVEX_SITE_PORT: 3211
+      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
+      INSTANCE_SECRET: ${INSTANCE_SECRET:?INSTANCE_SECRET is required}
+      INSTANCE_NAME: ${INSTANCE_NAME:-devcents}
+
+volumes:
+  convex-data-dev:

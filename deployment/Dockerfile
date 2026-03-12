@@ -5,17 +5,20 @@ FROM node:25-alpine AS builder
 
 WORKDIR /app
 
-# Enable corepack for pnpm if needed, or just use npm
-COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+# Copy workspace manifests first so npm can install workspace dependencies.
+COPY package.json package-lock.json ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/mcp/package.json ./apps/mcp/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+
+RUN npm ci
 
 # Copy application source code
 COPY . .
 
-# Build the application
-# We need to provide dummy env variables during build if Vite requires them
-ARG VITE_CONVEX_URL="http://127.0.0.1:3210"
-ARG VITE_CLERK_PUBLISHABLE_KEY=""
+# Build the application with placeholders that get replaced at container start.
+ARG VITE_CONVEX_URL="__VITE_CONVEX_URL__"
+ARG VITE_CLERK_PUBLISHABLE_KEY="__VITE_CLERK_PUBLISHABLE_KEY__"
 ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 

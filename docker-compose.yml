@@ -1,32 +1,29 @@
 services:
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        - VITE_CONVEX_URL=${VITE_CONVEX_URL}
-        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+    image: ${WEB_IMAGE:-ghcr.io/infinit3hq/devcents:latest}
+    pull_policy: always
     restart: unless-stopped
     networks:
       - proxy
       - devcents_internal
     environment:
-      - NODE_ENV=production
-      - VITE_CONVEX_URL=${VITE_CONVEX_URL}
-      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - CLERK_ISSUER_URL=${CLERK_ISSUER_URL}
-      - CONVEX_SELF_HOSTED_URL=${CONVEX_SELF_HOSTED_URL}
-      - CONVEX_SELF_HOSTED_ADMIN_KEY=${CONVEX_SELF_HOSTED_ADMIN_KEY}
+      NODE_ENV: production
+      VITE_CONVEX_URL: ${VITE_CONVEX_URL:?VITE_CONVEX_URL is required}
+      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:?VITE_CLERK_PUBLISHABLE_KEY is required}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?CLERK_SECRET_KEY is required}
+      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:?CLERK_ISSUER_URL is required}
+      CONVEX_SELF_HOSTED_URL: http://convex:3210
+      CONVEX_SELF_HOSTED_ADMIN_KEY: ${CONVEX_SELF_HOSTED_ADMIN_KEY:?CONVEX_SELF_HOSTED_ADMIN_KEY is required}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.devcents-web.rule=Host(`devcents.012140.xyz`)"
+      - "traefik.http.routers.devcents-web.rule=Host(`${TRAEFIK_WEB_HOST:?TRAEFIK_WEB_HOST is required}`)"
       - "traefik.http.routers.devcents-web.entrypoints=websecure"
       - "traefik.http.routers.devcents-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.devcents-web.loadbalancer.server.port=3000"
 
   convex:
     image: ghcr.io/get-convex/convex-backend:latest
+    pull_policy: always
     restart: unless-stopped
     networks:
       - proxy
@@ -34,14 +31,14 @@ services:
     volumes:
       - convex-data:/var/lib/convex/storage
     environment:
-      - CONVEX_LISTEN_PORT=3210
-      - CONVEX_SITE_PORT=3211
-      - CLERK_ISSUER_URL=${CLERK_ISSUER_URL}
-      - INSTANCE_SECRET=${INSTANCE_SECRET:-1db4845241f79989e9ee82e9c652eb2364a1826b733620f51b390ff7313b76d4}
-      - INSTANCE_NAME=devcents
+      CONVEX_LISTEN_PORT: 3210
+      CONVEX_SITE_PORT: 3211
+      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:?CLERK_ISSUER_URL is required}
+      INSTANCE_SECRET: ${INSTANCE_SECRET:?INSTANCE_SECRET is required}
+      INSTANCE_NAME: ${INSTANCE_NAME:-devcents}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.devcents-convex.rule=Host(`devcents-convex.012140.xyz`)"
+      - "traefik.http.routers.devcents-convex.rule=Host(`${TRAEFIK_CONVEX_HOST:?TRAEFIK_CONVEX_HOST is required}`)"
       - "traefik.http.routers.devcents-convex.entrypoints=websecure"
       - "traefik.http.routers.devcents-convex.tls.certresolver=letsencrypt"
       - "traefik.http.services.devcents-convex.loadbalancer.server.port=3210"

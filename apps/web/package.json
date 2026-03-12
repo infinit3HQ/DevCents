@@ -7,8 +7,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "convex:local": "convex dev --url http://127.0.0.1:3210 --admin-key \"devcents|0140945e8143d1473961c863359f3b33509101fa5deb2e7615065bcb0f4418556937d0f476\"",
-    "dev:all": "bash scripts/dev.sh",
+    "convex:local": "sh -c 'convex dev --url \"${CONVEX_SELF_HOSTED_URL:?CONVEX_SELF_HOSTED_URL is required}\" --admin-key \"${CONVEX_SELF_HOSTED_ADMIN_KEY:?CONVEX_SELF_HOSTED_ADMIN_KEY is required}\"'",
+    "dev:all": "bash ../../scripts/dev.sh",
     "mcp": "tsx src/mcp-server/index.ts"
   },
   "dependencies": {
