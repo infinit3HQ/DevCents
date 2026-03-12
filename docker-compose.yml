@@ -18,7 +18,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.devcents-web.rule=Host(`${TRAEFIK_WEB_HOST:?TRAEFIK_WEB_HOST is required}`)"
       - "traefik.http.routers.devcents-web.entrypoints=websecure"
-      - "traefik.http.routers.devcents-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.devcents-web.tls.certresolver=cloudflare"
       - "traefik.http.services.devcents-web.loadbalancer.server.port=3000"
 
   convex:
@@ -40,7 +40,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.devcents-convex.rule=Host(`${TRAEFIK_CONVEX_HOST:?TRAEFIK_CONVEX_HOST is required}`)"
       - "traefik.http.routers.devcents-convex.entrypoints=websecure"
-      - "traefik.http.routers.devcents-convex.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.devcents-convex.tls.certresolver=cloudflare"
       - "traefik.http.services.devcents-convex.loadbalancer.server.port=3210"
 
 networks:
