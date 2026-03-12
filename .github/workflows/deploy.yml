@@ -1,0 +1,39 @@
+name: Deploy to Server One
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, arm64, serverone]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create required environment files
+        run: |
+          # Root env for compose (Convex and Web secrets)
+          echo "CLERK_ISSUER_URL=${{ secrets.CLERK_ISSUER_URL }}" >> .env
+          echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> .env
+          echo "INSTANCE_SECRET=${{ secrets.INSTANCE_SECRET }}" >> .env
+          echo "VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}" >> .env
+          
+          # The admin key is derived from the instance name + secret
+          echo "CONVEX_SELF_HOSTED_ADMIN_KEY=devcents|${{ secrets.INSTANCE_SECRET }}" >> .env
+          
+          # Hardcoded URLs for the production deployment
+          echo "VITE_CONVEX_URL=https://devcents-convex.012140.xyz" >> .env
+          echo "CONVEX_SELF_HOSTED_URL=http://convex:3210" >> .env
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose up -d --build
+          docker image prune -af
+          
+      - name: Deploy Convex Functions
+        run: |
+          npm ci
+          # Wait a few seconds for Convex to start up fully
+          sleep 5
+          npx convex deploy --url https://devcents-convex.012140.xyz --admin-key devcents|${{ secrets.INSTANCE_SECRET }}
