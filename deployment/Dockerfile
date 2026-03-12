@@ -19,7 +19,7 @@ ARG VITE_CLERK_PUBLISHABLE_KEY=""
 ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
-RUN npm run build
+RUN npm run build:web
 
 # -------------------------
 # Production Stage 
@@ -34,7 +34,7 @@ ENV NODE_ENV=production
 # Copy built assets and dependencies
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/apps/web/.output ./.output
 
 # Copy the startup script
 COPY deployment/start.sh ./start.sh
