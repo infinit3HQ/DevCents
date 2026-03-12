@@ -15,11 +15,11 @@ replace_in_assets() {
   escaped_build_value=$(printf '%s' "$build_value" | sed 's/[.[\*^$()+?{|]/\\&/g; s/[&|\\]/\\&/g')
   escaped_target_value=$(printf '%s' "$target_value" | sed 's/[&|\\]/\\&/g')
 
-  find .output/public -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.html' \) -exec sed -i "s|$escaped_build_value|$escaped_target_value|g" {} +
+  find .output -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.html' \) -exec sed -i "s|$escaped_build_value|$escaped_target_value|g" {} +
 }
 
-if [ -d ".output/public" ]; then
-  echo "Replacing runtime config in static assets..."
+if [ -d ".output" ]; then
+  echo "Replacing runtime config in static assets and server bundle..."
   replace_in_assets "$BUILD_CONVEX_URL" "$TARGET_CONVEX_URL"
   replace_in_assets "$BUILD_CLERK_PUBLISHABLE_KEY" "$TARGET_CLERK_PUBLISHABLE_KEY"
 fi
