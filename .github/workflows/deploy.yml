@@ -6,7 +6,9 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, linux, arm64, serverone]
+    runs-on:
+      - serverone
+      - self-hosted
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
