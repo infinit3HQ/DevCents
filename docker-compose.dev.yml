@@ -1,18 +1,34 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${INSTANCE_NAME:-devcents}
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+
   convex:
     image: ghcr.io/get-convex/convex-backend:latest
     restart: unless-stopped
+    depends_on:
+      - postgres
     ports:
       - "127.0.0.1:3210:3210"
       - "127.0.0.1:3211:3211"
-    volumes:
-      - convex-data-dev:/var/lib/convex/storage
     environment:
       CONVEX_LISTEN_PORT: 3210
       CONVEX_SITE_PORT: 3211
       CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
       INSTANCE_SECRET: ${INSTANCE_SECRET:?INSTANCE_SECRET is required}
       INSTANCE_NAME: ${INSTANCE_NAME:-devcents}
+      POSTGRES_URL: postgres://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432
+      DO_NOT_REQUIRE_SSL: true
+      PGSSLMODE: disable
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:3210}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-http://127.0.0.1:3211}
 
 volumes:
-  convex-data-dev:
+  postgres-data-dev:

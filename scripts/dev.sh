@@ -10,14 +10,24 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 COMPOSE_FILE="docker-compose.dev.yml"
 
+# Load environment variables from .env.local if it exists
+if [ -f .env.local ]; then
+  set -a
+  source .env.local
+  set +a
+fi
+
 : "${INSTANCE_NAME:=devcents}"
 if [ -z "${INSTANCE_SECRET:-}" ]; then
   INSTANCE_SECRET="$(printf '%s' "${USER:-devcents}:${HOSTNAME:-localhost}:devcents" | shasum -a 256 | awk '{print $1}')"
 fi
 : "${CONVEX_SELF_HOSTED_URL:=http://127.0.0.1:3210}"
-: "${CONVEX_SELF_HOSTED_ADMIN_KEY:=${INSTANCE_NAME}|${INSTANCE_SECRET}}"
 
-export INSTANCE_NAME INSTANCE_SECRET CONVEX_SELF_HOSTED_URL CONVEX_SELF_HOSTED_ADMIN_KEY
+if [ -z "${CONVEX_SELF_HOSTED_ADMIN_KEY:-}" ]; then
+  export CONVEX_SELF_HOSTED_ADMIN_KEY="${INSTANCE_NAME}|${INSTANCE_SECRET}"
+fi
+
+export INSTANCE_NAME INSTANCE_SECRET CONVEX_SELF_HOSTED_URL
 
 # Colors
 RED='\033[0;31m'
