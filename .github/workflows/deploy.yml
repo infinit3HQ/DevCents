@@ -53,7 +53,12 @@ jobs:
         run: npm ci
 
       - name: Deploy Convex Functions
-        run: npx convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          # Strip any accidental newlines or spaces from the secret
+          CLEAN_KEY=$(echo -n "$CONVEX_DEPLOY_KEY" | tr -d '\n\r ')
+          npx convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key "$CLEAN_KEY"
         working-directory: apps/web
 
       - name: Pull and start Docker services
