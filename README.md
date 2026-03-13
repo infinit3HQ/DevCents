@@ -4,7 +4,7 @@ Smart, self-hosted money management built with **TanStack Start**, **Convex**, a
 
 ## Prerequisites
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 22
 - **Docker** (for the self-hosted Convex backend)
 
 ## Quick Start
