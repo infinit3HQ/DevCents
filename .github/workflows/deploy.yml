@@ -54,6 +54,6 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
           docker compose build --pull --no-cache
-          docker compose up -d --remove-orphans
+          docker compose up -d --force-recreate --remove-orphans
           docker compose ps
           docker image prune -f
