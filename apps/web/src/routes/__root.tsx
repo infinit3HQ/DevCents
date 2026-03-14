@@ -81,7 +81,23 @@ function NotFound() {
   );
 }
 
+console.log("Root module executing...");
+
 function RootDocument({ children }: { children: React.ReactNode }) {
+  console.log("RootDocument rendering...");
+  
+  React.useEffect(() => {
+    console.log("RootDocument mounted (hydration complete)");
+    // Failsafe: if animations are stuck, force visibility after 2 seconds
+    const timer = setTimeout(() => {
+      document.body.style.opacity = "1";
+      const hero = document.querySelector('h1');
+      if (hero) hero.style.opacity = "1";
+      console.log("Failsafe visibility triggered");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <ClerkProvider
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}

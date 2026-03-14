@@ -10,6 +10,7 @@ if (!convexUrl || convexUrl.includes("__VITE_")) {
 const convex = new ConvexReactClient(convexUrl || "https://placeholder-if-missing.convex.cloud");
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
+  console.log("ConvexClientProvider rendering...");
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       {children}
