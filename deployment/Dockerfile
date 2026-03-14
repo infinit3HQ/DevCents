@@ -22,6 +22,9 @@ ARG VITE_CLERK_PUBLISHABLE_KEY="__VITE_CLERK_PUBLISHABLE_KEY__"
 ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
+# Ensure no local environment files override our placeholders
+RUN rm -f .env .env.* apps/web/.env.*
+
 RUN npm run build:web
 
 # -------------------------
