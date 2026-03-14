@@ -2,6 +2,7 @@
 set -eu
 
 echo "Injecting runtime environment variables..."
+df -h /app
 
 BUILD_CONVEX_URL="__VITE_CONVEX_URL__"
 BUILD_CLERK_PUBLISHABLE_KEY="__VITE_CLERK_PUBLISHABLE_KEY__"
@@ -14,9 +15,12 @@ replace_in_assets() {
   build_value="$1"
   target_value="$2"
   
-  echo "Replacing '$build_value' with '$target_value'..."
+  # Trim whitespaces/newlines/carriage returns
+  clean_target=$(echo -n "$target_value" | tr -d '\n\r ' || echo "$target_value")
   
-  # Use Node.js to perform the replacement to avoid escaping nightmares and file truncation
+  echo "Replacing '$build_value' with (redacted value of length ${#clean_target})..."
+  
+  # Use Node.js to perform an atomic replacement
   node -e "
     const fs = require('fs');
     const path = require('path');
@@ -24,22 +28,29 @@ replace_in_assets() {
     const replaceValue = process.argv[2];
     
     function walk(dir) {
+      if (!fs.existsSync(dir)) return;
       fs.readdirSync(dir).forEach(file => {
         const fullPath = path.join(dir, file);
         if (fs.statSync(fullPath).isDirectory()) {
           walk(fullPath);
         } else if (/\.(js|mjs|html|css)$/.test(file)) {
-          let content = fs.readFileSync(fullPath, 'utf8');
-          if (content.includes(searchValue)) {
-            content = content.split(searchValue).join(replaceValue);
-            fs.writeFileSync(fullPath, content, 'utf8');
-            console.log('  Updated: ' + fullPath);
+          try {
+            const original = fs.readFileSync(fullPath, 'utf8');
+            if (original.includes(searchValue)) {
+              const updated = original.split(searchValue).join(replaceValue);
+              const tmpPath = fullPath + '.tmp';
+              fs.writeFileSync(tmpPath, updated, 'utf8');
+              fs.renameSync(tmpPath, fullPath); // Atomic move
+              console.log('  Updated: ' + fullPath + ' (' + original.length + ' -> ' + updated.length + ' bytes)');
+            }
+          } catch (e) {
+            console.error('  Error updating ' + fullPath + ': ' + e.message);
           }
         }
       });
     }
     walk('.output');
-  " "$build_value" "$target_value"
+  " "$build_value" "$clean_target"
 }
 
 if [ -d ".output" ]; then
