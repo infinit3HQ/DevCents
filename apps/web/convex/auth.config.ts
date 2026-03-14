@@ -1,7 +1,7 @@
 export default {
   providers: [
     {
-      domain: "https://causal-goblin-94.clerk.accounts.dev",
+      domain: process.env.CLERK_ISSUER_URL || "https://clerk.devcents.012140.xyz",
       applicationID: "convex",
     },
   ],
