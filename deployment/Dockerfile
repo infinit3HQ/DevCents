@@ -43,8 +43,9 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/.output ./.output
 
-# Copy the startup script
+# Copy the startup script and injection helper
 COPY deployment/start.sh ./start.sh
+COPY deployment/inject_env.js ./deployment/inject_env.js
 RUN chmod +x ./start.sh
 
 # Expose the port the app runs on (Nitro defaults to 3000)
