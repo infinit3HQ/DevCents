@@ -28,7 +28,7 @@ const config = defineConfig({
     },
   },
   plugins: [
-    devtools(),
+    process.env.NODE_ENV !== "production" ? devtools() : null,
     nitro(),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({

@@ -1,8 +1,30 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
+import React from "react";
+
+const Devtools = import.meta.env.PROD 
+  ? () => null 
+  : React.lazy(() => 
+      Promise.all([
+        import('@tanstack/react-devtools'),
+        import('@tanstack/react-router-devtools')
+      ]).then(([reactDevtools, routerDevtools]) => {
+        return {
+          default: () => (
+            <reactDevtools.TanStackDevtools
+              config={{ position: "bottom-right" }}
+              plugins={[
+                {
+                  name: "Tanstack Router",
+                  render: <routerDevtools.TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+          )
+        };
+      })
+    );
 
 import Header from "../components/Header";
 import { ConvexClientProvider } from "../components/ConvexClientProvider";
@@ -80,17 +102,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               </EncryptionProvider>
             </CurrencyProvider>
           </ConvexClientProvider>
-          <TanStackDevtools
-            config={{
-              position: "bottom-right",
-            }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
+          <React.Suspense fallback={null}>
+            <Devtools />
+          </React.Suspense>
           <Scripts />
         </body>
       </html>
