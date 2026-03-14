@@ -19,11 +19,12 @@ COPY . .
 # Build the application with placeholders that get replaced at container start.
 ARG VITE_CONVEX_URL="__VITE_CONVEX_URL__"
 ARG VITE_CLERK_PUBLISHABLE_KEY="__VITE_CLERK_PUBLISHABLE_KEY__"
-ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
-# Ensure no local environment files override our placeholders
-RUN rm -f .env .env.* apps/web/.env.*
+# Ensure no local environment files override our placeholders and 
+# explicitly set them in a .env file that Vite will reliably pick up.
+RUN rm -f .env .env.* apps/web/.env.* && \
+    echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env && \
+    echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" >> apps/web/.env
 
 RUN npm run build:web
 
