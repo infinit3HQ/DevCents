@@ -151,6 +151,22 @@
     background: color-mix(in oklch, var(--primary), transparent 75%);
     color: var(--primary);
   }
+
+  /* ── Clerk Component Fixes ──────────────────────── */
+  .cl-internal-b3fm6y,
+  .cl-userProfile-root,
+  .cl-modalContent {
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+  .cl-headerTitle + .cl-headerSubtitle {
+    margin-top: 0;
+  }
+  .cl-navbar {
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+  .cl-profilePage {
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
   
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }

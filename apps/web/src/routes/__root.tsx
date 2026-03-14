@@ -103,7 +103,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <ClerkProvider
       publishableKey={getEnv("VITE_CLERK_PUBLISHABLE_KEY")}
       appearance={{
-        theme: shadcn,
+        baseTheme: shadcn,
+        variables: {
+          colorPrimary: "oklch(0.75 0.15 142)",
+          fontFamily: "Inter, system-ui, sans-serif",
+        },
+        elements: {
+          userProfile: {
+            fontFamily: "Inter, system-ui, sans-serif",
+          },
+          card: {
+            fontFamily: "Inter, system-ui, sans-serif",
+          },
+        },
       }}
     >
       <html lang="en" className="dark">
