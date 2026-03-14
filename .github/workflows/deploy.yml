@@ -49,8 +49,11 @@ jobs:
         working-directory: apps/web
 
       - name: Build and start Docker services
+        env:
+          VITE_CONVEX_URL: ${{ env.VITE_CONVEX_URL }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
-          docker compose build --pull
+          docker compose build --pull --no-cache
           docker compose up -d --remove-orphans
           docker compose ps
           docker image prune -f

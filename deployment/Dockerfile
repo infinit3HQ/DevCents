@@ -21,12 +21,13 @@ ARG VITE_CONVEX_URL
 ARG VITE_CLERK_PUBLISHABLE_KEY
 
 # Ensure no local environment files override our variables and 
-# explicitly set them in a .env file that Vite will reliably pick up.
+# explicitly set them in a .env.production file that Vite will reliably pick up.
 RUN rm -f .env .env.* apps/web/.env.* && \
+    rm -rf apps/web/.output && \
     if [ -z "$VITE_CONVEX_URL" ]; then echo "VITE_CONVEX_URL is required" && exit 1; fi && \
     if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ]; then echo "VITE_CLERK_PUBLISHABLE_KEY is required" && exit 1; fi && \
-    echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env && \
-    echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" >> apps/web/.env
+    echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env.production && \
+    echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" >> apps/web/.env.production
 
 RUN npm run build:web
 
