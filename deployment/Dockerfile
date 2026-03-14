@@ -16,11 +16,11 @@ RUN npm ci
 # Copy application source code
 COPY . .
 
-# Build the application with placeholders that get replaced at container start.
-ARG VITE_CONVEX_URL="__VITE_CONVEX_URL__"
-ARG VITE_CLERK_PUBLISHABLE_KEY="__VITE_CLERK_PUBLISHABLE_KEY__"
+# Build the application with production environment variables.
+ARG VITE_CONVEX_URL
+ARG VITE_CLERK_PUBLISHABLE_KEY
 
-# Ensure no local environment files override our placeholders and 
+# Ensure no local environment files override our variables and 
 # explicitly set them in a .env file that Vite will reliably pick up.
 RUN rm -f .env .env.* apps/web/.env.* && \
     echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env && \
@@ -43,9 +43,8 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/.output ./.output
 
-# Copy the startup script and injection helper
+# Copy the startup script
 COPY deployment/start.sh ./start.sh
-COPY deployment/inject_env.js ./deployment/inject_env.js
 RUN chmod +x ./start.sh
 
 # Expose the port the app runs on (Nitro defaults to 3000)

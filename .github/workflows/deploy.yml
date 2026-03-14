@@ -61,9 +61,9 @@ jobs:
           npx convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key "$CLEAN_KEY"
         working-directory: apps/web
 
-      - name: Pull and start Docker services
+      - name: Build and start Docker services
         run: |
-          docker compose pull
+          docker compose build --pull
           docker compose up -d --remove-orphans
           docker compose ps
           docker image prune -f

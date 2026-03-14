@@ -1,6 +1,12 @@
 services:
   web:
     image: ${WEB_IMAGE:-ghcr.io/infinit3hq/devcents:latest}
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile
+      args:
+        VITE_CONVEX_URL: ${VITE_CONVEX_URL}
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
     pull_policy: always
     restart: unless-stopped
     networks:
