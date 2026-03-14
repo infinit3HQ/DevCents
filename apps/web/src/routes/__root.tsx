@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import React from "react";
+import { getEnv } from "@/lib/env";
 
 const Devtools = import.meta.env.PROD 
   ? () => null 
@@ -100,7 +101,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
   return (
     <ClerkProvider
-      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      publishableKey={getEnv("VITE_CLERK_PUBLISHABLE_KEY")}
       appearance={{
         theme: shadcn,
       }}
