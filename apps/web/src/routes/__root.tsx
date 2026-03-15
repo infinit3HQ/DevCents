@@ -45,7 +45,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "DevCents — Self-hosted Money Management",
+        title: "DevCents - Self-hosted Money Management",
       },
     ],
     links: [

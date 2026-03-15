@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { getCurrencySymbol } from "@/lib/currencyUtils";
+import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import type { LucideIcon } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -16,20 +18,6 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-
-// Phosphor-style palette: Monochrome terminal green gradations
-const CAT_COLORS: Record<string, string> = {
-  housing: "var(--color-primary)",
-  food: "var(--color-primary)",
-  transportation: "var(--color-primary)",
-  utilities: "var(--color-primary)",
-  entertainment: "var(--color-primary)",
-  shopping: "var(--color-primary)",
-  health: "var(--color-primary)",
-  education: "var(--color-primary)",
-  personal: "var(--color-primary)",
-  other: "var(--color-primary)",
-};
 
 const TOOLTIP_STYLE = {
   backgroundColor: "var(--color-popover)",
@@ -60,8 +48,10 @@ export function SpendingCharts() {
     return Object.entries(byCategory)
       .map(([name, value]) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
+        key: name,
         value: Math.round(value * 100) / 100,
-        fill: CAT_COLORS[name] ?? CAT_COLORS.other,
+        fill: CATEGORY_COLORS[name] ?? CATEGORY_COLORS.other,
+        Icon: (CATEGORY_ICONS[name] ?? CATEGORY_ICONS.other) as LucideIcon,
       }))
       .sort((a, b) => b.value - a.value);
   }, [transactions]);
@@ -123,57 +113,104 @@ export function SpendingCharts() {
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
             // spending_by_category
           </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                paddingAngle={2}
-                dataKey="value"
-                animationBegin={0}
-                animationDuration={600}
-              >
-                {categoryData.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.fill}
-                    stroke="var(--color-card)"
-                    strokeWidth={2}
-                    className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                itemStyle={{ color: "var(--color-primary)" }}
-                formatter={(v: number | undefined) => [
-                  `${currencySymbol}${(v ?? 0).toFixed(2)}`,
-                  "amount",
-                ]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 justify-center">
-            {categoryData.map((e, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
-              >
-                <div className="w-2 h-2" style={{ background: e.fill }} />
-                {e.name}
-                <span className="opacity-60">
-                  {totalExpenses > 0
-                    ? Math.round((e.value / totalExpenses) * 100)
-                    : 0}
-                  %
-                </span>
+          {/* ── Horizontal spending breakdown bar ── */}
+          <div className="mb-5">
+            <div className="h-2.5 w-full flex overflow-hidden">
+              {categoryData.map((entry, i) => {
+                const pct = totalExpenses > 0 ? (entry.value / totalExpenses) * 100 : 0;
+                return (
+                  <motion.div
+                    key={entry.key}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.6, delay: i * 0.05, ease: "easeOut" }}
+                    className="h-full transition-opacity hover:opacity-80 cursor-pointer"
+                    style={{ backgroundColor: entry.fill, minWidth: pct > 0 ? "3px" : 0 }}
+                    title={`${entry.name}: ${pct.toFixed(1)}%`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Pie chart ── */}
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={95}
+                  paddingAngle={2}
+                  dataKey="value"
+                  animationBegin={0}
+                  animationDuration={600}
+                >
+                  {categoryData.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.fill}
+                      stroke="var(--color-card)"
+                      strokeWidth={2}
+                      className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  itemStyle={{ color: "var(--color-foreground)" }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={((v: number, _name: string) => {
+                    return [
+                      `${currencySymbol}${(v ?? 0).toFixed(2)}`,
+                      _name,
+                    ];
+                  }) as any}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center total label */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+                  total
+                </p>
+                <p className="font-mono text-lg num-display text-foreground leading-tight">
+                  {currencySymbol}{totalExpenses.toFixed(0)}
+                </p>
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* ── Legend ── */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-4">
+            {categoryData.map((e, i) => {
+              const pct = totalExpenses > 0 ? Math.round((e.value / totalExpenses) * 100) : 0;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 + i * 0.04 }}
+                  className="flex items-center gap-2 font-mono text-[10px] group cursor-default"
+                >
+                  <div
+                    className="w-2.5 h-2.5 shrink-0 transition-transform group-hover:scale-125"
+                    style={{ background: e.fill }}
+                  />
+                  <span className="text-muted-foreground/80"><e.Icon className="h-3 w-3" style={{ color: e.fill }} /></span>
+                  <span className="uppercase tracking-wider text-muted-foreground truncate">
+                    {e.name}
+                  </span>
+                  <span className="ml-auto tabular-nums text-foreground/70 shrink-0">
+                    {pct}%
+                  </span>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}
