@@ -22,7 +22,7 @@ function EncryptionBadge() {
     return (
       <button
         onClick={setupEncryption}
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 mr-2 transition-all border border-border bg-transparent text-muted-foreground"
+        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 transition-all border border-border bg-transparent text-muted-foreground"
         title="Click to enable AES-256-GCM encryption"
       >
         <ShieldOff className="h-3 w-3" />
