@@ -91,6 +91,16 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "amazon prime",
     "book",
   ],
+  rent: [
+    "rent",
+    "lease",
+    "landlord",
+    "tenant",
+    "housing",
+    "apartment",
+    "mortgage",
+    "property",
+  ],
   shopping: [
     "amazon",
     "walmart",
@@ -165,6 +175,7 @@ export const INCOME_CATEGORIES = [
 
 export const EXPENSE_CATEGORIES = [
   { value: "food", label: "Food & Dining" },
+  { value: "rent", label: "Rent & Housing" },
   { value: "transport", label: "Transport" },
   { value: "utilities", label: "Utilities & Bills" },
   { value: "entertainment", label: "Entertainment" },
@@ -178,9 +189,25 @@ export const CATEGORIES = [
   ...INCOME_CATEGORIES,
 ] as const;
 
+import type { LucideIcon } from "lucide-react";
+import {
+  UtensilsCrossed,
+  Home,
+  Car,
+  Zap,
+  Gamepad2,
+  ShoppingBag,
+  HeartPulse,
+  Banknote,
+  Gift,
+  TrendingUp,
+  MoreHorizontal,
+} from "lucide-react";
+
 export const CATEGORY_COLORS: Record<string, string> = {
-  food: "#f97316",
-  transport: "#3b82f6",
+  food: "#f59e0b",
+  rent: "#0ea5e9",
+  transport: "#6366f1",
   utilities: "#a855f7",
   entertainment: "#ec4899",
   shopping: "#f43f5e",
@@ -189,4 +216,18 @@ export const CATEGORY_COLORS: Record<string, string> = {
   bonus: "#10b981",
   investment: "#34d399",
   other: "#6b7280",
+};
+
+export const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  food: UtensilsCrossed,
+  rent: Home,
+  transport: Car,
+  utilities: Zap,
+  entertainment: Gamepad2,
+  shopping: ShoppingBag,
+  health: HeartPulse,
+  salary: Banknote,
+  bonus: Gift,
+  investment: TrendingUp,
+  other: MoreHorizontal,
 };

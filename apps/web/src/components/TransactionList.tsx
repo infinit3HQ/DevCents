@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { Id } from "../../convex/_generated/dataModel";
 import { formatCurrency } from "@/lib/currencyUtils";
+import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
 
 interface TransactionListProps {
   limit?: number;
@@ -62,6 +63,7 @@ export function TransactionList({
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.18, delay: index * 0.025 }}
               className="flex items-center gap-3 px-4 py-3.5 transition-colors border-b border-border hover:bg-primary/5"
+              style={{ borderLeftWidth: "3px", borderLeftColor: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }}
             >
               {/* Type icon */}
               <div
@@ -85,7 +87,8 @@ export function TransactionList({
                   {t.description}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px]">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1">
+                    {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3 w-3" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
                     {t.category}
                   </span>
                   <span className="font-mono text-[9px] text-muted-foreground opacity-60">
@@ -170,7 +173,10 @@ export function TransactionList({
                   })}
                 </td>
                 <td className="px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {t.category}
+                  <span className="flex items-center gap-1.5">
+                    {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3.5 w-3.5" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
+                    {t.category}
+                  </span>
                 </td>
                 <td className="px-4 py-3 font-mono text-[12px] truncate max-w-[200px] text-foreground/80">
                   {t.description}

@@ -160,8 +160,8 @@ export function Dashboard() {
         >
           <div className="grid grid-cols-3">
             {/* Income */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-primary/40" />
+            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-primary/5">
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-primary/40 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-primary/70" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 inflow
               </p>
@@ -177,8 +177,8 @@ export function Dashboard() {
             </div>
 
             {/* Expenses */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-destructive/50" />
+            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-destructive/5">
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-destructive/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-destructive/70" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 outflow
               </p>
@@ -194,8 +194,8 @@ export function Dashboard() {
             </div>
 
             {/* Net */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-muted-foreground/50" />
+            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default group/stat transition-all duration-200 hover:bg-muted/40">
+              <div className="absolute left-0 top-3 bottom-3 w-px bg-muted-foreground/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-muted-foreground/70" />
               <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
                 balance
               </p>

@@ -2,6 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 @import "@clerk/themes/shadcn.css";
+@source "../../node_modules/@clerk/themes/dist";
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
@@ -166,7 +167,47 @@
   .cl-profilePage {
     font-family: var(--font-sans), system-ui, sans-serif;
   }
+
+  /* ── Clerk Popover/Card overrides for production ── */
+  .cl-userButtonPopoverCard,
+  .cl-popoverBox,
+  .cl-cardBox {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
+    background: var(--card) !important;
+    color: var(--card-foreground) !important;
+    border-radius: 0.75rem;
+  }
+  .cl-userButtonPopoverActions {
+    padding: 0.25rem 0;
+  }
+  .cl-userButtonPopoverActionButton {
+    padding: 0.5rem 1rem;
+    border-radius: 0;
+  }
+  .cl-userButtonPopoverActionButton:hover {
+    background: color-mix(in oklch, var(--primary), transparent 92%);
+  }
+  .cl-userButtonPopoverFooter {
+    border-top: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+  }
+  .cl-userPreview {
+    padding: 0.75rem 1rem;
+  }
   
+  /* Hide number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
