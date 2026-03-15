@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ElementType } from "react";
+import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useForm, type UseFormReturn } from "react-hook-form";
@@ -142,6 +142,12 @@ const ENTRY_MODES: Array<{
 export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<EntryMode>("ledger");
+  const [savingMode, setSavingMode] = useState<EntryMode | null>(null);
+  const [submitError, setSubmitError] = useState<{
+    mode: EntryMode;
+    message: string;
+  } | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const createTransaction = useMutation(api.transactions.create);
   const createPlanned = useMutation(api.planned.create);
   const createRecurring = useMutation(api.recurring.create);
@@ -225,66 +231,134 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       recurringForm.setValue("startDate", todayInputValue());
   }, [open, mode, plannedForm, recurringForm]);
 
+  useEffect(() => {
+    if (!open) return;
+    // Clear any previous failure when reopening or switching mode.
+    setSubmitError(null);
+  }, [open, mode]);
+
+  const formatSubmitError = (err: unknown) => {
+    const base =
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+          ? err
+          : (() => {
+              try {
+                return JSON.stringify(err);
+              } catch {
+                return "Unknown error";
+              }
+            })();
+
+    // Common footgun: Clerk token template misconfiguration means Convex auth never succeeds.
+    if (/clerk/i.test(base) || /\/tokens/i.test(base) || /sess_/i.test(base)) {
+      return `${base} (Auth token failure: check Clerk JWT template "convex" and audience "convex".)`;
+    }
+    return base;
+  };
+
+  const focusFirstField = () => {
+    const root = contentRef.current;
+    if (!root) return;
+    const el = root.querySelector<HTMLElement>('[data-entry-autofocus="true"]');
+    el?.focus();
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    // Let the drawer content/mode swap render before focusing.
+    const t = window.setTimeout(focusFirstField, 0);
+    return () => window.clearTimeout(t);
+  }, [open, mode]);
+
   const header = useMemo(() => {
     return ENTRY_MODES.find((m) => m.id === mode) ?? ENTRY_MODES[0];
   }, [mode]);
 
   async function submitLedger(values: z.infer<typeof ledgerSchema>) {
-    const shouldEncrypt = isEnabled && isUnlocked;
-    await createTransaction({
-      amount: shouldEncrypt
-        ? await encryptValue(String(values.amount))
-        : values.amount,
-      currency: values.currency,
-      description: shouldEncrypt
-        ? await encryptValue(values.description)
-        : values.description,
-      type: values.type,
-      category: values.category,
-      date: Date.now(),
-      encrypted: shouldEncrypt || undefined,
-    });
-    setOpen(false);
-    txForm.reset();
+    setSavingMode("ledger");
+    setSubmitError(null);
+    try {
+      const shouldEncrypt = isEnabled && isUnlocked;
+      await createTransaction({
+        amount: shouldEncrypt
+          ? await encryptValue(String(values.amount))
+          : values.amount,
+        currency: values.currency,
+        description: shouldEncrypt
+          ? await encryptValue(values.description)
+          : values.description,
+        type: values.type,
+        category: values.category,
+        date: Date.now(),
+        encrypted: shouldEncrypt || undefined,
+      });
+      setOpen(false);
+      txForm.reset();
+    } catch (err) {
+      console.error("Failed to submit ledger entry:", err);
+      setSubmitError({ mode: "ledger", message: formatSubmitError(err) });
+    } finally {
+      setSavingMode(null);
+    }
   }
 
   async function submitPlanned(values: z.infer<typeof plannedSchema>) {
-    const shouldEncrypt = isEnabled && isUnlocked;
-    await createPlanned({
-      amount: shouldEncrypt
-        ? await encryptValue(String(values.amount))
-        : values.amount,
-      currency: values.currency,
-      description: shouldEncrypt
-        ? await encryptValue(values.description)
-        : values.description,
-      type: values.type,
-      category: values.category,
-      date: parseLocalDateInputToNoonMs(values.date),
-      encrypted: shouldEncrypt || undefined,
-    });
-    setOpen(false);
-    plannedForm.reset();
+    setSavingMode("planned");
+    setSubmitError(null);
+    try {
+      const shouldEncrypt = isEnabled && isUnlocked;
+      await createPlanned({
+        amount: shouldEncrypt
+          ? await encryptValue(String(values.amount))
+          : values.amount,
+        currency: values.currency,
+        description: shouldEncrypt
+          ? await encryptValue(values.description)
+          : values.description,
+        type: values.type,
+        category: values.category,
+        date: parseLocalDateInputToNoonMs(values.date),
+        encrypted: shouldEncrypt || undefined,
+      });
+      setOpen(false);
+      plannedForm.reset();
+    } catch (err) {
+      console.error("Failed to schedule planned entry:", err);
+      setSubmitError({ mode: "planned", message: formatSubmitError(err) });
+    } finally {
+      setSavingMode(null);
+    }
   }
 
   async function submitRecurring(values: z.infer<typeof recurringSchema>) {
-    const shouldEncrypt = isEnabled && isUnlocked;
-    await createRecurring({
-      amount: shouldEncrypt
-        ? await encryptValue(String(values.amount))
-        : values.amount,
-      currency: values.currency,
-      description: shouldEncrypt
-        ? await encryptValue(values.description)
-        : values.description,
-      type: values.type,
-      category: values.category,
-      startDate: parseLocalDateInputToNoonMs(values.startDate),
-      cadence: values.cadence,
-      encrypted: shouldEncrypt || undefined,
-    });
-    setOpen(false);
-    recurringForm.reset();
+    setSavingMode("recurring");
+    setSubmitError(null);
+    try {
+      const shouldEncrypt = isEnabled && isUnlocked;
+      await createRecurring({
+        amount: shouldEncrypt
+          ? await encryptValue(String(values.amount))
+          : values.amount,
+        currency: values.currency,
+        description: shouldEncrypt
+          ? await encryptValue(values.description)
+          : values.description,
+        type: values.type,
+        category: values.category,
+        startDate: parseLocalDateInputToNoonMs(values.startDate),
+        cadence: values.cadence,
+        encrypted: shouldEncrypt || undefined,
+      });
+      setOpen(false);
+      recurringForm.reset();
+    } catch (err) {
+      console.error("Failed to schedule recurring entry:", err);
+      setSubmitError({ mode: "recurring", message: formatSubmitError(err) });
+    } finally {
+      setSavingMode(null);
+    }
   }
 
   return (
@@ -322,7 +396,16 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         </DrawerTrigger>
       )}
 
-      <DrawerContent className="rounded-t-[20px] border-t border-border bg-card">
+      <DrawerContent
+        ref={contentRef}
+        onOpenAutoFocus={(e) => {
+          // Vaul/Radix will try to keep focus on the trigger if we don't guide it.
+          // That creates an `aria-hidden` warning because the trigger is hidden when the drawer opens.
+          e.preventDefault();
+          focusFirstField();
+        }}
+        className="rounded-t-[20px] border-t border-border bg-card"
+      >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -438,11 +521,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                       )}
                                     </div>
                                     <Input
-                                      autoFocus
                                       type="number"
                                       step="0.01"
                                       placeholder="0.00"
                                       className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
+                                      data-entry-autofocus="true"
                                       {...field}
                                     />
                                     <FormField
@@ -543,12 +626,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-                      >
+	                      <motion.div
+	                        initial={{ opacity: 0, y: 10 }}
+	                        animate={{ opacity: 1, y: 0 }}
+	                        transition={{ delay: 0.25 }}
+	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+	                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -558,17 +641,26 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-                        <Button
-                          type="submit"
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-                        >
-                          Submit Entry
-                        </Button>
-                      </motion.div>
-                    </form>
-                  </Form>
-                </motion.div>
-              )}
+	                        <Button
+	                          type="submit"
+	                          disabled={savingMode === "ledger"}
+	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+	                        >
+	                          {savingMode === "ledger" ? "Submitting..." : "Submit Entry"}
+	                        </Button>
+	                      </motion.div>
+	                      {submitError?.mode === "ledger" && (
+	                        <div
+	                          role="alert"
+	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+	                        >
+	                          {submitError.message}
+	                        </div>
+	                      )}
+	                    </form>
+	                  </Form>
+	                </motion.div>
+	              )}
 
               {mode === "planned" && (
                 <motion.div
@@ -670,11 +762,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                     )}
                                   </div>
                                   <Input
-                                    autoFocus
                                     type="number"
                                     step="0.01"
                                     placeholder="0.00"
                                     className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
+                                    data-entry-autofocus="true"
                                     {...field}
                                   />
                                   <FormField
@@ -774,12 +866,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-                      >
+	                      <motion.div
+	                        initial={{ opacity: 0, y: 10 }}
+	                        animate={{ opacity: 1, y: 0 }}
+	                        transition={{ delay: 0.3 }}
+	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+	                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -789,17 +881,26 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-                        <Button
-                          type="submit"
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-                        >
-                          Schedule
-                        </Button>
-                      </motion.div>
-                    </form>
-                  </Form>
-                </motion.div>
-              )}
+	                        <Button
+	                          type="submit"
+	                          disabled={savingMode === "planned"}
+	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+	                        >
+	                          {savingMode === "planned" ? "Scheduling..." : "Schedule"}
+	                        </Button>
+	                      </motion.div>
+	                      {submitError?.mode === "planned" && (
+	                        <div
+	                          role="alert"
+	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+	                        >
+	                          {submitError.message}
+	                        </div>
+	                      )}
+	                    </form>
+	                  </Form>
+	                </motion.div>
+	              )}
 
               {mode === "recurring" && (
                 <motion.div
@@ -945,11 +1046,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                       )}
                                     </div>
                                     <Input
-                                      autoFocus
                                       type="number"
                                       step="0.01"
                                       placeholder="0.00"
                                       className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
+                                      data-entry-autofocus="true"
                                       {...field}
                                     />
                                     <FormField
@@ -1050,12 +1151,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-                      >
+	                      <motion.div
+	                        initial={{ opacity: 0, y: 10 }}
+	                        animate={{ opacity: 1, y: 0 }}
+	                        transition={{ delay: 0.35 }}
+	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+	                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -1065,17 +1166,28 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-                        <Button
-                          type="submit"
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-                        >
-                          Save Recurring
-                        </Button>
-                      </motion.div>
-                    </form>
-                  </Form>
-                </motion.div>
-              )}
+	                        <Button
+	                          type="submit"
+	                          disabled={savingMode === "recurring"}
+	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+	                        >
+	                          {savingMode === "recurring"
+	                            ? "Saving..."
+	                            : "Save Recurring"}
+	                        </Button>
+	                      </motion.div>
+	                      {submitError?.mode === "recurring" && (
+	                        <div
+	                          role="alert"
+	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+	                        >
+	                          {submitError.message}
+	                        </div>
+	                      )}
+	                    </form>
+	                  </Form>
+	                </motion.div>
+	              )}
             </AnimatePresence>
           </div>
         </motion.div>

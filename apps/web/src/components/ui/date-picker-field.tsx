@@ -149,12 +149,12 @@ export function DatePickerField({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
-          "h-12 w-full border border-border bg-transparent text-left px-3",
-          "font-mono text-[11px] uppercase",
+          "h-12 w-full rounded-none border border-border bg-transparent text-left px-3",
           "flex items-center justify-between gap-3",
+          "font-mono text-[10px] uppercase tracking-widest",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          !selected ? "text-muted-foreground" : "text-foreground",
+          !selected ? "text-muted-foreground" : "text-foreground/70",
           className,
         )}
       >
@@ -162,7 +162,7 @@ export function DatePickerField({
         <Calendar className="h-4 w-4 text-muted-foreground" />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={setOpen} modal={false}>
         <DialogContent className="max-w-md rounded-none border border-border bg-card p-0">
           <DialogHeader className="px-5 pt-5">
             <DialogTitle className="font-mono text-xs uppercase tracking-[0.25em] text-foreground/80">
@@ -199,9 +199,9 @@ export function DatePickerField({
             </div>
 
             <div className="grid grid-cols-7 gap-px mt-3 border border-border bg-border">
-              {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
+              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
                 <div
-                  key={d}
+                  key={`${d}-${i}`}
                   className="h-8 bg-card flex items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
                 >
                   {d}
@@ -259,4 +259,3 @@ export function DatePickerField({
     </>
   );
 }
-
