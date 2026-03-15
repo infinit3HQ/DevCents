@@ -4,6 +4,8 @@ set -euo pipefail
 # ─── DevCents Dev Environment ──────────────────────────────────────────────
 # Starts Docker (Convex backend), Convex sync, and the Vite dev server.
 # Press Ctrl+C to tear everything down.
+# Data is persisted across restarts via Docker volumes.
+# To fully reset, run: docker compose -f docker-compose.dev.yml down -v
 # ─────────────────────────────────────────────────────────────────────────────
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,10 +24,6 @@ if [ -z "${INSTANCE_SECRET:-}" ]; then
   INSTANCE_SECRET="$(printf '%s' "${USER:-devcents}:${HOSTNAME:-localhost}:devcents" | shasum -a 256 | awk '{print $1}')"
 fi
 : "${CONVEX_SELF_HOSTED_URL:=http://127.0.0.1:3210}"
-
-if [ -z "${CONVEX_SELF_HOSTED_ADMIN_KEY:-}" ]; then
-  export CONVEX_SELF_HOSTED_ADMIN_KEY="${INSTANCE_NAME}|${INSTANCE_SECRET}"
-fi
 
 export INSTANCE_NAME INSTANCE_SECRET CONVEX_SELF_HOSTED_URL
 
@@ -53,7 +51,7 @@ cleanup() {
     wait "$CONVEX_PID" 2>/dev/null || true
   fi
 
-  log "Stopping Docker containers..."
+  log "Stopping Docker containers (data is preserved)..."
   docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
 
   ok "All services stopped. Goodbye!"
@@ -73,7 +71,7 @@ done
 log "Starting Docker containers..."
 docker compose -f "$COMPOSE_FILE" up -d
 
-log "Waiting for Convex backend on port 3210..."
+log "Waiting for Convex backend to be fully ready..."
 MAX_WAIT=30
 WAITED=0
 until curl -sf http://127.0.0.1:3210 > /dev/null 2>&1; do
@@ -84,13 +82,28 @@ until curl -sf http://127.0.0.1:3210 > /dev/null 2>&1; do
   sleep 1
   WAITED=$((WAITED + 1))
 done
-ok "Convex backend is ready (took ${WAITED}s)"
+# Give extra time for internal bootstrapping (search indexes, migrations)
+sleep 3
+ok "Convex backend is ready (took $((WAITED + 3))s)"
+
+# ─── 1b. Auto-generate admin key from running container ─────────────────────
+# The admin key is cryptographically derived inside the container from
+# INSTANCE_SECRET. We always generate it from the container to ensure
+# it matches, so you never need to manually manage it.
+log "Generating admin key from Convex backend..."
+GENERATED_KEY="$(docker exec devcents-convex-1 ./generate_admin_key.sh 2>/dev/null | grep -v 'Admin key:' | tr -d '[:space:]')"
+if [ -z "$GENERATED_KEY" ]; then
+  err "Failed to generate admin key from container"
+  exit 1
+fi
+export CONVEX_SELF_HOSTED_ADMIN_KEY="$GENERATED_KEY"
+ok "Admin key ready"
 
 # ─── 2. Start Convex sync (background) ──────────────────────────────────────
 log "Starting Convex sync..."
 npm run convex:local &
 CONVEX_PID=$!
-sleep 2
+sleep 3
 
 if ! kill -0 "$CONVEX_PID" 2>/dev/null; then
   err "Convex sync failed to start"

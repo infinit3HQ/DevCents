@@ -18,6 +18,8 @@ services:
     ports:
       - "127.0.0.1:3210:3210"
       - "127.0.0.1:3211:3211"
+    volumes:
+      - convex-data-dev:/convex/data
     environment:
       CONVEX_LISTEN_PORT: 3210
       CONVEX_SITE_PORT: 3211
@@ -32,3 +34,4 @@ services:
 
 volumes:
   postgres-data-dev:
+  convex-data-dev:
