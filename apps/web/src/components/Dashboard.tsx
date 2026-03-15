@@ -1,10 +1,11 @@
 import { useUser } from "@clerk/tanstack-react-start";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
   ReceiptText,
   BarChart3,
+  CalendarClock,
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
@@ -13,15 +14,18 @@ import { cn } from "@/lib/utils";
 import { TransactionList } from "@/components/TransactionList";
 import { SpendingCharts } from "@/components/SpendingCharts";
 import { MobileNav } from "@/components/MobileNav";
+import { Planning } from "@/components/Planning";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly } from "@/lib/currencyUtils";
 
-type MobileTab = "overview" | "transactions" | "analytics";
+type MobileTab = "overview" | "transactions" | "planning" | "analytics";
+type DesktopLeftPane = "analytics" | "planning";
 
-const TABS: { id: MobileTab; label: string; icon: React.ElementType }[] = [
+const TABS: { id: MobileTab; label: string; icon: ElementType }[] = [
   { id: "overview", label: "Overview", icon: Wallet },
   { id: "transactions", label: "Ledger", icon: ReceiptText },
+  { id: "planning", label: "Plan", icon: CalendarClock },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
@@ -57,6 +61,8 @@ export function Dashboard() {
   const userName = user?.firstName ?? "user";
   const transactions = useDecryptedTransactions();
   const [activeTab, setActiveTab] = useState<MobileTab>("overview");
+  const [desktopLeftPane, setDesktopLeftPane] =
+    useState<DesktopLeftPane>("analytics");
   const { baseCurrency, convertAmount } = useCurrency();
 
   const stats = useMemo(() => {
@@ -281,6 +287,18 @@ export function Dashboard() {
                 <SpendingCharts />
               </motion.div>
             )}
+            {activeTab === "planning" && (
+              <motion.div
+                key="planning"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="p-5"
+              >
+                <Planning currentBalance={stats.balance} />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -290,14 +308,41 @@ export function Dashboard() {
             {/* Left: Charts (8 cols) */}
             <div className="col-span-8 flex flex-col border-r border-border">
               {/* Pane header */}
-              <div className="flex items-center gap-2 px-6 py-3 border-b border-border">
-                <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  analytics.view
-                </span>
+              <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {desktopLeftPane === "analytics"
+                      ? "analytics.view"
+                      : "plan.view"}
+                  </span>
+                </div>
+                <div className="flex items-center border border-border bg-card">
+                  {(["analytics", "planning"] as const).map((k) => {
+                    const active = desktopLeftPane === k;
+                    return (
+                      <button
+                        key={k}
+                        onClick={() => setDesktopLeftPane(k)}
+                        className={cn(
+                          "h-7 px-3 font-mono text-[10px] uppercase tracking-widest transition-colors border-r border-border last:border-r-0",
+                          active
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                        )}
+                      >
+                        {k === "analytics" ? "charts" : "plan"}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="p-6 lg:p-8 grow overflow-y-auto">
-                <SpendingCharts />
+                {desktopLeftPane === "analytics" ? (
+                  <SpendingCharts />
+                ) : (
+                  <Planning currentBalance={stats.balance} />
+                )}
               </div>
             </div>
 

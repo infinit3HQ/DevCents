@@ -13,6 +13,49 @@ export default defineSchema({
     encrypted: v.optional(v.boolean()), // true if fields are encrypted
   }).index("by_user", ["userId"]),
 
+  // One-time future items (planned income/expenses).
+  planned: defineTable({
+    userId: v.string(),
+    amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
+    currency: v.optional(v.string()),
+    type: v.union(v.literal("income"), v.literal("expense")),
+    category: v.string(),
+    description: v.string(), // plaintext or encrypted string
+    date: v.number(), // Unix timestamp (local date chosen by user)
+    status: v.optional(
+      v.union(
+        v.literal("planned"),
+        v.literal("posted"),
+        v.literal("skipped"),
+      ),
+    ),
+    postedTransactionId: v.optional(v.id("transactions")),
+    encrypted: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_date", ["userId", "date"]),
+
+  // Repeating items (salary, rent, subscriptions).
+  recurring: defineTable({
+    userId: v.string(),
+    amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
+    currency: v.optional(v.string()),
+    type: v.union(v.literal("income"), v.literal("expense")),
+    category: v.string(),
+    description: v.string(), // plaintext or encrypted string
+    startDate: v.number(), // Unix timestamp (first occurrence)
+    cadence: v.union(
+      v.literal("weekly"),
+      v.literal("biweekly"),
+      v.literal("monthly"),
+      v.literal("yearly"),
+    ),
+    active: v.optional(v.boolean()),
+    encrypted: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_startDate", ["userId", "startDate"]),
+
   budgets: defineTable({
     userId: v.string(),
     month: v.string(), // Format: "YYYY-MM"

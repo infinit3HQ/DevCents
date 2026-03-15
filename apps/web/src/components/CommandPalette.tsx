@@ -39,11 +39,10 @@ export function CommandPalette() {
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Actions">
           <CommandItem onSelect={() => runCommand(() => {
-              // Trigger Add Transaction (We can dispatch an event or focus the AddTransaction input)
-              document.dispatchEvent(new CustomEvent('open-add-transaction'));
+              document.dispatchEvent(new CustomEvent('open-add-entry'));
           })}>
             <Calculator className="mr-2 h-4 w-4" />
-            <span>Add Transaction</span>
+            <span>Add Entry</span>
             <CommandShortcut>⌘ T</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {

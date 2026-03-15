@@ -1,10 +1,11 @@
-import { Home, ReceiptText, BarChart3, Plus } from "lucide-react";
+import type { ElementType } from "react";
+import { Home, ReceiptText, BarChart3, Plus, CalendarClock } from "lucide-react";
 import { AddTransaction } from "./AddTransaction";
 import { motion } from "framer-motion";
 import { UserButton } from "@clerk/tanstack-react-start";
 import { cn } from "@/lib/utils";
 
-type MobileTab = "overview" | "transactions" | "analytics";
+type MobileTab = "overview" | "transactions" | "planning" | "analytics";
 
 interface MobileNavProps {
   activeTab?: MobileTab;
@@ -17,13 +18,14 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
     { id: "transactions" as MobileTab, label: "ledger", icon: ReceiptText },
   ];
   const rightTabs = [
+    { id: "planning" as MobileTab, label: "plan", icon: CalendarClock },
     { id: "analytics" as MobileTab, label: "charts", icon: BarChart3 },
   ];
 
   const tabBtn = (tab: {
     id: MobileTab;
     label: string;
-    icon: React.ElementType;
+    icon: ElementType;
   }) => {
     const Icon = tab.icon;
     const active = activeTab === tab.id;
