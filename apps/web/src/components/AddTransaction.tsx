@@ -13,7 +13,8 @@ import {
 } from "@/lib/categoryUtils";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { SUPPORTED_CURRENCIES, getCurrencySymbol } from "@/lib/currencyUtils";
+import { getCurrencySymbol } from "@/lib/currencyUtils";
+import { CurrencyCombobox } from "@/components/ui/CurrencyCombobox";
 import { parseLocalDateInputToNoonMs } from "@/lib/planningUtils";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 
@@ -91,7 +92,8 @@ function useEntryFormUX<
   useEffect(() => {
     if (description && description.length > 2) {
       const suggested = suggestCategory(description);
-      if (suggested !== "other") form.setValue("category", suggested as T["category"]);
+      if (suggested !== "other")
+        form.setValue("category", suggested as T["category"]);
     }
   }, [description, form]);
 
@@ -237,25 +239,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     setSubmitError(null);
   }, [open, mode]);
 
-  const formatSubmitError = (err: unknown) => {
-    const base =
-      err instanceof Error
-        ? err.message
-        : typeof err === "string"
-          ? err
-          : (() => {
-              try {
-                return JSON.stringify(err);
-              } catch {
-                return "Unknown error";
-              }
-            })();
-
-    // Common footgun: Clerk token template misconfiguration means Convex auth never succeeds.
-    if (/clerk/i.test(base) || /\/tokens/i.test(base) || /sess_/i.test(base)) {
-      return `${base} (Auth token failure: check Clerk JWT template "convex" and audience "convex".)`;
+  const formatSubmitError = (err: unknown): string => {
+    if (err instanceof Error) {
+      if (
+        /clerk/i.test(err.message) ||
+        /\/tokens/i.test(err.message) ||
+        /sess_/i.test(err.message)
+      ) {
+        return "Authentication error. Check your Clerk JWT template configuration.";
+      }
+      if (/network|fetch|failed to fetch/i.test(err.message)) {
+        return "Network error. Please check your connection and try again.";
+      }
     }
-    return base;
+    return "Something went wrong. Please try again.";
   };
 
   const focusFirstField = () => {
@@ -297,7 +294,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       setOpen(false);
       txForm.reset();
     } catch (err) {
-      console.error("Failed to submit ledger entry:", err);
       setSubmitError({ mode: "ledger", message: formatSubmitError(err) });
     } finally {
       setSavingMode(null);
@@ -325,7 +321,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       setOpen(false);
       plannedForm.reset();
     } catch (err) {
-      console.error("Failed to schedule planned entry:", err);
       setSubmitError({ mode: "planned", message: formatSubmitError(err) });
     } finally {
       setSavingMode(null);
@@ -354,7 +349,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       setOpen(false);
       recurringForm.reset();
     } catch (err) {
-      console.error("Failed to schedule recurring entry:", err);
       setSubmitError({ mode: "recurring", message: formatSubmitError(err) });
     } finally {
       setSavingMode(null);
@@ -532,27 +526,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                       control={txForm.control}
                                       name="currency"
                                       render={({ field: currencyField }) => (
-                                        <Select
-                                          onValueChange={currencyField.onChange}
-                                          defaultValue={currencyField.value}
+                                        <CurrencyCombobox
+                                          compact
                                           value={currencyField.value}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger className="h-12 w-[72px] rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest px-2 border border-border text-foreground/70">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest min-w-[72px] border border-border bg-card text-foreground/70">
-                                            {SUPPORTED_CURRENCIES.map((c) => (
-                                              <SelectItem
-                                                key={c.code}
-                                                value={c.code}
-                                              >
-                                                {c.code}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                          onChange={currencyField.onChange}
+                                        />
                                       )}
                                     />
                                   </div>
@@ -626,12 +604,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-	                      <motion.div
-	                        initial={{ opacity: 0, y: 10 }}
-	                        animate={{ opacity: 1, y: 0 }}
-	                        transition={{ delay: 0.25 }}
-	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-	                      >
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -641,26 +619,28 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-	                        <Button
-	                          type="submit"
-	                          disabled={savingMode === "ledger"}
-	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-	                        >
-	                          {savingMode === "ledger" ? "Submitting..." : "Submit Entry"}
-	                        </Button>
-	                      </motion.div>
-	                      {submitError?.mode === "ledger" && (
-	                        <div
-	                          role="alert"
-	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
-	                        >
-	                          {submitError.message}
-	                        </div>
-	                      )}
-	                    </form>
-	                  </Form>
-	                </motion.div>
-	              )}
+                        <Button
+                          type="submit"
+                          disabled={savingMode === "ledger"}
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                        >
+                          {savingMode === "ledger"
+                            ? "Submitting..."
+                            : "Submit Entry"}
+                        </Button>
+                      </motion.div>
+                      {submitError?.mode === "ledger" && (
+                        <div
+                          role="alert"
+                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+                        >
+                          {submitError.message}
+                        </div>
+                      )}
+                    </form>
+                  </Form>
+                </motion.div>
+              )}
 
               {mode === "planned" && (
                 <motion.div
@@ -773,27 +753,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                     control={plannedForm.control}
                                     name="currency"
                                     render={({ field: currencyField }) => (
-                                      <Select
-                                        onValueChange={currencyField.onChange}
-                                        defaultValue={currencyField.value}
+                                      <CurrencyCombobox
+                                        compact
                                         value={currencyField.value}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger className="h-12 w-[72px] rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest px-2 border border-border text-foreground/70">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest min-w-[72px] border border-border bg-card text-foreground/70">
-                                          {SUPPORTED_CURRENCIES.map((c) => (
-                                            <SelectItem
-                                              key={c.code}
-                                              value={c.code}
-                                            >
-                                              {c.code}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        onChange={currencyField.onChange}
+                                      />
                                     )}
                                   />
                                 </div>
@@ -866,12 +830,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-	                      <motion.div
-	                        initial={{ opacity: 0, y: 10 }}
-	                        animate={{ opacity: 1, y: 0 }}
-	                        transition={{ delay: 0.3 }}
-	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-	                      >
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -881,26 +845,28 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-	                        <Button
-	                          type="submit"
-	                          disabled={savingMode === "planned"}
-	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-	                        >
-	                          {savingMode === "planned" ? "Scheduling..." : "Schedule"}
-	                        </Button>
-	                      </motion.div>
-	                      {submitError?.mode === "planned" && (
-	                        <div
-	                          role="alert"
-	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
-	                        >
-	                          {submitError.message}
-	                        </div>
-	                      )}
-	                    </form>
-	                  </Form>
-	                </motion.div>
-	              )}
+                        <Button
+                          type="submit"
+                          disabled={savingMode === "planned"}
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                        >
+                          {savingMode === "planned"
+                            ? "Scheduling..."
+                            : "Schedule"}
+                        </Button>
+                      </motion.div>
+                      {submitError?.mode === "planned" && (
+                        <div
+                          role="alert"
+                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+                        >
+                          {submitError.message}
+                        </div>
+                      )}
+                    </form>
+                  </Form>
+                </motion.div>
+              )}
 
               {mode === "recurring" && (
                 <motion.div
@@ -1057,27 +1023,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                       control={recurringForm.control}
                                       name="currency"
                                       render={({ field: currencyField }) => (
-                                        <Select
-                                          onValueChange={currencyField.onChange}
-                                          defaultValue={currencyField.value}
+                                        <CurrencyCombobox
+                                          compact
                                           value={currencyField.value}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger className="h-12 w-[72px] rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest px-2 border border-border text-foreground/70">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest min-w-[72px] border border-border bg-card text-foreground/70">
-                                            {SUPPORTED_CURRENCIES.map((c) => (
-                                              <SelectItem
-                                                key={c.code}
-                                                value={c.code}
-                                              >
-                                                {c.code}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                          onChange={currencyField.onChange}
+                                        />
                                       )}
                                     />
                                   </div>
@@ -1151,12 +1101,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         />
                       </motion.div>
 
-	                      <motion.div
-	                        initial={{ opacity: 0, y: 10 }}
-	                        animate={{ opacity: 1, y: 0 }}
-	                        transition={{ delay: 0.35 }}
-	                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
-	                      >
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                      >
                         <DrawerClose asChild>
                           <Button
                             variant="outline"
@@ -1166,28 +1116,28 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             Abort
                           </Button>
                         </DrawerClose>
-	                        <Button
-	                          type="submit"
-	                          disabled={savingMode === "recurring"}
-	                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
-	                        >
-	                          {savingMode === "recurring"
-	                            ? "Saving..."
-	                            : "Save Recurring"}
-	                        </Button>
-	                      </motion.div>
-	                      {submitError?.mode === "recurring" && (
-	                        <div
-	                          role="alert"
-	                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
-	                        >
-	                          {submitError.message}
-	                        </div>
-	                      )}
-	                    </form>
-	                  </Form>
-	                </motion.div>
-	              )}
+                        <Button
+                          type="submit"
+                          disabled={savingMode === "recurring"}
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                        >
+                          {savingMode === "recurring"
+                            ? "Saving..."
+                            : "Save Recurring"}
+                        </Button>
+                      </motion.div>
+                      {submitError?.mode === "recurring" && (
+                        <div
+                          role="alert"
+                          className="mt-3 border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive"
+                        >
+                          {submitError.message}
+                        </div>
+                      )}
+                    </form>
+                  </Form>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </motion.div>

@@ -1,65 +1,164 @@
+<div align="center">
+
+<img src="apps/web/public/logo512.png" width="80" alt="DevCents Logo" />
+
 # DevCents
 
-Smart, self-hosted money management built with **TanStack Start**, **Convex**, and **Clerk**.
+**Self-hosted, privacy-first personal finance.**
+Your money data stays on your server, encrypted by your passphrase, visible only to you.
 
-## Prerequisites
+[![AGPL-3.0 License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/self--hosted-Docker-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![TanStack](https://img.shields.io/badge/built%20with-TanStack-FF4154?logo=react&logoColor=white)](https://tanstack.com/start)
+[![Convex](https://img.shields.io/badge/backend-Convex-EE342F)](https://convex.dev)
 
-- **Node.js** ≥ 22
-- **Docker** (for the self-hosted Convex backend)
+<!-- Replace with your actual screenshots -->
+![DevCents Desktop](.github/screenshots/desktop.png)
+
+<p>
+  <img src=".github/screenshots/mobile-1.png" width="22%" />
+  <img src=".github/screenshots/mobile-2.png" width="22%" />
+  <img src=".github/screenshots/mobile-3.png" width="22%" />
+  <img src=".github/screenshots/mobile-4.png" width="22%" />
+</p>
+
+</div>
+
+---
+
+## Why DevCents?
+
+| | DevCents | Mint / YNAB | Spreadsheets |
+|---|---|---|---|
+| Your data, your server | ✅ | ❌ | ✅ |
+| Client-side encryption | ✅ | ❌ | ❌ |
+| Biometric unlock | ✅ | ✅ | ❌ |
+| No subscription | ✅ | ❌ | ✅ |
+| Multi-currency | ✅ | ⚠️ | Manual |
+| AI assistant (MCP) | ✅ | ❌ | ❌ |
+| Mobile optimized | ✅ | ✅ | ❌ |
+
+---
+
+## Features
+
+- **🔒 Client-side encryption** — AES-GCM encryption with a passphrase only you know. The server stores ciphertext.
+- **🤳 Biometric unlock** — Face ID / fingerprint via WebAuthn. No password prompts on your own device.
+- **🌍 Multi-currency** — Log transactions in any currency, auto-converted to your base.
+- **🚫 No Plaid, no scraping** — You enter what you spend. Nothing connects to your bank.
+- **🤖 Claude MCP integration** — Ask Claude about your finances. Transactions are decrypted locally before being sent.
+- **📱 100% mobile optimized** — Feels native on iOS and Android browsers.
+- **🏠 Fully self-hosted** — One `docker compose up` and it's yours, on your server.
+
+---
 
 ## Quick Start
 
+**Prerequisites:** Node.js ≥ 22, Docker
+
 ```bash
-# Install dependencies
+# 1. Clone and install
+git clone https://github.com/infinit3HQ/DevCents.git
+cd DevCents
 npm install
 
-# Start everything for local development (Convex + Vite)
+# 2. Start everything (Convex backend + Vite dev server)
 npm run dev:all
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) and create your account.
 
-Press `Ctrl+C` to tear down all services.
+> **Self-hosting in production?** See [Deployment](#deployment) below.
+
+---
+
+## Claude MCP Setup
+
+DevCents ships an [MCP server](apps/mcp/) so Claude can read and add your transactions.
+
+**1.** Generate an API token in **Settings → API & AI Access**
+
+**2.** Add to your Claude / Cursor MCP config:
+
+```json
+{
+  "mcpServers": {
+    "devcents": {
+      "command": "npx",
+      "args": ["-y", "@devcents/mcp"],
+      "env": {
+        "DEVCENTS_API_KEY": "dct_live_your_token_here",
+        "DEVCENTS_PASSPHRASE": "your_encryption_passphrase",
+        "CONVEX_URL": "https://your-convex-instance.com"
+      }
+    }
+  }
+}
+```
+
+**3.** Ask Claude: *"What did I spend last week?"* or *"Add a $12 coffee expense."*
+
+---
 
 ## Scripts
 
-| Script                 | Description                                        |
-| ---------------------- | -------------------------------------------------- |
-| `npm run dev:all`      | Start local Convex and the Vite dev server         |
-| `npm run dev`          | Start the Vite dev server only                     |
-| `npm run convex:local` | Start Convex sync against the local Docker backend |
-| `npm run build`        | Build the production web app                       |
-| `npm run test`         | Run tests with Vitest                              |
+| Script | Description |
+| --- | --- |
+| `npm run dev:all` | Start local Convex backend + Vite dev server |
+| `npm run dev` | Vite dev server only |
+| `npm run convex:local` | Sync Convex against local Docker backend |
+| `npm run build` | Build the production web app |
+| `npm run test` | Run tests with Vitest |
+
+---
 
 ## Tech Stack
 
-- **Framework** — [TanStack Start](https://tanstack.com/start) (React, file-based routing)
-- **Backend** — [Convex](https://convex.dev) (self-hosted via Docker)
-- **Auth** — [Clerk](https://clerk.com)
-- **Styling** — [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)
-- **Animations** — [Framer Motion](https://motion.dev)
+| Layer | Technology |
+|---|---|
+| Framework | [TanStack Start](https://tanstack.com/start) — React, file-based routing |
+| Backend | [Convex](https://convex.dev) — self-hosted via Docker |
+| Auth | [Clerk](https://clerk.com) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
+| Animations | [Framer Motion](https://motion.dev) |
+| AI | [MCP SDK](https://modelcontextprotocol.io) |
+
+---
 
 ## Project Structure
 
 ```
 ├── apps/
-│   ├── mcp/            # MCP service
-│   └── web/            # TanStack Start app and Convex functions
+│   ├── mcp/                # MCP server for Claude integration
+│   └── web/                # TanStack Start app + Convex functions
 ├── packages/
-│   └── shared/         # Shared utilities
+│   └── shared/             # Crypto utilities shared across apps
 ├── deployment/
-│   ├── Dockerfile      # Canonical production image build
-│   └── start.sh        # Runtime env injection for the web image
+│   ├── Dockerfile          # Production image
+│   └── start.sh            # Runtime env injection
 ├── scripts/
-│   └── dev.sh          # Local Convex + Vite orchestrator
-├── docker-compose.dev.yml
-├── docker-compose.yml  # Production stack for the self-hosted server
-└── package.json
+│   └── dev.sh              # Local dev orchestrator
+├── docker-compose.yml      # Production self-hosted stack
+└── docker-compose.dev.yml  # Local development stack
 ```
+
+---
 
 ## Deployment
 
-- `docker-compose.yml` is the production stack consumed by the self-hosted deploy workflow.
-- `docker-compose.dev.yml` is only for local development.
-- `.github/workflows/docker-release.yml` publishes the production web image to GHCR.
-- `.github/workflows/deploy.yml` runs after a successful release and pulls that published image onto the server.
+DevCents is designed to run on your own server with a single compose file.
+
+```bash
+# Pull and start the production stack
+docker compose up -d
+```
+
+- `docker-compose.yml` — production stack (web app + Convex backend)
+- `.github/workflows/docker-release.yml` — publishes image to GHCR on release
+- `.github/workflows/deploy.yml` — pulls the new image to your server after release
+
+---
+
+## License
+
+[AGPL-3.0](LICENSE) — © 2026 infinit3HQ

@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { SignedIn, UserButton } from "@clerk/tanstack-react-start";
 import { motion } from "framer-motion";
 import {
@@ -62,6 +62,18 @@ function EncryptionBadge() {
 }
 
 export default function Header() {
+  const location = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const isSettings = location === "/settings";
+
+  function toggleSettings() {
+    if (isSettings) {
+      navigate({ to: "/" });
+    } else {
+      navigate({ to: "/settings" });
+    }
+  }
+
   return (
     <motion.header
       initial={{ y: -4, opacity: 0 }}
@@ -117,13 +129,13 @@ export default function Header() {
           />
 
           {/* Settings */}
-          <Link
-            to="/settings"
-            className="hidden sm:flex h-7 w-7 items-center justify-center transition-colors border border-border text-muted-foreground [&.active]:border-primary/40 [&.active]:text-primary"
-            title="Settings"
+          <button
+            onClick={toggleSettings}
+            className={`hidden sm:flex h-7 w-7 items-center justify-center transition-colors border border-border text-muted-foreground ${isSettings ? "border-primary/40 text-primary" : ""}`}
+            title={isSettings ? "Close settings" : "Settings"}
           >
             <Settings className="h-3.5 w-3.5" />
-          </Link>
+          </button>
 
           <div className="h-7 w-7 flex items-center justify-center">
             <UserButton afterSignOutUrl="/" />

@@ -102,7 +102,7 @@ export const mcpGetTransactions = query({
   handler: async (ctx, args) => {
     const userId = await authenticateMCP(ctx, args.tokenHash);
 
-    const limit = args.limit ?? 50;
+    const limit = Math.min(args.limit ?? 50, 500);
 
     return await ctx.db
       .query("transactions")

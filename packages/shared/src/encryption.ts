@@ -104,6 +104,16 @@ export async function verifyPassphrase(
   }
 }
 
+// ─── Token Hashing ──────────────────────────────────────────────
+
+export async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // ─── Helpers ────────────────────────────────────────────────────
 
 export function saltToBase64(salt: Uint8Array): string {

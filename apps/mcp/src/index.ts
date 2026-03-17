@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../web/convex/_generated/api.js";
-import { deriveKey, base64ToSalt, decrypt, encrypt } from "@devcents/shared";
+import { deriveKey, base64ToSalt, decrypt, encrypt, hashToken } from "@devcents/shared";
 
 // ─── Environment configuration ──────────────────────────────────────────────
 
@@ -31,25 +31,6 @@ const server = new McpServer({
   name: "DevCents MCP Server",
   version: "1.0.0",
 });
-
-// ─── Cryptography Helper ────────────────────────────────────────────────────
-
-/**
- * Creates the AES-GCM Key asynchronously. We need the salt from the server first.
- * If we can't get the salt via MCP yet (because the existing backend methods
- * don't expose it to the token), we should fetch it or hardcode.
- * Wait, `mcpGetTransactions` doesn't return the salt! That means we can't derive the key.
- */
-
-// Let's add a helper to hash the provided API_KEY so we can send it to Convex
-async function hashToken(token: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 // ─── Tools ──────────────────────────────────────────────────────────────────
 
@@ -103,11 +84,10 @@ server.tool(
       return {
         content: [{ type: "text", text: JSON.stringify(decrypted, null, 2) }],
       };
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       return {
-        content: [
-          { type: "text", text: `Error fetching transactions: ${e.message}` },
-        ],
+        content: [{ type: "text", text: `Error fetching transactions: ${message}` }],
         isError: true,
       };
     }
@@ -162,18 +142,12 @@ server.tool(
       });
 
       return {
-        content: [
-          {
-            type: "text",
-            text: `Successfully encrypted and added transaction: ${description} for ${amount}.`,
-          },
-        ],
+        content: [{ type: "text", text: "Transaction encrypted and saved successfully." }],
       };
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       return {
-        content: [
-          { type: "text", text: `Error adding transaction: ${e.message}` },
-        ],
+        content: [{ type: "text", text: `Error adding transaction: ${message}` }],
         isError: true,
       };
     }

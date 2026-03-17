@@ -14,7 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { SUPPORTED_CURRENCIES } from "@/lib/currencyUtils";
+import { CurrencyCombobox } from "@/components/ui/CurrencyCombobox";
+import { hashToken } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -358,15 +359,6 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
 
 // ─── API Token Helpers ────────────────────────────────────────────
 
-async function hashToken(token: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 function generateRawToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -396,15 +388,19 @@ function ApiAccessSection() {
         tokenHash: hash,
       });
       setNewToken(raw);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // token generation failed silently — user can retry
     } finally {
       setLoading(false);
     }
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(newToken);
+    try {
+      await navigator.clipboard.writeText(newToken);
+    } catch {
+      // clipboard unavailable — user can manually copy from the displayed token
+    }
   };
 
   const clearNewToken = () => setNewToken("");
@@ -505,7 +501,7 @@ export function Settings() {
     } finally {
       setBioLoading(false);
     }
-  }, [user]);
+  }, [user?.id, user?.fullName]);
 
   const handleDisableBio = useCallback(() => {
     if (!user?.id) return;
@@ -642,21 +638,11 @@ export function Settings() {
                     values converted to this globally
                   </p>
                 </div>
-                <select
+                <CurrencyCombobox
                   value={baseCurrency}
-                  onChange={(e) => setBaseCurrency(e.target.value)}
-                  className="bg-transparent font-mono text-[10px] uppercase tracking-widest outline-none cursor-pointer text-primary"
-                >
-                  {SUPPORTED_CURRENCIES.map((c) => (
-                    <option
-                      key={c.code}
-                      value={c.code}
-                      className="bg-background text-foreground"
-                    >
-                      {c.code} ({c.symbol})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setBaseCurrency}
+                  className="w-[160px]"
+                />
               </div>
             </Section>
 
