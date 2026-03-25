@@ -45,13 +45,92 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "DevCents - Self-hosted Money Management",
+        title: "DevCents — Self-hosted, Privacy-first Personal Finance",
+      },
+      {
+        name: "description",
+        content:
+          "Self-hosted personal finance app with client-side encryption. Track expenses, manage budgets, and keep your money data private on your own server.",
+      },
+      {
+        name: "theme-color",
+        content: "#09090b",
+      },
+
+      // Open Graph
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:title",
+        content: "DevCents — Self-hosted, Privacy-first Personal Finance",
+      },
+      {
+        property: "og:description",
+        content:
+          "Track expenses with AES-256 client-side encryption. Your money data stays on your server, visible only to you.",
+      },
+      {
+        property: "og:image",
+        content: "/logo512.png",
+      },
+      {
+        property: "og:site_name",
+        content: "DevCents",
+      },
+
+      // Twitter
+      {
+        name: "twitter:card",
+        content: "summary",
+      },
+      {
+        name: "twitter:title",
+        content: "DevCents — Self-hosted Personal Finance",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Privacy-first expense tracking with client-side encryption. Self-host with one Docker command.",
+      },
+      {
+        name: "twitter:image",
+        content: "/logo512.png",
+      },
+
+      // Additional SEO
+      {
+        name: "robots",
+        content: "index, follow",
+      },
+      {
+        name: "author",
+        content: "infinit3HQ",
+      },
+      {
+        name: "keywords",
+        content:
+          "personal finance, self-hosted, expense tracker, budget, privacy, encryption, open source, docker",
       },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        href: "/favicon.ico",
+        type: "image/x-icon",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/logo192.png",
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
       },
     ],
   }),
