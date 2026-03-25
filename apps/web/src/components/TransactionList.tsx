@@ -107,9 +107,8 @@ export function TransactionList({
 
   const GroupControls = () => (
     <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-card/30 overflow-x-auto no-scrollbar">
-      <div className="flex items-center gap-1.5 pr-3 mr-1 border-r border-border/50">
-        <LayoutList className="h-3 w-3 text-muted-foreground/60" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 whitespace-nowrap">View:</span>
+      <div className="flex items-center gap-1.5 pr-3 mr-1.5 border-r border-border/50">
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 whitespace-nowrap">view:</span>
       </div>
       <div className="flex items-center gap-1">
         {[

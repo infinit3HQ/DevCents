@@ -303,12 +303,15 @@ export function Dashboard() {
         </div>
 
         {/* ── DESKTOP 2-COL ───────────────────────────────────────────── */}
-        <div className="hidden md:flex grow border-b border-border min-h-0">
-          <div className="grid grid-cols-12 w-full h-full">
+        <div className="hidden md:flex grow border-b border-border min-h-0 relative">
+          <div className="absolute inset-0 dot-grid opacity-40 pointer-events-none" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_92%)_0%,transparent_70%)]" />
+          <div className="absolute -top-20 right-1/3 w-64 h-64 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_96%)_0%,transparent_70%)]" />
+          <div className="grid grid-cols-12 w-full h-full relative z-0">
             {/* Left: Charts (8 cols) */}
             <div className="col-span-8 flex flex-col border-r border-border h-full min-h-0">
               {/* Pane header */}
-              <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0">
+              <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0 bg-card/40 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -349,9 +352,9 @@ export function Dashboard() {
             </div>
 
             {/* Right: Ledger (4 cols) */}
-            <div className="col-span-4 flex flex-col bg-card h-full">
+            <div className="col-span-4 flex flex-col bg-card/60 backdrop-blur-sm h-full">
               {/* Pane header */}
-              <div className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card top-0 shrink-0">
+              <div className="flex items-center justify-between px-4 py-3 sticky z-10 border-b border-border bg-card top-0 shrink-0">
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
