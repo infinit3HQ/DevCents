@@ -12,7 +12,7 @@ import {
   encrypt,
   decrypt,
 } from "@devcents/shared";
-import { saveKey, loadKey, clearKey } from "@devcents/shared";
+import { saveKey, loadKey } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 // ─── Constants ───────────────────────────────────────────────────
 
 const INACTIVITY_MS = 5 * 60 * 1000;
+const LOCK_KEY = "devcents:locked";
 const ACTIVITY_EVENTS = [
   "mousemove",
   "keydown",
@@ -73,6 +74,12 @@ export function EncryptionProvider({
   useEffect(() => {
     if (!user?.id || !settings) return;
 
+    // If locked by inactivity, don't restore — require manual unlock
+    if (sessionStorage.getItem(LOCK_KEY) === "true") {
+      setShowUnlock(true);
+      return;
+    }
+
     let cancelled = false;
     loadKey(user.id)
       .then((key) => {
@@ -90,14 +97,17 @@ export function EncryptionProvider({
   // ── Show unlock dialog when no key found ─────────────────────
   useEffect(() => {
     if (!settings || !user) return;
+    // Only run once on mount — give loadKey time to restore before showing dialog
+    if (cryptoKey) return;
     const t = setTimeout(() => {
       setCryptoKey((prev) => {
         if (!prev) setShowUnlock(true);
         return prev;
       });
-    }, 350);
+    }, 600);
     return () => clearTimeout(t);
-  }, [settings, cryptoKey, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, user]);
 
   // ── 5-min inactivity auto-lock ───────────────────────────────
   useEffect(() => {
@@ -105,12 +115,8 @@ export function EncryptionProvider({
 
     let timer: ReturnType<typeof setTimeout>;
     const lock = async () => {
+      sessionStorage.setItem(LOCK_KEY, "true");
       setCryptoKey(null);
-      // Clear the local key entry if they don't have biometric auth
-      // to ensure a refresh requires typing the passphrase.
-      if (!hasBio) {
-        await clearKey(user.id);
-      }
       setShowUnlock(true);
     };
     const reset = () => {
@@ -126,7 +132,7 @@ export function EncryptionProvider({
       clearTimeout(timer);
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, reset));
     };
-  }, [isUnlocked, user?.id, hasBio]);
+  }, [isUnlocked, user?.id]);
 
   // ── Crypto helpers ───────────────────────────────────────────
   const encryptValue = useCallback(
@@ -179,6 +185,7 @@ export function EncryptionProvider({
       const key = await deriveKey(passphrase, salt);
       const valid = await verifyPassphrase(key, settings.verificationHash);
       if (valid) {
+        sessionStorage.removeItem(LOCK_KEY);
         setCryptoKey(key);
         await saveKey(user.id, key);
         setShowUnlock(false);
@@ -195,6 +202,7 @@ export function EncryptionProvider({
     if (ok) {
       const key = await loadKey(user.id);
       if (key) {
+        sessionStorage.removeItem(LOCK_KEY);
         setCryptoKey(key);
         setShowUnlock(false);
         return true;
