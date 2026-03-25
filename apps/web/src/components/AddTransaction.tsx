@@ -398,7 +398,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           e.preventDefault();
           focusFirstField();
         }}
-        className="rounded-t-[20px] border-t border-border bg-card"
+        className="rounded-t-[20px] border-t border-border bg-card max-h-[94vh] overflow-y-auto"
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
