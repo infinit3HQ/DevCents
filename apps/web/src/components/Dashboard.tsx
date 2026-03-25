@@ -247,7 +247,7 @@ export function Dashboard() {
         </div>
 
         {/* ── MOBILE CONTENT ──────────────────────────────────────────── */}
-        <div className="md:hidden grow overflow-y-auto">
+        <div className="md:hidden grow overflow-y-auto pb-10">
           <AnimatePresence mode="wait">
             {activeTab === "overview" && (
               <motion.div
@@ -309,7 +309,7 @@ export function Dashboard() {
           <div className="absolute -top-20 right-1/3 w-64 h-64 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_96%)_0%,transparent_70%)]" />
           <div className="grid grid-cols-12 w-full h-full relative z-0">
             {/* Left: Charts (8 cols) */}
-            <div className="col-span-8 flex flex-col border-r border-border h-full min-h-0">
+            <div className="col-span-8 flex flex-col border-r border-border h-full min-h-0 overflow-hidden">
               {/* Pane header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0 bg-card/40 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
@@ -352,9 +352,9 @@ export function Dashboard() {
             </div>
 
             {/* Right: Ledger (4 cols) */}
-            <div className="col-span-4 flex flex-col bg-card/60 backdrop-blur-sm h-full">
+            <div className="col-span-4 flex flex-col bg-card/60 backdrop-blur-sm h-full min-h-0 overflow-hidden">
               {/* Pane header */}
-              <div className="flex items-center justify-between px-4 py-3 sticky z-10 border-b border-border bg-card top-0 shrink-0">
+              <div className="flex items-center justify-between px-4 py-5 sticky z-10 border-b border-border bg-card top-0 shrink-0">
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">

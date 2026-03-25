@@ -176,7 +176,7 @@ export function TransactionList({
   );
 
   return (
-    <div className={cn("pb-20 md:pb-4", compact && "pb-0")}>
+    <div className={cn("pb-20 md:pb-0", compact && "pb-0")}>
       {!limit && <GroupControls />}
 
       {/* ── MOBILE LIST ─────────────────────────────────────────── */}
