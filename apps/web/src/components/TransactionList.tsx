@@ -106,57 +106,68 @@ export function TransactionList({
     );
 
   const GroupControls = () => (
-    <div className="flex items-center gap-1 p-2 border-b border-border bg-card/30 overflow-x-auto no-scrollbar">
-      <div className="flex items-center gap-1 pr-2 border-r border-border/50">
-        <LayoutList className="h-3 w-3 text-muted-foreground" />
-        <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground whitespace-nowrap">View:</span>
+    <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-card/30 overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-1.5 pr-3 mr-1 border-r border-border/50">
+        <LayoutList className="h-3 w-3 text-muted-foreground/60" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 whitespace-nowrap">View:</span>
       </div>
-      {[
-        { id: "none", label: "Flat", icon: LayoutList },
-        { id: "day", label: "Daily", icon: CalendarDays },
-        { id: "week", label: "Weekly", icon: CalendarRange },
-        { id: "month", label: "Monthly", icon: CalendarSync },
-      ].map((m) => {
-        const Icon = m.icon;
-        const active = groupBy === m.id;
-        return (
-          <button
-            key={m.id}
-            onClick={() => setGroupBy(m.id as GroupBy)}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-none font-mono text-[9px] uppercase tracking-wider transition-all border",
-              active
-                ? "bg-primary/10 text-primary border-primary/30"
-                : "text-muted-foreground hover:text-foreground border-transparent hover:bg-white/5",
-            )}
-          >
-            <Icon className="h-3 w-3" />
-            {m.label}
-          </button>
-        );
-      })}
+      <div className="flex items-center gap-1">
+        {[
+          { id: "none", label: "Flat", icon: LayoutList },
+          { id: "day", label: "Daily", icon: CalendarDays },
+          { id: "week", label: "Weekly", icon: CalendarRange },
+          { id: "month", label: "Monthly", icon: CalendarSync },
+        ].map((m) => {
+          const Icon = m.icon;
+          const active = groupBy === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setGroupBy(m.id as GroupBy)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-none font-mono text-[9px] uppercase tracking-widest transition-all border",
+                active
+                  ? "bg-primary/10 text-primary border-primary/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                  : "text-muted-foreground hover:text-foreground border-transparent hover:bg-white/5",
+              )}
+            >
+              <Icon className="h-3 w-3" />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 
-  const GroupHeader = ({ name, income, expense, count, isOpen, onToggle }: { name: string, income: number, expense: number, count: number, isOpen: boolean, onToggle: () => void }) => (
+  const GroupHeader = ({ name, income, expense, count, isOpen, onToggle, isMobile = false }: { name: string, income: number, expense: number, count: number, isOpen: boolean, onToggle: () => void, isMobile?: boolean }) => (
     <div
       onClick={onToggle}
-      className="flex items-center justify-between px-4 py-2.5 bg-muted/20 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors group"
+      className={cn(
+        "flex items-center justify-between px-4 py-3 bg-muted/20 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors group",
+        isMobile && "border-l-[3px] border-l-transparent"
+      )}
     >
-      <div className="flex items-center gap-2">
-        {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-        <span className="font-mono text-[10px] uppercase tracking-widest text-foreground font-medium">{name}</span>
-        <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground opacity-60">({count})</span>
+      <div className="flex items-center gap-3">
+        <div className="w-4 flex justify-center">
+          {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70" />}
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-foreground font-medium">{name}</span>
+          <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/60">{count}_items</span>
+        </div>
       </div>
       <div className="flex items-center gap-4">
-        {income > 0 && (
-          <span className="font-mono text-[10px] text-primary num-display">+{formatCurrency(income, baseCurrency)}</span>
-        )}
-        {expense > 0 && (
-          <span className="font-mono text-[10px] text-destructive num-display">-{formatCurrency(expense, baseCurrency)}</span>
-        )}
+        <div className="hidden sm:flex items-center gap-3 pr-3 border-r border-border/30">
+          {income > 0 && (
+            <span className="font-mono text-[10px] text-primary/80 num-display">+{formatCurrency(income, baseCurrency)}</span>
+          )}
+          {expense > 0 && (
+            <span className="font-mono text-[10px] text-destructive/80 num-display">-{formatCurrency(expense, baseCurrency)}</span>
+          )}
+        </div>
         <span className={cn(
-          "font-mono text-[10px] num-display border-l border-border/50 pl-3 ml-1",
+          "font-mono text-[10px] num-display",
           income - expense >= 0 ? "text-foreground" : "text-destructive"
         )}>
           {formatCurrency(income - expense, baseCurrency)}
@@ -182,13 +193,14 @@ export function TransactionList({
                   count={group.transactions.length}
                   isOpen={expandedGroups[key] !== false}
                   onToggle={() => toggleGroup(key)}
+                  isMobile
                 />
                 {expandedGroups[key] !== false && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden divide-y divide-border/50"
+                    className="overflow-hidden"
                   >
                     {group.transactions.map((t, index) => (
                       <TransactionMobileRow
@@ -205,7 +217,7 @@ export function TransactionList({
               </div>
             ))
           ) : (
-            <div className="divide-y border-border">
+            <div className="border-border">
               {transactions.map((t, index) => (
                 <TransactionMobileRow
                   key={t._id}
@@ -302,7 +314,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 12 }}
       transition={{ duration: 0.18, delay: index * 0.025 }}
-      className="flex items-center gap-3 px-4 py-3.5 transition-colors border-b border-border/50 last:border-b-0 hover:bg-primary/5"
+      className="flex items-center gap-3 px-4 py-3 transition-colors border-b border-border/50 last:border-b-0 hover:bg-primary/5"
       style={{ borderLeftWidth: "3px", borderLeftColor: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }}
     >
       {/* Type icon */}
