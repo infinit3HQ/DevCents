@@ -8,6 +8,7 @@ env:
   WEB_IMAGE: ghcr.io/infinit3hq/devcents:latest
   TRAEFIK_WEB_HOST: devcents.012140.xyz
   VITE_CONVEX_URL: https://devcents-convex.012140.xyz
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:

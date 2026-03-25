@@ -8,6 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: infinit3hq/devcents
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-release:
@@ -32,8 +33,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          TAG="${{ steps.create_tag.outputs.tag }}"
+          
+          if gh release view "$TAG" &>/dev/null; then
+            echo "Release $TAG already exists, skipping."
+            exit 0
+          fi
+          
           COMMIT_MSG=$(git log -1 --pretty=%s)
-          gh release create "${{ steps.create_tag.outputs.tag }}" \
+          gh release create "$TAG" \
             --title "$COMMIT_MSG" \
             --generate-notes \
             --target "${{ github.sha }}"
