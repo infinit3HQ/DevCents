@@ -7,7 +7,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { Id } from "../../convex/_generated/dataModel";
 import { formatCurrency } from "@/lib/currencyUtils";
-import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import { CATEGORY_COLORS, CATEGORY_ICONS, CATEGORIES } from "@/lib/categoryUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TransactionListProps {
   limit?: number;
@@ -20,6 +26,7 @@ export function TransactionList({
 }: TransactionListProps) {
   const allTransactions = useDecryptedTransactions();
   const deleteTransaction = useMutation(api.transactions.remove);
+  const updateTransaction = useMutation(api.transactions.update);
   const transactions =
     limit && allTransactions
       ? allTransactions.slice(0, limit)
@@ -87,10 +94,26 @@ export function TransactionList({
                   {t.description}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1">
-                    {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3 w-3" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
-                    {t.category}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1 hover:text-foreground transition-colors focus:outline-none cursor-pointer">
+                      {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3 w-3" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
+                      {t.category}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70 min-w-[140px]" align="start">
+                      {CATEGORIES.map((c) => (
+                        <DropdownMenuItem
+                          key={c.value}
+                          onSelect={() => updateTransaction({ id: t._id as Id<"transactions">, category: c.value })}
+                          className="cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            {(() => { const Icon = CATEGORY_ICONS[c.value] ?? CATEGORY_ICONS.other; return <Icon className="h-3 w-3" style={{ color: CATEGORY_COLORS[c.value] ?? CATEGORY_COLORS.other }} />; })()}
+                            {c.label}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <span className="font-mono text-[9px] text-muted-foreground opacity-60">
                     {new Date(t.date).toLocaleDateString(undefined, {
                       month: "short",
@@ -173,10 +196,26 @@ export function TransactionList({
                   })}
                 </td>
                 <td className="px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3.5 w-3.5" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
-                    {t.category}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none cursor-pointer">
+                      {(() => { const Icon = CATEGORY_ICONS[t.category] ?? CATEGORY_ICONS.other; return <Icon className="h-3.5 w-3.5" style={{ color: CATEGORY_COLORS[t.category] ?? CATEGORY_COLORS.other }} />; })()}
+                      {t.category}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70 min-w-[140px]" align="start">
+                      {CATEGORIES.map((c) => (
+                        <DropdownMenuItem
+                          key={c.value}
+                          onSelect={() => updateTransaction({ id: t._id as Id<"transactions">, category: c.value })}
+                          className="cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            {(() => { const Icon = CATEGORY_ICONS[c.value] ?? CATEGORY_ICONS.other; return <Icon className="h-3 w-3" style={{ color: CATEGORY_COLORS[c.value] ?? CATEGORY_COLORS.other }} />; })()}
+                            {c.label}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
                 <td className="px-4 py-3 font-mono text-[12px] truncate max-w-[200px] text-foreground/80">
                   {t.description}

@@ -67,6 +67,26 @@ export const createMany = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id: v.id("transactions"),
+    category: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const transaction = await ctx.db.get(args.id);
+    if (!transaction) throw new Error("Not found");
+    if (transaction.userId !== identity.subject)
+      throw new Error("Unauthorized");
+
+    await ctx.db.patch(args.id, {
+      category: args.category,
+    });
+  },
+});
+
 export const remove = mutation({
   args: {
     id: v.id("transactions"),
