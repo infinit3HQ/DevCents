@@ -22,7 +22,7 @@ import {
 
 export function LandingPage() {
   return (
-    <div className="relative overflow-hidden flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="relative overflow-y-auto flex-1 flex flex-col">
       {/* Animated background */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5" />

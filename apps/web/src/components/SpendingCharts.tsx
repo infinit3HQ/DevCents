@@ -31,7 +31,11 @@ const TOOLTIP_STYLE = {
   padding: "8px 12px",
 };
 
-export function SpendingCharts() {
+interface SpendingChartsProps {
+  mode?: "all" | "category" | "monthly";
+}
+
+export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
   const transactions = useDecryptedTransactions();
   const { baseCurrency, convertAmount } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
@@ -54,7 +58,7 @@ export function SpendingCharts() {
         Icon: (CATEGORY_ICONS[name] ?? CATEGORY_ICONS.other) as LucideIcon,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions]);
+  }, [transactions, convertAmount]);
 
   const monthlyData = useMemo(() => {
     if (!transactions?.length) return [];
@@ -95,6 +99,9 @@ export function SpendingCharts() {
 
   const totalExpenses = categoryData.reduce((s, d) => s + d.value, 0);
 
+  const showCategory = mode === "all" || mode === "category";
+  const showMonthly = mode === "all" || mode === "monthly";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -103,7 +110,7 @@ export function SpendingCharts() {
       className="space-y-5"
     >
       {/* Category Pie */}
-      {categoryData.length > 0 && (
+      {showCategory && categoryData.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -216,7 +223,7 @@ export function SpendingCharts() {
       )}
 
       {/* Monthly Overview */}
-      {monthlyData.length > 0 && (
+      {showMonthly && monthlyData.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

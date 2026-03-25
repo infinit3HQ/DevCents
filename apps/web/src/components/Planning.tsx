@@ -408,7 +408,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         ) : (
           <div className="divide-y border-border">
             <AnimatePresence mode="popLayout">
-              {events.slice(0, 12).map((e, i) => {
+              {events.map((e, i) => {
                 const Icon = CATEGORY_ICONS[e.category] ?? CATEGORY_ICONS.other;
                 const accent = CATEGORY_COLORS[e.category] ?? CATEGORY_COLORS.other;
                 const tone = e.type === "income" ? "text-primary" : "text-destructive";
@@ -423,7 +423,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: 12 }}
-                    transition={{ duration: 0.18, delay: i * 0.02 }}
+                    transition={{ duration: 0.18, delay: Math.min(i * 0.02, 0.5) }}
                     className="flex items-center gap-3 py-3.5 transition-colors hover:bg-primary/5"
                     style={{ borderLeftWidth: "3px", borderLeftColor: accent, paddingLeft: "12px" }}
                   >
@@ -496,12 +496,6 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                 );
               })}
             </AnimatePresence>
-
-            {events.length > 12 && (
-              <div className="pt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                showing_12_of_{events.length}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -533,7 +527,6 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
             {planned
               .slice()
               .sort((a, b) => a.date - b.date)
-              .slice(0, 10)
               .map((p) => {
                 const accent = CATEGORY_COLORS[p.category] ?? CATEGORY_COLORS.other;
                 const Icon = CATEGORY_ICONS[p.category] ?? CATEGORY_ICONS.other;

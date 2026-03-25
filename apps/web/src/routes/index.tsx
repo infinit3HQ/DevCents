@@ -9,7 +9,7 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
+    <div className="h-full flex flex-col overflow-hidden">
       <SignedOut>
         <LandingPage />
       </SignedOut>

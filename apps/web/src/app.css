@@ -146,6 +146,11 @@
     font-family: var(--font-mono);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    height: 100%;
+    overflow: hidden;
+  }
+  html {
+    height: 100%;
   }
   ::selection {
     background: color-mix(in oklch, var(--primary), transparent 75%);

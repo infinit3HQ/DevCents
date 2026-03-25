@@ -118,17 +118,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <html lang="en" className="dark">
+      <html lang="en" className="dark h-full">
         <head>
           <HeadContent />
         </head>
-        <body>
+        <body className="h-full">
           <ConvexClientProvider>
             <CurrencyProvider>
               <EncryptionProvider>
-                <Header />
-                <CommandPalette />
-                {children}
+                <div className="flex flex-col h-full overflow-hidden">
+                  <Header />
+                  <CommandPalette />
+                  <main className="flex-1 overflow-hidden flex flex-col">
+                    {children}
+                  </main>
+                </div>
               </EncryptionProvider>
             </CurrencyProvider>
           </ConvexClientProvider>

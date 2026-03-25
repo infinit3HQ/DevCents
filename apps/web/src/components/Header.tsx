@@ -79,8 +79,8 @@ export default function Header() {
       initial={{ y: -4, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 z-50 w-full h-12 flex items-center justify-between px-4 sm:px-6
-                 bg-background/95 backdrop-blur border-b border-border"
+      className="shrink-0 w-full h-12 flex items-center justify-between px-4 sm:px-6
+                 bg-background/95 backdrop-blur border-b border-border z-50"
     >
       {/* ── Brand ──────────────────────────────────────────────────── */}
       <Link to="/" className="flex items-center gap-2 group shrink-0">

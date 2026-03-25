@@ -20,7 +20,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly } from "@/lib/currencyUtils";
 
 type MobileTab = "overview" | "transactions" | "planning" | "analytics";
-type DesktopLeftPane = "analytics" | "planning";
+type DesktopLeftPane = "analytics_category" | "analytics_monthly" | "planning";
 
 const TABS: { id: MobileTab; label: string; icon: ElementType }[] = [
   { id: "overview", label: "Overview", icon: Wallet },
@@ -62,7 +62,7 @@ export function Dashboard() {
   const transactions = useDecryptedTransactions();
   const [activeTab, setActiveTab] = useState<MobileTab>("overview");
   const [desktopLeftPane, setDesktopLeftPane] =
-    useState<DesktopLeftPane>("analytics");
+    useState<DesktopLeftPane>("analytics_category");
   const { baseCurrency, convertAmount } = useCurrency();
 
   const stats = useMemo(() => {
@@ -83,23 +83,23 @@ export function Dashboard() {
   }, [transactions, convertAmount, baseCurrency]);
 
   return (
-    <div className="bg-background text-foreground min-h-dvh flex flex-col overflow-x-hidden">
-      <main className="grow flex flex-col pb-16 md:pb-0">
+    <div className="bg-background text-foreground h-full flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── HERO ──────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden border-b border-border">
+        <section className="relative overflow-hidden border-b border-border shrink-0">
           {/* Background dot grid */}
           <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
           {/* Subtle green radial glow at top-right */}
           <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_94%)_0%,transparent_70%)] opacity-100" />
 
-          <div className="max-w-7xl mx-auto w-full px-5 sm:px-8 py-10 sm:py-14 relative z-10">
+          <div className="max-w-7xl mx-auto w-full px-5 sm:px-8 py-6 sm:py-8 lg:py-10 relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
               {/* Session line */}
-              <div className="flex items-center gap-2 mb-6">
+              <div className="flex items-center gap-2 mb-4">
                 <span className="status-dot" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   session::
@@ -109,15 +109,15 @@ export function Dashboard() {
                 </span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                 {/* Label */}
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
                     net_worth
                   </p>
                   <div className="flex items-baseline gap-3">
                     <span
-                      className={`font-mono text-5xl sm:text-6xl lg:text-7xl num-display leading-none ${
+                      className={`font-mono text-4xl sm:text-5xl lg:text-6xl num-display leading-none ${
                         stats.balance < 0
                           ? "text-destructive"
                           : "text-foreground"
@@ -162,16 +162,16 @@ export function Dashboard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, delay: 0.12 }}
-          className="border-b border-border"
+          className="border-b border-border shrink-0"
         >
           <div className="grid grid-cols-3">
             {/* Income */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-primary/5">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-primary/5">
               <div className="absolute left-0 top-3 bottom-3 w-px bg-primary/40 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-primary/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
                 inflow
               </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
+              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
                 <ArrowUpRight className="h-3 w-3 shrink-0 text-primary" />
                 <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline text-primary">
                   income
@@ -183,12 +183,12 @@ export function Dashboard() {
             </div>
 
             {/* Expenses */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-destructive/5">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-destructive/5">
               <div className="absolute left-0 top-3 bottom-3 w-px bg-destructive/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-destructive/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
                 outflow
               </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
+              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
                 <ArrowDownRight className="h-3 w-3 shrink-0 text-destructive" />
                 <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-destructive hidden sm:inline">
                   expenses
@@ -200,12 +200,12 @@ export function Dashboard() {
             </div>
 
             {/* Net */}
-            <div className="px-3 sm:px-6 py-4 sm:py-5 relative cursor-default group/stat transition-all duration-200 hover:bg-muted/40">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default group/stat transition-all duration-200 hover:bg-muted/40">
               <div className="absolute left-0 top-3 bottom-3 w-px bg-muted-foreground/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-muted-foreground/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
                 balance
               </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3">
+              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
                 <Wallet className="h-3 w-3 shrink-0 text-muted-foreground" />
                 <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:inline">
                   net_pos
@@ -222,7 +222,7 @@ export function Dashboard() {
         </motion.div>
 
         {/* ── MOBILE TABS ─────────────────────────────────────────────── */}
-        <div className="md:hidden sticky z-30 border-b border-border bg-background top-12">
+        <div className="md:hidden sticky z-30 border-b border-border bg-background shrink-0">
           <div className="flex">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -247,7 +247,7 @@ export function Dashboard() {
         </div>
 
         {/* ── MOBILE CONTENT ──────────────────────────────────────────── */}
-        <div className="md:hidden grow">
+        <div className="md:hidden grow overflow-y-auto">
           <AnimatePresence mode="wait">
             {activeTab === "overview" && (
               <motion.div
@@ -303,22 +303,22 @@ export function Dashboard() {
         </div>
 
         {/* ── DESKTOP 2-COL ───────────────────────────────────────────── */}
-        <div className="hidden md:flex grow border-b border-border">
-          <div className="grid grid-cols-12 w-full">
+        <div className="hidden md:flex grow border-b border-border min-h-0">
+          <div className="grid grid-cols-12 w-full h-full">
             {/* Left: Charts (8 cols) */}
-            <div className="col-span-8 flex flex-col border-r border-border">
+            <div className="col-span-8 flex flex-col border-r border-border h-full min-h-0">
               {/* Pane header */}
-              <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+              <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {desktopLeftPane === "analytics"
-                      ? "analytics.view"
-                      : "plan.view"}
+                    {desktopLeftPane === "planning"
+                      ? "plan.view"
+                      : "analytics.view"}
                   </span>
                 </div>
                 <div className="flex items-center border border-border bg-card">
-                  {(["analytics", "planning"] as const).map((k) => {
+                  {(["analytics_category", "analytics_monthly", "planning"] as const).map((k) => {
                     const active = desktopLeftPane === k;
                     return (
                       <button
@@ -331,15 +331,17 @@ export function Dashboard() {
                             : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
                         )}
                       >
-                        {k === "analytics" ? "charts" : "plan"}
+                        {k === "analytics_category" ? "categories" : k === "analytics_monthly" ? "monthly" : "plan"}
                       </button>
                     );
                   })}
                 </div>
               </div>
               <div className="p-6 lg:p-8 grow overflow-y-auto">
-                {desktopLeftPane === "analytics" ? (
-                  <SpendingCharts />
+                {desktopLeftPane === "analytics_category" ? (
+                  <SpendingCharts mode="category" />
+                ) : desktopLeftPane === "analytics_monthly" ? (
+                  <SpendingCharts mode="monthly" />
                 ) : (
                   <Planning currentBalance={stats.balance} />
                 )}
@@ -347,9 +349,9 @@ export function Dashboard() {
             </div>
 
             {/* Right: Ledger (4 cols) */}
-            <div className="col-span-4 flex flex-col bg-card">
+            <div className="col-span-4 flex flex-col bg-card h-full">
               {/* Pane header */}
-              <div className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card top-12">
+              <div className="flex items-center justify-between px-5 py-3 sticky z-10 border-b border-border bg-card top-0 shrink-0">
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -366,10 +368,10 @@ export function Dashboard() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* ── MOBILE NAV ──────────────────────────────────────────────── */}
-      <div className="md:hidden">
+      <div className="md:hidden shrink-0">
         <MobileNav onTabChange={setActiveTab} activeTab={activeTab} />
       </div>
     </div>
