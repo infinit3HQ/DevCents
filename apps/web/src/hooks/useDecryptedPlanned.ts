@@ -55,7 +55,7 @@ export function useDecryptedPlanned() {
 
     async function decryptAll() {
       const results: DecryptedPlannedItem[] = [];
-      for (const p of raw) {
+      for (const p of raw!) {
         if (cancelled) return;
 
         if (p.encrypted) {

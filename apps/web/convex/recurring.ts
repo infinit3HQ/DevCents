@@ -89,6 +89,15 @@ export const postOccurrenceToLedger = mutation({
     if (!item) throw new Error("Not found");
     if (item.userId !== identity.subject) throw new Error("Unauthorized");
 
+    // Check if this occurrence was already posted to prevent duplicates.
+    const existing = await ctx.db
+      .query("postedRecurringOccurrences")
+      .withIndex("by_recurring_date", (q) =>
+        q.eq("recurringId", args.id).eq("date", args.date),
+      )
+      .first();
+    if (existing) return;
+
     await ctx.db.insert("transactions", {
       userId: identity.subject,
       amount: item.amount,
@@ -99,6 +108,25 @@ export const postOccurrenceToLedger = mutation({
       date: args.date,
       encrypted: item.encrypted,
     });
+
+    await ctx.db.insert("postedRecurringOccurrences", {
+      userId: identity.subject,
+      recurringId: args.id,
+      date: args.date,
+    });
   },
 });
 
+
+export const getPostedOccurrences = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("postedRecurringOccurrences")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+  },
+});

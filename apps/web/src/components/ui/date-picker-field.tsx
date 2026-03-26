@@ -212,8 +212,9 @@ export function DatePickerField({
                 if (!c.day || !c.date) {
                   return <div key={c.key} className="h-10 bg-card" />;
                 }
+                const cellDate = c.date;
                 const pick = () => {
-                  onChange(formatYmd(c.date));
+                  onChange(formatYmd(cellDate));
                   setOpen(false);
                 };
                 return (

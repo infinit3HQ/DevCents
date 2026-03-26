@@ -55,7 +55,7 @@ export function useDecryptedRecurring() {
 
     async function decryptAll() {
       const results: DecryptedRecurringItem[] = [];
-      for (const r of raw) {
+      for (const r of raw!) {
         if (cancelled) return;
 
         if (r.encrypted) {

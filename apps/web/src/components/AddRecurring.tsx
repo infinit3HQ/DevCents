@@ -9,12 +9,10 @@ export function AddRecurring({ trigger }: { trigger?: ReactNode }) {
     );
   };
 
-  if (trigger && isValidElement(trigger)) {
+  if (trigger && isValidElement<{ onClick?: (e: unknown) => void }>(trigger)) {
     return cloneElement(trigger, {
-      // Preserve any existing click handler on the trigger.
       onClick: (e: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (trigger.props as any)?.onClick?.(e);
+        trigger.props?.onClick?.(e);
         open();
       },
     });

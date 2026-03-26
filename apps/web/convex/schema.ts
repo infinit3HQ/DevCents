@@ -56,6 +56,15 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_startDate", ["userId", "startDate"]),
 
+  // Tracks which recurring occurrences have been posted to the ledger.
+  postedRecurringOccurrences: defineTable({
+    userId: v.string(),
+    recurringId: v.id("recurring"),
+    date: v.number(),
+  })
+    .index("by_recurring_date", ["recurringId", "date"])
+    .index("by_user", ["userId"]),
+
   budgets: defineTable({
     userId: v.string(),
     month: v.string(), // Format: "YYYY-MM"

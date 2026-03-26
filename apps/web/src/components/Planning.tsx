@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarClock,
@@ -11,6 +11,7 @@ import {
   PauseCircle,
   PlayCircle,
   Send,
+  Wallet,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -77,6 +78,7 @@ function sameDayOrAfter(a: number, b: number) {
 export function Planning({ currentBalance }: { currentBalance: number }) {
   const planned = useDecryptedPlanned();
   const recurring = useDecryptedRecurring();
+  const postedOccurrences = useQuery(api.recurring.getPostedOccurrences);
   const { baseCurrency, convertAmount } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
 
@@ -97,8 +99,13 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
   });
   const endMs = anchorMs + horizon * DAY_MS;
 
+  const postedOccurrenceKeys = useMemo(() => {
+    if (!postedOccurrences) return new Set<string>();
+    return new Set(postedOccurrences.map((o) => `${o.recurringId}:${o.date}`));
+  }, [postedOccurrences]);
+
   const events = useMemo(() => {
-    if (!planned || !recurring) return undefined as CashflowEvent[] | undefined;
+    if (!planned || !recurring || !postedOccurrences) return undefined as CashflowEvent[] | undefined;
 
     const evts: CashflowEvent[] = [];
 
@@ -129,6 +136,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
       );
       for (const d of dates) {
         if (!sameDayOrAfter(d, r.startDate)) continue;
+        if (postedOccurrenceKeys.has(`${r._id}:${d}`)) continue;
         evts.push({
           key: `recurring:${r._id}:${d}`,
           source: "recurring",
@@ -145,7 +153,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
     evts.sort((a, b) => a.date - b.date);
     return evts;
-  }, [planned, recurring, horizon, baseCurrency, anchorMs, endMs]);
+  }, [planned, recurring, baseCurrency, anchorMs, endMs, postedOccurrenceKeys]);
 
   const summary = useMemo(() => {
     if (!events) return undefined as
@@ -221,7 +229,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
     return map;
   }, [recurring, anchorMs]);
 
-  if (!planned || !recurring || !events || !summary || !series) {
+  if (!planned || !recurring || !postedOccurrences || !events || !summary || !series) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -291,8 +299,14 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
+          {
+            label: "current_balance",
+            value: currentBalance,
+            icon: Wallet,
+            tone: currentBalance >= 0 ? "text-foreground" : "text-destructive",
+          },
           {
             label: "incoming",
             value: summary.income,
@@ -306,10 +320,10 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
             tone: "text-destructive",
           },
           {
-            label: "net",
-            value: summary.net,
-            icon: summary.net >= 0 ? ArrowUpRight : ArrowDownRight,
-            tone: summary.net >= 0 ? "text-primary" : "text-destructive",
+            label: "projected_end",
+            value: summary.projectedEnd,
+            icon: summary.projectedEnd >= 0 ? ArrowUpRight : ArrowDownRight,
+            tone: summary.projectedEnd >= 0 ? "text-primary" : "text-destructive",
           },
         ].map((s) => {
           const Icon = s.icon;

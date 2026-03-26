@@ -29,7 +29,7 @@ function getDecimals(code: string): number {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: code,
-  }).resolvedOptions().maximumFractionDigits;
+  }).resolvedOptions().maximumFractionDigits ?? 2;
 }
 
 export function formatCurrency(amount: number, code: string): string {

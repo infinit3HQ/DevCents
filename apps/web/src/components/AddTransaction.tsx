@@ -75,16 +75,10 @@ function todayInputValue() {
   return `${y}-${m}-${day}`;
 }
 
-function useEntryFormUX<
-  T extends {
-    description: string;
-    type: "income" | "expense";
-    category: string;
-    currency: string;
-  },
->(form: UseFormReturn<T>, open: boolean, baseCurrency: string) {
-  const description = form.watch("description");
-  const type = form.watch("type");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function useEntryFormUX(form: UseFormReturn<any>, open: boolean, baseCurrency: string) {
+  const description = form.watch("description") as string;
+  const type = form.watch("type") as "income" | "expense";
 
   const activeCategories =
     type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -93,18 +87,18 @@ function useEntryFormUX<
     if (description && description.length > 2) {
       const suggested = suggestCategory(description);
       if (suggested !== "other")
-        form.setValue("category", suggested as T["category"]);
+        form.setValue("category", suggested);
     }
   }, [description, form]);
 
   useEffect(() => {
-    if (open) form.setValue("currency", baseCurrency as T["currency"]);
+    if (open) form.setValue("currency", baseCurrency);
   }, [open, baseCurrency, form]);
 
   useEffect(() => {
     const currentCategory = form.getValues("category");
     if (!activeCategories.find((c) => c.value === currentCategory)) {
-      form.setValue("category", activeCategories[0].value as T["category"]);
+      form.setValue("category", activeCategories[0].value);
     }
   }, [type, activeCategories, form]);
 
