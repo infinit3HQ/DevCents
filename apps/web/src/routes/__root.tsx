@@ -194,6 +194,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           card: {
             fontFamily: "Inter, system-ui, sans-serif",
           },
+          modalBackdrop: {
+            background: "rgb(0 0 0 / 0.6)",
+            backdropFilter: "blur(4px)",
+          },
+          modalContent: {
+            fontFamily: "Inter, system-ui, sans-serif",
+          },
         },
       }}
     >
