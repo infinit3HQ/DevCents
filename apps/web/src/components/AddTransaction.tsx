@@ -15,6 +15,7 @@ import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { getCurrencySymbol } from "@/lib/currencyUtils";
 import { CurrencyCombobox } from "@/components/ui/CurrencyCombobox";
+import { AmountInput } from "@/components/ui/AmountInput";
 import { parseLocalDateInputToNoonMs } from "@/lib/planningUtils";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 
@@ -171,7 +172,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const txForm = useForm({
     resolver: zodResolver(ledgerSchema),
     defaultValues: {
-      amount: 0,
+      amount: "" as unknown as number,
       currency: baseCurrency || "USD",
       description: "",
       category: "food",
@@ -182,7 +183,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const plannedForm = useForm({
     resolver: zodResolver(plannedSchema),
     defaultValues: {
-      amount: 0,
+      amount: "" as unknown as number,
       currency: baseCurrency || "USD",
       description: "",
       category: "rent",
@@ -194,7 +195,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const recurringForm = useForm({
     resolver: zodResolver(recurringSchema),
     defaultValues: {
-      amount: 0,
+      amount: "" as unknown as number,
       currency: baseCurrency || "USD",
       description: "",
       category: "utilities",
@@ -508,13 +509,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                         txForm.watch("currency"),
                                       )}
                                     </div>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
+                                    <AmountInput
                                       placeholder="0.00"
                                       className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
                                       data-entry-autofocus="true"
-                                      {...field}
+                                      value={field.value}
+                                      onChange={(v) => field.onChange(v)}
                                     />
                                     <FormField
                                       control={txForm.control}
@@ -735,13 +735,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                       plannedForm.watch("currency"),
                                     )}
                                   </div>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
+                                  <AmountInput
                                     placeholder="0.00"
                                     className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
                                     data-entry-autofocus="true"
-                                    {...field}
+                                    value={field.value}
+                                    onChange={(v) => field.onChange(v)}
                                   />
                                   <FormField
                                     control={plannedForm.control}
@@ -1005,13 +1004,12 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                         recurringForm.watch("currency"),
                                       )}
                                     </div>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
+                                    <AmountInput
                                       placeholder="0.00"
                                       className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
                                       data-entry-autofocus="true"
-                                      {...field}
+                                      value={field.value}
+                                      onChange={(v) => field.onChange(v)}
                                     />
                                     <FormField
                                       control={recurringForm.control}

@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { formatAmountOnly } from "@/lib/currencyUtils";
 import {
   Upload,
   FileText,
@@ -472,7 +473,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                             {row.description}
                           </td>
                           <td className="px-3 py-3 text-right">
-                            ${row.amount.toFixed(2)}
+                            ${formatAmountOnly(row.amount, "USD")}
                           </td>
                           <td className="px-3 py-2">
                             <Select

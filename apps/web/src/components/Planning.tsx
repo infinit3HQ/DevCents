@@ -379,14 +379,14 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v) => `${currencySymbol}${v}`}
+              tickFormatter={(v) => `${currencySymbol}${formatAmountOnly(v, baseCurrency)}`}
               dx={-4}
               width={62}
             />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((v: number) => [`${currencySymbol}${(v ?? 0).toFixed(2)}`, "balance"]) as any}
+              formatter={((v: number) => [`${currencySymbol}${formatAmountOnly(v ?? 0, baseCurrency)}`, "balance"]) as any}
             />
             <Line
               type="monotone"

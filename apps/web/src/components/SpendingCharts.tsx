@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { getCurrencySymbol } from "@/lib/currencyUtils";
+import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -172,7 +172,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={((v: number, _name: string) => {
                     return [
-                      `${currencySymbol}${(v ?? 0).toFixed(2)}`,
+                      `${currencySymbol}${formatAmountOnly(v ?? 0, baseCurrency)}`,
                       _name,
                     ];
                   }) as any}
@@ -186,7 +186,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                   total
                 </p>
                 <p className="font-mono text-lg num-display text-foreground leading-tight">
-                  {currencySymbol}{totalExpenses.toFixed(0)}
+                  {currencySymbol}{formatAmountOnly(totalExpenses, baseCurrency)}
                 </p>
               </div>
             </div>
@@ -259,7 +259,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `${currencySymbol}${v}`}
+                tickFormatter={(v) => `${currencySymbol}${formatAmountOnly(v, baseCurrency)}`}
                 dx={-4}
                 width={52}
               />
@@ -268,7 +268,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                 cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
                 itemStyle={{ color: "var(--color-foreground)" }}
                 formatter={(v: number | undefined) => [
-                  `${currencySymbol}${(v ?? 0).toFixed(2)}`,
+                  `${currencySymbol}${formatAmountOnly(v ?? 0, baseCurrency)}`,
                 ]}
               />
               <Legend
