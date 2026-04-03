@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   Repeat,
   ArrowUpRight,
   ArrowDownRight,
@@ -33,9 +34,10 @@ import { useDecryptedPlanned } from "@/hooks/useDecryptedPlanned";
 import { useDecryptedRecurring } from "@/hooks/useDecryptedRecurring";
 import { AddPlanned } from "@/components/AddPlanned";
 import { AddRecurring } from "@/components/AddRecurring";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DAY_MS, dayKey, recurringOccurrencesBetween } from "@/lib/planningUtils";
 
-type HorizonDays = 30 | 90 | 180 | 365;
+type HorizonDays = 30 | 60 | 90 | 180 | 365 | number;
 
 type CashflowEvent = {
   key: string;
@@ -274,7 +276,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center border border-border bg-card">
-            {[30, 90, 180, 365].map((d) => {
+            {[30, 60, 90, 180, 365].map((d) => {
               const active = horizon === d;
               return (
                 <button
@@ -292,6 +294,62 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               );
             })}
           </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={cn(
+                  "h-8 w-8 border border-border flex items-center justify-center transition-colors",
+                  ![30, 60, 90, 180, 365].includes(horizon)
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                )}
+                title="Custom date range"
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-auto p-4 border border-border bg-card rounded-none"
+            >
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+                // custom_range
+              </p>
+              <div className="flex items-end gap-3">
+                <div>
+                  <label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground block mb-1">
+                    from
+                  </label>
+                  <input
+                    type="date"
+                    className="h-8 px-2 border border-border bg-transparent font-mono text-[10px] text-foreground focus:outline-none focus:border-primary/50"
+                    defaultValue={new Date(anchorMs).toISOString().slice(0, 10)}
+                    disabled
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground block mb-1">
+                    to
+                  </label>
+                  <input
+                    type="date"
+                    className="h-8 px-2 border border-border bg-transparent font-mono text-[10px] text-foreground focus:outline-none focus:border-primary/50"
+                    defaultValue={new Date(endMs).toISOString().slice(0, 10)}
+                    min={new Date(anchorMs + DAY_MS).toISOString().slice(0, 10)}
+                    onChange={(e) => {
+                      const picked = new Date(e.target.value + "T12:00:00");
+                      const days = Math.round((picked.getTime() - anchorMs) / DAY_MS);
+                      if (days > 0) setHorizon(days);
+                    }}
+                  />
+                </div>
+              </div>
+              <p className="font-mono text-[8px] text-muted-foreground/60 mt-2">
+                {horizon}d selected
+              </p>
+            </PopoverContent>
+          </Popover>
 
           <AddPlanned />
           <AddRecurring />
