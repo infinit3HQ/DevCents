@@ -185,20 +185,84 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         baseTheme: shadcn,
         variables: {
           colorPrimary: "oklch(0.75 0.15 142)",
+          colorBackground: "oklch(0.2 0 0)",
+          colorText: "oklch(0.9 0.02 120)",
+          colorTextSecondary: "oklch(0.5 0 0)",
+          colorInputBackground: "oklch(0.18 0 0)",
+          colorInputText: "oklch(0.9 0.02 120)",
+          colorNeutral: "oklch(0.9 0.02 120)",
+          colorDanger: "oklch(0.6 0.2 25)",
+          borderRadius: "0.375rem",
           fontFamily: "Inter, system-ui, sans-serif",
         },
         elements: {
-          userProfile: {
+          rootBox: {
             fontFamily: "Inter, system-ui, sans-serif",
           },
           card: {
-            fontFamily: "Inter, system-ui, sans-serif",
+            backgroundColor: "oklch(0.2 0 0)",
+            border: "1px solid oklch(0.26 0 0)",
+            boxShadow: "0 4px 24px rgb(0 0 0 / 0.4)",
+            borderRadius: "0.75rem",
           },
           modalBackdrop: {
             background: "rgb(0 0 0 / 0.6)",
             backdropFilter: "blur(4px)",
           },
-          modalContent: {
+          headerTitle: {
+            color: "oklch(0.9 0.02 120)",
+          },
+          headerSubtitle: {
+            color: "oklch(0.5 0 0)",
+          },
+          socialButtonsBlockButton: {
+            backgroundColor: "transparent",
+            border: "1px solid oklch(0.26 0 0)",
+            color: "oklch(0.9 0.02 120)",
+            borderRadius: "0.375rem",
+          },
+          dividerLine: {
+            backgroundColor: "oklch(0.26 0 0)",
+          },
+          dividerText: {
+            color: "oklch(0.5 0 0)",
+          },
+          formFieldLabel: {
+            color: "oklch(0.5 0 0)",
+          },
+          formFieldInput: {
+            backgroundColor: "oklch(0.18 0 0)",
+            border: "1px solid oklch(0.26 0 0)",
+            color: "oklch(0.9 0.02 120)",
+            borderRadius: "0.375rem",
+          },
+          formButtonPrimary: {
+            backgroundColor: "oklch(0.75 0.15 142)",
+            color: "oklch(0.18 0 0)",
+            borderRadius: "0.375rem",
+            fontWeight: "500",
+          },
+          footerActionLink: {
+            color: "oklch(0.75 0.15 142)",
+          },
+          footerActionText: {
+            color: "oklch(0.5 0 0)",
+          },
+          footer: {
+            background: "transparent",
+          },
+          userButtonPopoverCard: {
+            backgroundColor: "oklch(0.2 0 0)",
+            border: "1px solid oklch(0.26 0 0)",
+            borderRadius: "0.75rem",
+          },
+          userButtonPopoverActionButton: {
+            borderRadius: "0",
+          },
+          userPreview: {
+            padding: "0.75rem 1rem",
+          },
+          userProfile: {
             fontFamily: "Inter, system-ui, sans-serif",
           },
         },
