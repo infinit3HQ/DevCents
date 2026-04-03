@@ -35,6 +35,7 @@ import { useDecryptedRecurring } from "@/hooks/useDecryptedRecurring";
 import { AddPlanned } from "@/components/AddPlanned";
 import { AddRecurring } from "@/components/AddRecurring";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { DAY_MS, dayKey, recurringOccurrencesBetween } from "@/lib/planningUtils";
 
 type HorizonDays = 30 | 60 | 90 | 180 | 365 | number;
@@ -318,30 +319,30 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               </p>
               <div className="flex items-end gap-3">
                 <div>
-                  <label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground block mb-1">
+                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
                     from
-                  </label>
-                  <input
-                    type="date"
-                    className="h-8 px-2 border border-border bg-transparent font-mono text-[10px] text-foreground focus:outline-none focus:border-primary/50"
-                    defaultValue={new Date(anchorMs).toISOString().slice(0, 10)}
+                  </p>
+                  <DatePickerField
+                    value={new Date(anchorMs).toISOString().slice(0, 10)}
+                    onChange={() => {}}
+                    label="Start date"
                     disabled
+                    className="rounded-none"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground block mb-1">
+                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
                     to
-                  </label>
-                  <input
-                    type="date"
-                    className="h-8 px-2 border border-border bg-transparent font-mono text-[10px] text-foreground focus:outline-none focus:border-primary/50"
-                    defaultValue={new Date(endMs).toISOString().slice(0, 10)}
-                    min={new Date(anchorMs + DAY_MS).toISOString().slice(0, 10)}
-                    onChange={(e) => {
-                      const picked = new Date(e.target.value + "T12:00:00");
+                  </p>
+                  <DatePickerField
+                    value={new Date(endMs).toISOString().slice(0, 10)}
+                    onChange={(v) => {
+                      const picked = new Date(v + "T12:00:00");
                       const days = Math.round((picked.getTime() - anchorMs) / DAY_MS);
                       if (days > 0) setHorizon(days);
                     }}
+                    label="End date"
+                    className="rounded-none"
                   />
                 </div>
               </div>
