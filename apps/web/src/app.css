@@ -1,8 +1,8 @@
+@layer theme, base, clerk, components, utilities;
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
-@import "@clerk/themes/shadcn.css";
-@source "../../node_modules/@clerk/themes/dist";
+@import "@clerk/ui/themes/shadcn.css";
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;

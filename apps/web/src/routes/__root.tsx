@@ -1,5 +1,5 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { shadcn } from "@clerk/themes";
+import { shadcn } from "@clerk/ui/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import React from "react";
 import { getEnv } from "@/lib/env";
@@ -183,6 +183,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       publishableKey={getEnv("VITE_CLERK_PUBLISHABLE_KEY")}
       appearance={{
         baseTheme: shadcn,
+        cssLayerName: "clerk",
         variables: {
           colorPrimary: "oklch(0.75 0.15 142)",
           colorBackground: "oklch(0.2 0 0)",
@@ -196,74 +197,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           fontFamily: "Inter, system-ui, sans-serif",
         },
         elements: {
-          rootBox: {
-            fontFamily: "Inter, system-ui, sans-serif",
-          },
-          card: {
-            backgroundColor: "oklch(0.2 0 0)",
-            border: "1px solid oklch(0.26 0 0)",
-            boxShadow: "0 4px 24px rgb(0 0 0 / 0.4)",
-            borderRadius: "0.75rem",
-          },
           modalBackdrop: {
             background: "rgb(0 0 0 / 0.6)",
             backdropFilter: "blur(4px)",
           },
-          headerTitle: {
-            color: "oklch(0.9 0.02 120)",
-          },
-          headerSubtitle: {
-            color: "oklch(0.5 0 0)",
-          },
-          socialButtonsBlockButton: {
-            backgroundColor: "transparent",
-            border: "1px solid oklch(0.26 0 0)",
-            color: "oklch(0.9 0.02 120)",
-            borderRadius: "0.375rem",
-          },
-          dividerLine: {
-            backgroundColor: "oklch(0.26 0 0)",
-          },
-          dividerText: {
-            color: "oklch(0.5 0 0)",
-          },
-          formFieldLabel: {
-            color: "oklch(0.5 0 0)",
-          },
-          formFieldInput: {
-            backgroundColor: "oklch(0.18 0 0)",
-            border: "1px solid oklch(0.26 0 0)",
-            color: "oklch(0.9 0.02 120)",
-            borderRadius: "0.375rem",
-          },
-          formButtonPrimary: {
-            backgroundColor: "oklch(0.75 0.15 142)",
-            color: "oklch(0.18 0 0)",
-            borderRadius: "0.375rem",
-            fontWeight: "500",
-          },
-          footerActionLink: {
-            color: "oklch(0.75 0.15 142)",
-          },
-          footerActionText: {
-            color: "oklch(0.5 0 0)",
-          },
-          footer: {
-            background: "transparent",
-          },
-          userButtonPopoverCard: {
-            backgroundColor: "oklch(0.2 0 0)",
-            border: "1px solid oklch(0.26 0 0)",
+          card: {
             borderRadius: "0.75rem",
-          },
-          userButtonPopoverActionButton: {
-            borderRadius: "0",
-          },
-          userPreview: {
-            padding: "0.75rem 1rem",
-          },
-          userProfile: {
-            fontFamily: "Inter, system-ui, sans-serif",
           },
         },
       }}

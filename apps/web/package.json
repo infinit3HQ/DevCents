@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.28.1",
-    "@clerk/themes": "^2.4.57",
     "@clerk/ui": "^1.0.0",
     "@devcents/shared": "*",
     "@hookform/resolvers": "^5.2.2",
