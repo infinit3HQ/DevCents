@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -181,42 +181,52 @@ export function TransactionList({
 
       {/* ── MOBILE LIST ─────────────────────────────────────────── */}
       <div className="md:hidden">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           {groupedData ? (
-            groupedData.map(([key, group]) => (
-              <div key={key} className="border-b border-border last:border-b-0">
-                <GroupHeader
-                  name={key}
-                  income={group.income}
-                  expense={group.expense}
-                  count={group.transactions.length}
-                  isOpen={expandedGroups[key] !== false}
-                  onToggle={() => toggleGroup(key)}
-                  isMobile
-                />
-                {expandedGroups[key] !== false && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    {group.transactions.map((t, index) => (
-                      <TransactionMobileRow
-                        key={t._id}
-                        t={t}
-                        index={index}
-                        compact={compact}
-                        deleteTransaction={deleteTransaction}
-                        updateTransaction={updateTransaction}
-                      />
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))
+            <motion.div
+              key={`grouped-${groupBy}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {groupedData.map(([key, group]) => (
+                <div key={key} className="border-b border-border last:border-b-0">
+                  <GroupHeader
+                    name={key}
+                    income={group.income}
+                    expense={group.expense}
+                    count={group.transactions.length}
+                    isOpen={expandedGroups[key] !== false}
+                    onToggle={() => toggleGroup(key)}
+                    isMobile
+                  />
+                  {expandedGroups[key] !== false && (
+                    <div className="overflow-hidden">
+                      {group.transactions.map((t, index) => (
+                        <TransactionMobileRow
+                          key={t._id}
+                          t={t}
+                          index={index}
+                          compact={compact}
+                          deleteTransaction={deleteTransaction}
+                          updateTransaction={updateTransaction}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </motion.div>
           ) : (
-            <div className="border-border">
+            <motion.div
+              key="flat"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="border-border"
+            >
               {transactions.map((t, index) => (
                 <TransactionMobileRow
                   key={t._id}
@@ -227,7 +237,7 @@ export function TransactionList({
                   updateTransaction={updateTransaction}
                 />
               ))}
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
@@ -254,35 +264,49 @@ export function TransactionList({
             ))}
           </tr>
         </thead>
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           {groupedData ? (
-            groupedData.map(([key, group]) => (
-              <tbody key={key} className="border-b border-border/50 last:border-b-0">
-                <tr>
-                  <td colSpan={5} className="p-0">
-                    <GroupHeader
-                      name={key}
-                      income={group.income}
-                      expense={group.expense}
-                      count={group.transactions.length}
-                      isOpen={expandedGroups[key] !== false}
-                      onToggle={() => toggleGroup(key)}
+            <motion.tbody
+              key={`grouped-${groupBy}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {groupedData.map(([key, group]) => (
+                <React.Fragment key={key}>
+                  <tr>
+                    <td colSpan={5} className="p-0">
+                      <GroupHeader
+                        name={key}
+                        income={group.income}
+                        expense={group.expense}
+                        count={group.transactions.length}
+                        isOpen={expandedGroups[key] !== false}
+                        onToggle={() => toggleGroup(key)}
+                      />
+                    </td>
+                  </tr>
+                  {expandedGroups[key] !== false && group.transactions.map((t, index) => (
+                    <TransactionDesktopRow
+                      key={t._id}
+                      t={t}
+                      index={index}
+                      deleteTransaction={deleteTransaction}
+                      updateTransaction={updateTransaction}
                     />
-                  </td>
-                </tr>
-                {expandedGroups[key] !== false && group.transactions.map((t, index) => (
-                  <TransactionDesktopRow
-                    key={t._id}
-                    t={t}
-                    index={index}
-                    deleteTransaction={deleteTransaction}
-                    updateTransaction={updateTransaction}
-                  />
-                ))}
-              </tbody>
-            ))
+                  ))}
+                </React.Fragment>
+              ))}
+            </motion.tbody>
           ) : (
-            <tbody>
+            <motion.tbody
+              key="flat"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
               {transactions.map((t, index) => (
                 <TransactionDesktopRow
                   key={t._id}
@@ -292,7 +316,7 @@ export function TransactionList({
                   updateTransaction={updateTransaction}
                 />
               ))}
-            </tbody>
+            </motion.tbody>
           )}
         </AnimatePresence>
       </motion.table>
