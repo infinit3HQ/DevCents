@@ -40,16 +40,9 @@ warn() { echo -e "${YELLOW}[dev]${NC} $1"; }
 err()  { echo -e "${RED}[dev]${NC} $1"; }
 
 # ─── Cleanup on exit ────────────────────────────────────────────────────────
-CONVEX_PID=""
 cleanup() {
   echo ""
   warn "Shutting down..."
-
-  if [ -n "$CONVEX_PID" ] && kill -0 "$CONVEX_PID" 2>/dev/null; then
-    log "Stopping Convex sync (PID $CONVEX_PID)..."
-    kill "$CONVEX_PID" 2>/dev/null || true
-    wait "$CONVEX_PID" 2>/dev/null || true
-  fi
 
   log "Stopping Docker containers (data is preserved)..."
   docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
@@ -99,19 +92,13 @@ fi
 export CONVEX_SELF_HOSTED_ADMIN_KEY="$GENERATED_KEY"
 ok "Admin key ready"
 
-# ─── 2. Start Convex sync (background) ──────────────────────────────────────
-log "Starting Convex sync..."
-npm run convex:local &
-CONVEX_PID=$!
-sleep 3
-
-if ! kill -0 "$CONVEX_PID" 2>/dev/null; then
-  err "Convex sync failed to start"
-  exit 1
-fi
-ok "Convex sync running (PID $CONVEX_PID)"
-
-# ─── 3. Start Vite dev server (foreground) ──────────────────────────────────
-log "Starting Vite dev server on port 3000..."
+# ─── 2. Start Convex sync + Vite dev server (parallel) ──────────────────────
+log "Starting Convex sync + Vite dev server..."
 echo ""
-npm run dev
+npx concurrently \
+  --names "convex,vite" \
+  --prefix-colors "yellow,cyan" \
+  --kill-others \
+  --handle-input \
+  "npm run convex:local" \
+  "npm run dev"

@@ -18,5 +18,8 @@
     "build:web": "npm run build --workspace=apps/web",
     "test": "npm run test --workspace=apps/web",
     "dev:mcp": "npm run dev --workspace=apps/mcp"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
