@@ -36,6 +36,7 @@ import { AddPlanned } from "@/components/AddPlanned";
 import { AddRecurring } from "@/components/AddRecurring";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
+import { Tip } from "@/components/ui/Tip";
 import { DAY_MS, dayKey, recurringOccurrencesBetween } from "@/lib/planningUtils";
 
 type HorizonDays = 30 | 60 | 90 | 180 | 365 | number;
@@ -305,7 +306,6 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     ? "bg-primary/10 text-primary border-primary/30"
                     : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
                 )}
-                title="Custom date range"
               >
                 <CalendarRange className="h-3.5 w-3.5" />
               </button>
@@ -548,22 +548,23 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         {formatCurrency(e.amount, e.currency)}
                       </span>
 
-                      <button
-                        onClick={() => {
-                          if (e.source === "planned") {
-                            postPlanned({ id: e.sourceId as Id<"planned"> });
-                            return;
-                          }
-                          postRecurring({
-                            id: e.sourceId as Id<"recurring">,
-                            date: e.date,
-                          });
-                        }}
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                        title="Post to ledger"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                      </button>
+                      <Tip label="Post to ledger">
+                        <button
+                          onClick={() => {
+                            if (e.source === "planned") {
+                              postPlanned({ id: e.sourceId as Id<"planned"> });
+                              return;
+                            }
+                            postRecurring({
+                              id: e.sourceId as Id<"recurring">,
+                              date: e.date,
+                            });
+                          }}
+                          className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      </Tip>
                     </div>
                   </motion.div>
                 );
@@ -655,41 +656,44 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       </span>
 
                       {status === "planned" && (
-                        <button
-                          onClick={() =>
-                            postPlanned({ id: p._id as Id<"planned"> })
-                          }
-                          className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                          title="Post to ledger"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </button>
+                        <Tip label="Post to ledger">
+                          <button
+                            onClick={() =>
+                              postPlanned({ id: p._id as Id<"planned"> })
+                            }
+                            className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </button>
+                        </Tip>
                       )}
 
                       {status === "planned" && (
-                        <button
-                          onClick={() =>
-                            setPlannedStatus({
-                              id: p._id as Id<"planned">,
-                              status: "skipped",
-                            })
-                          }
-                          className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                          title="Skip"
-                        >
-                          <PauseCircle className="h-3.5 w-3.5" />
-                        </button>
+                        <Tip label="Skip">
+                          <button
+                            onClick={() =>
+                              setPlannedStatus({
+                                id: p._id as Id<"planned">,
+                                status: "skipped",
+                              })
+                            }
+                            className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                          >
+                            <PauseCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </Tip>
                       )}
 
-                      <button
-                        onClick={() =>
-                          removePlanned({ id: p._id as Id<"planned"> })
-                        }
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <Tip label="Delete">
+                        <button
+                          onClick={() =>
+                            removePlanned({ id: p._id as Id<"planned"> })
+                          }
+                          className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </Tip>
                     </div>
                   </div>
                 );
@@ -779,47 +783,50 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       {formatCurrency(r.amount, r.currency || baseCurrency)}
                     </span>
 
-                    <button
-                      onClick={() =>
-                        toggleRecurring({
-                          id: r._id as Id<"recurring">,
-                          active: !(r.active !== false),
-                        })
-                      }
-                      className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
-                      title={r.active === false ? "Resume" : "Pause"}
-                    >
-                      {r.active === false ? (
-                        <PlayCircle className="h-3.5 w-3.5" />
-                      ) : (
-                        <PauseCircle className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-
-                    {next && r.active !== false && (
+                    <Tip label={r.active === false ? "Resume" : "Pause"}>
                       <button
                         onClick={() =>
-                          postRecurring({
+                          toggleRecurring({
                             id: r._id as Id<"recurring">,
-                            date: next,
+                            active: !(r.active !== false),
                           })
                         }
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                        title="Post next occurrence to ledger"
+                        className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
                       >
-                        <Send className="h-3.5 w-3.5" />
+                        {r.active === false ? (
+                          <PlayCircle className="h-3.5 w-3.5" />
+                        ) : (
+                          <PauseCircle className="h-3.5 w-3.5" />
+                        )}
                       </button>
+                    </Tip>
+
+                    {next && r.active !== false && (
+                      <Tip label="Post next occurrence">
+                        <button
+                          onClick={() =>
+                            postRecurring({
+                              id: r._id as Id<"recurring">,
+                              date: next,
+                            })
+                          }
+                          className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      </Tip>
                     )}
 
-                    <button
-                      onClick={() =>
-                        removeRecurring({ id: r._id as Id<"recurring"> })
-                      }
-                      className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <Tip label="Delete">
+                      <button
+                        onClick={() =>
+                          removeRecurring({ id: r._id as Id<"recurring"> })
+                        }
+                        className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Tip>
                   </div>
                 </div>
               );

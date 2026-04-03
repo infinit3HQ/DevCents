@@ -14,50 +14,54 @@ import { Button } from "./ui/button";
 import { CSVImport } from "./CSVImport";
 import { AddTransaction } from "./AddTransaction";
 import { useEncryption } from "@/contexts/EncryptionContext";
+import { Tip } from "@/components/ui/Tip";
 
 function EncryptionBadge() {
   const { isEnabled, isUnlocked, setupEncryption } = useEncryption();
 
   if (!isEnabled) {
     return (
-      <button
-        onClick={setupEncryption}
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 transition-all border border-border bg-transparent text-muted-foreground"
-        title="Click to enable AES-256-GCM encryption"
-      >
-        <ShieldOff className="h-3 w-3" />
-        <span className="font-mono text-[9px] uppercase tracking-widest">
-          enc::off
-        </span>
-      </button>
+      <Tip label="Click to enable AES-256-GCM encryption" side="bottom">
+        <button
+          onClick={setupEncryption}
+          className="hidden md:flex items-center gap-1.5 px-2.5 h-7 transition-all border border-border bg-transparent text-muted-foreground"
+        >
+          <ShieldOff className="h-3 w-3" />
+          <span className="font-mono text-[9px] uppercase tracking-widest">
+            enc::off
+          </span>
+        </button>
+      </Tip>
     );
   }
 
   if (isEnabled && !isUnlocked) {
     return (
-      <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-amber-500/25 bg-amber-500/5 text-amber-500"
-        title="Encryption enabled but locked"
-      >
-        <ShieldAlert className="h-3 w-3" />
-        <span className="font-mono text-[9px] uppercase tracking-widest">
-          enc::locked
-        </span>
-      </div>
+      <Tip label="Encryption enabled but locked" side="bottom">
+        <div
+          className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-amber-500/25 bg-amber-500/5 text-amber-500"
+        >
+          <ShieldAlert className="h-3 w-3" />
+          <span className="font-mono text-[9px] uppercase tracking-widest">
+            enc::locked
+          </span>
+        </div>
+      </Tip>
     );
   }
 
   // Enabled + unlocked
   return (
-    <div
-      className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-primary/20 bg-primary/5 text-primary"
-      title="AES-256-GCM client-side encryption active"
-    >
-      <ShieldCheck className="h-3 w-3" />
-      <span className="font-mono text-[9px] uppercase tracking-widest">
-        enc::aes-256
-      </span>
-    </div>
+    <Tip label="AES-256-GCM client-side encryption active" side="bottom">
+      <div
+        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-primary/20 bg-primary/5 text-primary"
+      >
+        <ShieldCheck className="h-3 w-3" />
+        <span className="font-mono text-[9px] uppercase tracking-widest">
+          enc::aes-256
+        </span>
+      </div>
+    </Tip>
   );
 }
 
