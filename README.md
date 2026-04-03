@@ -105,6 +105,7 @@ DevCents ships an [MCP server](apps/mcp/) so Claude can read and add your transa
 | Script | Description |
 | --- | --- |
 | `npm run dev:all` | Start local Convex backend + Vite dev server |
+| `npm run dev:tmux` | Same as above but in separate tmux panes |
 | `npm run dev` | Vite dev server only |
 | `npm run convex:local` | Sync Convex against local Docker backend |
 | `npm run build` | Build the production web app |
