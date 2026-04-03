@@ -145,6 +145,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     message: string;
   } | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const closedAtRef = useRef(0);
   const createTransaction = useMutation(api.transactions.create);
   const createPlanned = useMutation(api.planned.create);
   const createRecurring = useMutation(api.recurring.create);
@@ -153,6 +154,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
 
   useEffect(() => {
     const handleOpenAddEntry = (evt: Event) => {
+      // Ignore if the drawer was just closed (focus restoration can re-trigger)
+      if (Date.now() - closedAtRef.current < 400) return;
       setOpen(true);
       const e = evt as CustomEvent<{ mode?: EntryMode }>;
       if (e.detail?.mode) setMode(e.detail.mode);
@@ -351,7 +354,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={(v) => { if (!v) closedAtRef.current = Date.now(); setOpen(v); }}>
       <DrawerTrigger asChild>
         {trigger || (
           <motion.div
