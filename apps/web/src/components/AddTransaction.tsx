@@ -150,6 +150,9 @@ const ENTRY_MODES: Array<{
   },
 ];
 
+// Module-level flag to prevent multiple instances from opening
+let isAnyInstanceOpen = false;
+
 export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<EntryMode>("ledger");
@@ -173,8 +176,14 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const isEditing = editData !== null;
 
   useEffect(() => {
+    isAnyInstanceOpen = open;
+  }, [open]);
+
+  useEffect(() => {
     const handleOpenAddEntry = (evt: Event) => {
       if (Date.now() - closedAtRef.current < 400) return;
+      if (isAnyInstanceOpen) return;
+      isAnyInstanceOpen = true;
       const e = evt as CustomEvent<{ mode?: EntryMode; editData?: EditData }>;
       if (e.detail?.mode) setMode(e.detail.mode);
       setEditData(e.detail?.editData ?? null);
