@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Trash2, ArrowUpRight, ArrowDownRight, LayoutList, CalendarDays, CalendarRange, CalendarSync, ChevronDown, ChevronRight } from "lucide-react";
+import { Trash2, ArrowUpRight, ArrowDownRight, LayoutList, CalendarDays, CalendarRange, CalendarSync, ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDecryptedTransactions, type DecryptedTransaction } from "@/hooks/useDecryptedTransactions";
@@ -10,6 +10,8 @@ import { Id } from "../../convex/_generated/dataModel";
 import { formatCurrency } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS, CATEGORIES } from "@/lib/categoryUtils";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import type { EditData } from "@/components/AddTransaction";
+import { Tip } from "@/components/ui/Tip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -391,7 +393,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
         </div>
       </div>
 
-      {/* Amount + delete */}
+      {/* Amount + edit + delete */}
       <div className="flex items-center gap-2 shrink-0">
         <span
           className={cn(
@@ -403,18 +405,43 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
           {formatCurrency(t.amount, t.currency || "USD")}
         </span>
         {!compact && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-none transition-colors text-muted-foreground hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteTransaction({ id: t._id as Id<"transactions"> });
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span className="sr-only">Delete</span>
-          </Button>
+          <>
+            <Tip label="Edit">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.dispatchEvent(new CustomEvent("open-add-entry", {
+                    detail: {
+                      mode: "ledger",
+                      editData: {
+                        id: t._id,
+                        amount: t.amount,
+                        currency: t.currency || "USD",
+                        description: t.description,
+                        category: t.category,
+                        type: t.type,
+                      } satisfies EditData,
+                    },
+                  }));
+                }}
+                className="h-7 w-7 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </Tip>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-none transition-colors text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteTransaction({ id: t._id as Id<"transactions"> });
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="sr-only">Delete</span>
+            </Button>
+          </>
         )}
       </div>
     </motion.div>
@@ -477,19 +504,45 @@ function TransactionDesktopRow({ t, index, deleteTransaction, updateTransaction 
         {t.type === "income" ? "+" : "-"}
         {formatCurrency(t.amount, t.currency || "USD")}
       </td>
-      <td className="px-4 py-3 w-10 text-right">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteTransaction({ id: t._id as Id<"transactions"> });
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span className="sr-only">Delete</span>
-        </Button>
+      <td className="px-4 py-3 w-20 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              document.dispatchEvent(new CustomEvent("open-add-entry", {
+                detail: {
+                  mode: "ledger",
+                  editData: {
+                    id: t._id,
+                    amount: t.amount,
+                    currency: t.currency || "USD",
+                    description: t.description,
+                    category: t.category,
+                    type: t.type,
+                  } satisfies EditData,
+                },
+              }));
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+            <span className="sr-only">Edit</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteTransaction({ id: t._id as Id<"transactions"> });
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span className="sr-only">Delete</span>
+          </Button>
+        </div>
       </td>
     </motion.tr>
   );
