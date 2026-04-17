@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { CalendarRange } from "lucide-react";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import type { LucideIcon } from "lucide-react";
 import {
   PieChart,
@@ -31,7 +34,7 @@ const TOOLTIP_STYLE = {
   padding: "8px 12px",
 };
 
-type TimePeriod = "day" | "week" | "month" | "all";
+type TimePeriod = "day" | "week" | "month" | "custom" | "all";
 
 const TIME_PERIODS: { id: TimePeriod; label: string }[] = [
   { id: "day", label: "today" },
@@ -40,19 +43,13 @@ const TIME_PERIODS: { id: TimePeriod; label: string }[] = [
   { id: "all", label: "all" },
 ];
 
-function getStartOfPeriod(period: TimePeriod): number {
-  const now = new Date();
-  if (period === "all") return 0;
-  if (period === "day") {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  }
-  if (period === "week") {
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(now.getFullYear(), now.getMonth(), diff).getTime();
-  }
-  // month
-  return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+function getStartOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function toDateInput(ms: number) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 interface SpendingChartsProps {
@@ -61,15 +58,40 @@ interface SpendingChartsProps {
 
 export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [customStart, setCustomStart] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return toDateInput(d.getTime());
+  });
+  const [customEnd, setCustomEnd] = useState<string>(() => toDateInput(Date.now()));
+  
   const transactions = useDecryptedTransactions();
   const { baseCurrency, convertAmount } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
 
   const filteredTransactions = useMemo(() => {
     if (!transactions?.length) return [];
-    const startTime = getStartOfPeriod(timePeriod);
-    return transactions.filter((t) => t.date >= startTime);
-  }, [transactions, timePeriod]);
+    
+    const now = new Date();
+    let startTime = 0;
+    let endTime = Infinity;
+    
+    if (timePeriod === "day") {
+      startTime = getStartOfDay(now);
+    } else if (timePeriod === "week") {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      startTime = new Date(now.getFullYear(), now.getMonth(), diff).getTime();
+    } else if (timePeriod === "month") {
+      startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    } else if (timePeriod === "custom") {
+      startTime = getStartOfDay(new Date(customStart));
+      endTime = getStartOfDay(new Date(customEnd)) + 24 * 60 * 60 * 1000 - 1;
+    }
+    // "all" keeps startTime = 0
+    
+    return transactions.filter((t) => t.date >= startTime && t.date <= endTime);
+  }, [transactions, timePeriod, customStart, customEnd]);
 
   const categoryData = useMemo(() => {
     if (!filteredTransactions?.length) return [];
@@ -142,23 +164,78 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
     >
       {/* Time Period Filter */}
       {showCategory && (
-        <div className="flex items-center border border-border bg-background/40">
-          {TIME_PERIODS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setTimePeriod(p.id)}
-              className={[
-                "flex-1 h-9 px-3 border-r last:border-r-0 border-border",
-                "font-mono text-[10px] uppercase tracking-widest transition-colors",
-                timePeriod === p.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-              ].join(" ")}
-              type="button"
+        <div className="flex items-center gap-2">
+          <div className="flex items-center flex-1 border border-border bg-background/40">
+            {TIME_PERIODS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setTimePeriod(p.id)}
+                className={[
+                  "flex-1 h-9 px-3 border-r last:border-r-0 border-border",
+                  "font-mono text-[10px] uppercase tracking-widest transition-colors",
+                  timePeriod === p.id
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                ].join(" ")}
+                type="button"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={[
+                  "h-9 w-9 border border-border flex items-center justify-center transition-colors",
+                  timePeriod === "custom"
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                ].join(" ")}
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-auto p-4 border border-border bg-card rounded-none"
             >
-              {p.label}
-            </button>
-          ))}
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+                // custom_range
+              </p>
+              <div className="flex items-end gap-3">
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                    from
+                  </p>
+                  <DatePickerField
+                    value={customStart}
+                    onChange={(v) => {
+                      setCustomStart(v);
+                      setTimePeriod("custom");
+                    }}
+                    label="Start date"
+                    className="rounded-none"
+                  />
+                </div>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                    to
+                  </p>
+                  <DatePickerField
+                    value={customEnd}
+                    onChange={(v) => {
+                      setCustomEnd(v);
+                      setTimePeriod("custom");
+                    }}
+                    label="End date"
+                    className="rounded-none"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 
