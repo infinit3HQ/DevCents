@@ -38,6 +38,32 @@ export const create = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id: v.id("planned"),
+    amount: v.optional(v.union(v.number(), v.string())),
+    currency: v.optional(v.string()),
+    category: v.optional(v.string()),
+    description: v.optional(v.string()),
+    date: v.optional(v.number()),
+    encrypted: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const item = await ctx.db.get(args.id);
+    if (!item) throw new Error("Not found");
+    if (item.userId !== identity.subject) throw new Error("Unauthorized");
+
+    const { id, ...fields } = args;
+    const patch = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
+    );
+    if (Object.keys(patch).length > 0) await ctx.db.patch(id, patch);
+  },
+});
+
 export const remove = mutation({
   args: {
     id: v.id("planned"),

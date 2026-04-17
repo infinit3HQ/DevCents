@@ -70,7 +70,11 @@ export const createMany = mutation({
 export const update = mutation({
   args: {
     id: v.id("transactions"),
-    category: v.string(),
+    amount: v.optional(v.union(v.number(), v.string())),
+    currency: v.optional(v.string()),
+    category: v.optional(v.string()),
+    description: v.optional(v.string()),
+    encrypted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -81,9 +85,11 @@ export const update = mutation({
     if (transaction.userId !== identity.subject)
       throw new Error("Unauthorized");
 
-    await ctx.db.patch(args.id, {
-      category: args.category,
-    });
+    const { id, ...fields } = args;
+    const patch = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
+    );
+    if (Object.keys(patch).length > 0) await ctx.db.patch(id, patch);
   },
 });
 

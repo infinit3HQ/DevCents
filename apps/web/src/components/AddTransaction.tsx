@@ -48,6 +48,20 @@ import {
 
 type EntryMode = "ledger" | "planned" | "recurring";
 
+export type EditData = {
+  id: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category: string;
+  type: "income" | "expense";
+  // planned
+  date?: string;
+  // recurring
+  startDate?: string;
+  cadence?: "weekly" | "biweekly" | "monthly" | "yearly";
+};
+
 const ledgerSchema = z.object({
   amount: z
     .union([z.number(), z.string()])
@@ -139,6 +153,7 @@ const ENTRY_MODES: Array<{
 export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<EntryMode>("ledger");
+  const [editData, setEditData] = useState<EditData | null>(null);
   const [savingMode, setSavingMode] = useState<EntryMode | null>(null);
   const [submitError, setSubmitError] = useState<{
     mode: EntryMode;
@@ -147,23 +162,26 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const closedAtRef = useRef(0);
   const createTransaction = useMutation(api.transactions.create);
+  const updateTransactionMut = useMutation(api.transactions.update);
   const createPlanned = useMutation(api.planned.create);
+  const updatePlannedMut = useMutation(api.planned.update);
   const createRecurring = useMutation(api.recurring.create);
+  const updateRecurringMut = useMutation(api.recurring.update);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
   const { baseCurrency } = useCurrency();
 
+  const isEditing = editData !== null;
+
   useEffect(() => {
     const handleOpenAddEntry = (evt: Event) => {
-      // Ignore if the drawer was just closed (focus restoration can re-trigger)
       if (Date.now() - closedAtRef.current < 400) return;
-      setOpen(true);
-      const e = evt as CustomEvent<{ mode?: EntryMode }>;
+      const e = evt as CustomEvent<{ mode?: EntryMode; editData?: EditData }>;
       if (e.detail?.mode) setMode(e.detail.mode);
+      setEditData(e.detail?.editData ?? null);
+      setOpen(true);
     };
 
-    // Back-compat: existing command palette dispatches this.
     document.addEventListener("open-add-transaction", handleOpenAddEntry);
-    // New: supports mode switching from anywhere in the app.
     document.addEventListener("open-add-entry", handleOpenAddEntry);
 
     return () =>
@@ -231,6 +249,19 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       recurringForm.setValue("startDate", todayInputValue());
   }, [open, mode, plannedForm, recurringForm]);
 
+  // Pre-fill forms when editing
+  useEffect(() => {
+    if (!open || !editData) return;
+    const { amount, currency, description, category, type } = editData;
+    if (mode === "ledger") {
+      txForm.reset({ amount, currency, description, category, type });
+    } else if (mode === "planned") {
+      plannedForm.reset({ amount, currency, description, category, type, date: editData.date ?? todayInputValue() });
+    } else if (mode === "recurring") {
+      recurringForm.reset({ amount, currency, description, category, type, startDate: editData.startDate ?? todayInputValue(), cadence: editData.cadence ?? "monthly" });
+    }
+  }, [open, editData, mode, txForm, plannedForm, recurringForm]);
+
   useEffect(() => {
     if (!open) return;
     // Clear any previous failure when reopening or switching mode.
@@ -268,29 +299,42 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }, [open, mode]);
 
   const header = useMemo(() => {
-    return ENTRY_MODES.find((m) => m.id === mode) ?? ENTRY_MODES[0];
-  }, [mode]);
+    const base = ENTRY_MODES.find((m) => m.id === mode) ?? ENTRY_MODES[0];
+    if (!isEditing) return base;
+    return { ...base, title: `edit_${base.id}::`, description: `modify_existing_${base.id}_record` };
+  }, [mode, isEditing]);
 
   async function submitLedger(values: z.infer<typeof ledgerSchema>) {
     setSavingMode("ledger");
     setSubmitError(null);
     try {
       const shouldEncrypt = isEnabled && isUnlocked;
-      await createTransaction({
-        amount: shouldEncrypt
-          ? await encryptValue(String(values.amount))
-          : values.amount,
-        currency: values.currency,
-        description: shouldEncrypt
-          ? await encryptValue(values.description)
-          : values.description,
-        type: values.type,
-        category: values.category,
-        date: Date.now(),
-        encrypted: shouldEncrypt || undefined,
-      });
+      const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
+      const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+
+      if (isEditing) {
+        await updateTransactionMut({
+          id: editData.id as any,
+          amount,
+          currency: values.currency,
+          description,
+          category: values.category,
+          encrypted: shouldEncrypt || undefined,
+        });
+      } else {
+        await createTransaction({
+          amount,
+          currency: values.currency,
+          description,
+          type: values.type,
+          category: values.category,
+          date: Date.now(),
+          encrypted: shouldEncrypt || undefined,
+        });
+      }
       setOpen(false);
       txForm.reset();
+      setEditData(null);
     } catch (err) {
       setSubmitError({ mode: "ledger", message: formatSubmitError(err) });
     } finally {
@@ -303,21 +347,33 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     setSubmitError(null);
     try {
       const shouldEncrypt = isEnabled && isUnlocked;
-      await createPlanned({
-        amount: shouldEncrypt
-          ? await encryptValue(String(values.amount))
-          : values.amount,
-        currency: values.currency,
-        description: shouldEncrypt
-          ? await encryptValue(values.description)
-          : values.description,
-        type: values.type,
-        category: values.category,
-        date: parseLocalDateInputToNoonMs(values.date),
-        encrypted: shouldEncrypt || undefined,
-      });
+      const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
+      const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+
+      if (isEditing) {
+        await updatePlannedMut({
+          id: editData.id as any,
+          amount,
+          currency: values.currency,
+          description,
+          category: values.category,
+          date: parseLocalDateInputToNoonMs(values.date),
+          encrypted: shouldEncrypt || undefined,
+        });
+      } else {
+        await createPlanned({
+          amount,
+          currency: values.currency,
+          description,
+          type: values.type,
+          category: values.category,
+          date: parseLocalDateInputToNoonMs(values.date),
+          encrypted: shouldEncrypt || undefined,
+        });
+      }
       setOpen(false);
       plannedForm.reset();
+      setEditData(null);
     } catch (err) {
       setSubmitError({ mode: "planned", message: formatSubmitError(err) });
     } finally {
@@ -330,22 +386,35 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     setSubmitError(null);
     try {
       const shouldEncrypt = isEnabled && isUnlocked;
-      await createRecurring({
-        amount: shouldEncrypt
-          ? await encryptValue(String(values.amount))
-          : values.amount,
-        currency: values.currency,
-        description: shouldEncrypt
-          ? await encryptValue(values.description)
-          : values.description,
-        type: values.type,
-        category: values.category,
-        startDate: parseLocalDateInputToNoonMs(values.startDate),
-        cadence: values.cadence,
-        encrypted: shouldEncrypt || undefined,
-      });
+      const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
+      const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+
+      if (isEditing) {
+        await updateRecurringMut({
+          id: editData.id as any,
+          amount,
+          currency: values.currency,
+          description,
+          category: values.category,
+          startDate: parseLocalDateInputToNoonMs(values.startDate),
+          cadence: values.cadence,
+          encrypted: shouldEncrypt || undefined,
+        });
+      } else {
+        await createRecurring({
+          amount,
+          currency: values.currency,
+          description,
+          type: values.type,
+          category: values.category,
+          startDate: parseLocalDateInputToNoonMs(values.startDate),
+          cadence: values.cadence,
+          encrypted: shouldEncrypt || undefined,
+        });
+      }
       setOpen(false);
       recurringForm.reset();
+      setEditData(null);
     } catch (err) {
       setSubmitError({ mode: "recurring", message: formatSubmitError(err) });
     } finally {
@@ -354,7 +423,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Drawer open={open} onOpenChange={(v) => { if (!v) closedAtRef.current = Date.now(); setOpen(v); }}>
+    <Drawer open={open} onOpenChange={(v) => { if (!v) { closedAtRef.current = Date.now(); setEditData(null); } setOpen(v); }}>
       <DrawerTrigger asChild>
         {trigger || (
           <motion.div
@@ -419,17 +488,21 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
               {ENTRY_MODES.map((m) => {
                 const Icon = m.icon;
                 const active = mode === m.id;
+                const disabled = isEditing && mode !== m.id;
                 return (
                   <button
                     key={m.id}
-                    onClick={() => setMode(m.id)}
+                    onClick={() => !disabled && setMode(m.id)}
+                    disabled={disabled}
                     className={[
                       "flex-1 h-10 px-3 border-r last:border-r-0 border-border",
                       "font-mono text-[10px] uppercase tracking-widest transition-colors",
                       "flex items-center justify-center gap-2",
                       active
                         ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                        : disabled
+                          ? "text-muted-foreground/30 cursor-not-allowed"
+                          : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
                     ].join(" ")}
                     type="button"
                   >
@@ -623,7 +696,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         >
                           {savingMode === "ledger"
                             ? "Submitting..."
-                            : "Submit Entry"}
+                            : isEditing ? "Update Entry" : "Submit Entry"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "ledger" && (
@@ -848,7 +921,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         >
                           {savingMode === "planned"
                             ? "Scheduling..."
-                            : "Schedule"}
+                            : isEditing ? "Update Plan" : "Schedule"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "planned" && (
@@ -1118,7 +1191,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         >
                           {savingMode === "recurring"
                             ? "Saving..."
-                            : "Save Recurring"}
+                            : isEditing ? "Update Recurring" : "Save Recurring"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "recurring" && (

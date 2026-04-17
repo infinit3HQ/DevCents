@@ -13,6 +13,7 @@ import {
   PlayCircle,
   Send,
   Wallet,
+  Pencil,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -38,6 +39,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Tip } from "@/components/ui/Tip";
 import { DAY_MS, dayKey, recurringOccurrencesBetween } from "@/lib/planningUtils";
+import type { EditData } from "@/components/AddTransaction";
 
 type HorizonDays = 30 | 60 | 90 | 180 | 365 | number;
 
@@ -77,6 +79,15 @@ function shortDate(ms: number) {
 
 function sameDayOrAfter(a: number, b: number) {
   return dayKey(a) >= dayKey(b);
+}
+
+function toDateInput(ms: number) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function openEdit(mode: "planned" | "recurring" | "ledger", editData: EditData) {
+  document.dispatchEvent(new CustomEvent("open-add-entry", { detail: { mode, editData } }));
 }
 
 export function Planning({ currentBalance }: { currentBalance: number }) {
@@ -656,6 +667,25 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       </span>
 
                       {status === "planned" && (
+                        <Tip label="Edit">
+                          <button
+                            onClick={() => openEdit("planned", {
+                              id: p._id,
+                              amount: p.amount,
+                              currency: p.currency || baseCurrency,
+                              description: p.description,
+                              category: p.category,
+                              type: p.type,
+                              date: toDateInput(p.date),
+                            })}
+                            className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </Tip>
+                      )}
+
+                      {status === "planned" && (
                         <Tip label="Post to ledger">
                           <button
                             onClick={() =>
@@ -782,6 +812,24 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       {r.type === "income" ? "+" : "-"}
                       {formatCurrency(r.amount, r.currency || baseCurrency)}
                     </span>
+
+                    <Tip label="Edit">
+                      <button
+                        onClick={() => openEdit("recurring", {
+                          id: r._id,
+                          amount: r.amount,
+                          currency: r.currency || baseCurrency,
+                          description: r.description,
+                          category: r.category,
+                          type: r.type,
+                          startDate: toDateInput(r.startDate),
+                          cadence: r.cadence,
+                        })}
+                        className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </Tip>
 
                     <Tip label={r.active === false ? "Resume" : "Pause"}>
                       <button
