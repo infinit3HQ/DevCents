@@ -519,9 +519,9 @@ export function Settings() {
 
   return (
     <>
-      <div className="min-h-dvh bg-background">
+      <div className="flex-1 overflow-y-auto bg-background">
         {/* Page header */}
-        <div className="sticky z-20 border-b border-border bg-background top-12">
+        <div className="sticky top-0 z-20 border-b border-border bg-background">
           <div className="max-w-2xl mx-auto px-6 py-4">
             <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
               config
