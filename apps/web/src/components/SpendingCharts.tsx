@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -31,19 +31,50 @@ const TOOLTIP_STYLE = {
   padding: "8px 12px",
 };
 
+type TimePeriod = "day" | "week" | "month" | "all";
+
+const TIME_PERIODS: { id: TimePeriod; label: string }[] = [
+  { id: "day", label: "today" },
+  { id: "week", label: "week" },
+  { id: "month", label: "month" },
+  { id: "all", label: "all" },
+];
+
+function getStartOfPeriod(period: TimePeriod): number {
+  const now = new Date();
+  if (period === "all") return 0;
+  if (period === "day") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  }
+  if (period === "week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(now.getFullYear(), now.getMonth(), diff).getTime();
+  }
+  // month
+  return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+}
+
 interface SpendingChartsProps {
   mode?: "all" | "category" | "monthly";
 }
 
 export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const transactions = useDecryptedTransactions();
   const { baseCurrency, convertAmount } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
 
-  const categoryData = useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     if (!transactions?.length) return [];
+    const startTime = getStartOfPeriod(timePeriod);
+    return transactions.filter((t) => t.date >= startTime);
+  }, [transactions, timePeriod]);
+
+  const categoryData = useMemo(() => {
+    if (!filteredTransactions?.length) return [];
     const byCategory: Record<string, number> = {};
-    for (const t of transactions) {
+    for (const t of filteredTransactions) {
       if (t.type === "expense") {
         const converted = convertAmount(t.amount, t.currency || "USD");
         byCategory[t.category] = (byCategory[t.category] ?? 0) + converted;
@@ -58,12 +89,12 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
         Icon: (CATEGORY_ICONS[name] ?? CATEGORY_ICONS.other) as LucideIcon,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, convertAmount]);
+  }, [filteredTransactions, convertAmount]);
 
   const monthlyData = useMemo(() => {
-    if (!transactions?.length) return [];
+    if (!filteredTransactions?.length) return [];
     const byMonth: Record<string, { income: number; expenses: number }> = {};
-    for (const t of transactions) {
+    for (const t of filteredTransactions) {
       const d = new Date(t.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
@@ -87,7 +118,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           expenses: Math.round(data.expenses * 100) / 100,
         };
       });
-  }, [transactions, convertAmount, baseCurrency]);
+  }, [filteredTransactions, convertAmount, baseCurrency]);
 
   if (!transactions?.length)
     return (
@@ -109,6 +140,35 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       transition={{ duration: 0.35, delay: 0.05 }}
       className="space-y-5"
     >
+      {/* Time Period Filter */}
+      {showCategory && (
+        <div className="flex items-center border border-border bg-background/40">
+          {TIME_PERIODS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setTimePeriod(p.id)}
+              className={[
+                "flex-1 h-9 px-3 border-r last:border-r-0 border-border",
+                "font-mono text-[10px] uppercase tracking-widest transition-colors",
+                timePeriod === p.id
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+              ].join(" ")}
+              type="button"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* No data for period */}
+      {showCategory && categoryData.length === 0 && (
+        <div className="py-12 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground border border-border bg-card">
+          no expenses for this period
+        </div>
+      )}
+
       {/* Category Pie */}
       {showCategory && categoryData.length > 0 && (
         <motion.div
