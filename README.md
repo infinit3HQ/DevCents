@@ -12,14 +12,63 @@ Your money data stays on your server, encrypted by your passphrase, visible only
 [![TanStack](https://img.shields.io/badge/built%20with-TanStack-FF4154?logo=react&logoColor=white)](https://tanstack.com/start)
 [![Convex](https://img.shields.io/badge/backend-Convex-EE342F)](https://convex.dev)
 
-<!-- Replace with your actual screenshots -->
-![DevCents Desktop](.github/screenshots/desktop.png)
+</div>
+
+---
+
+## ✨ Screenshots
+
+<div align="center">
+
+### Landing Page
 
 <p>
-  <img src=".github/screenshots/mobile-1.png" width="22%" />
-  <img src=".github/screenshots/mobile-2.png" width="22%" />
-  <img src=".github/screenshots/mobile-3.png" width="22%" />
-  <img src=".github/screenshots/mobile-4.png" width="22%" />
+  <img src=".images/LandingPage-1.jpeg" width="32%" />
+  <img src=".images/LandingPage-2.jpeg" width="32%" />
+  <img src=".images/LandingPage-3.jpeg" width="32%" />
+</p>
+
+### Dashboard
+
+<p>
+  <img src=".images/Dashbaord-1.jpeg" width="48%" />
+  <img src=".images/Dashboard-Catogoires.jpeg" width="48%" />
+</p>
+
+<p>
+  <img src=".images/Dashbaord-Monthly.jpeg" width="48%" />
+  <img src=".images/Biomatic-lock.jpeg" width="48%" />
+</p>
+
+### Planning & Forecasting
+
+<p>
+  <img src=".images/Dashbaord-Plan-1.jpeg" width="32%" />
+  <img src=".images/Dashbaord-Plan-2.jpeg" width="32%" />
+  <img src=".images/Dashbaord-Plan-3.jpeg" width="32%" />
+</p>
+
+### Add Entries
+
+<p>
+  <img src=".images/New-Entry-Ledger.jpeg" width="32%" />
+  <img src=".images/New-Entry-Planned.jpeg" width="32%" />
+  <img src=".images/New-Entry-Recurring.jpeg" width="32%" />
+</p>
+
+### Mobile Experience
+
+<p>
+  <img src=".images/Mobile-Dashbaord-Overview.jpeg" width="18%" />
+  <img src=".images/Mobile-Dashbaord-Ledger.jpeg" width="18%" />
+  <img src=".images/Mobile-Dashbaord-ANALYTICS.jpeg" width="18%" />
+  <img src=".images/Mobile-Dashboard-Planing.jpeg" width="18%" />
+  <img src=".images/Mobile-New-Entry-Ledger.jpeg" width="18%" />
+</p>
+
+<p>
+  <img src=".images/Mobile-New-Entry-Planned.jpeg" width="18%" />
+  <img src=".images/Mobile-New-Entry-Recurring.jpeg" width="18%" />
 </p>
 
 </div>
@@ -45,6 +94,8 @@ Your money data stays on your server, encrypted by your passphrase, visible only
 - **🔒 Client-side encryption** — AES-GCM encryption with a passphrase only you know. The server stores ciphertext.
 - **🤳 Biometric unlock** — Face ID / fingerprint via WebAuthn. No password prompts on your own device.
 - **🌍 Multi-currency** — Log transactions in any currency, auto-converted to your base.
+- **📊 Spending analytics** — Category breakdowns with time filters (today, week, month, custom range).
+- **📅 Planning & forecasting** — Schedule one-time and recurring transactions, visualize projected balance.
 - **🚫 No Plaid, no scraping** — You enter what you spend. Nothing connects to your bank.
 - **🤖 Claude MCP integration** — Ask Claude about your finances. Transactions are decrypted locally before being sent.
 - **📱 100% mobile optimized** — Feels native on iOS and Android browsers.
