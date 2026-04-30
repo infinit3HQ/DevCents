@@ -12,7 +12,7 @@
     "mcp": "tsx src/mcp-server/index.ts"
   },
   "dependencies": {
-    "@clerk/tanstack-react-start": "^0.28.1",
+    "@clerk/tanstack-react-start": "^1.1.8",
     "@clerk/ui": "^1.0.0",
     "@devcents/shared": "*",
     "@hookform/resolvers": "^5.2.2",
