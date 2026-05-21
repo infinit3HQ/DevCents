@@ -5,6 +5,7 @@ import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import type { LucideIcon } from "lucide-react";
@@ -294,8 +295,8 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                   data={categoryData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={95}
+                  innerRadius={70}
+                  outerRadius={100}
                   paddingAngle={2}
                   dataKey="value"
                   animationBegin={0}
@@ -325,13 +326,29 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
               </PieChart>
             </ResponsiveContainer>
             {/* Center total label */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
+              <div className="text-center w-full">
+                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
                   total
                 </p>
-                <p className="font-mono text-lg num-display text-foreground leading-tight">
-                  {currencySymbol}{formatAmountOnly(totalExpenses, baseCurrency)}
+                <p 
+                  className={cn(
+                    "font-mono num-display text-foreground leading-none tracking-tight",
+                    totalExpenses >= 1000000 ? "text-base" : "text-lg"
+                  )}
+                  title={`${currencySymbol}${formatAmountOnly(totalExpenses, baseCurrency)}`}
+                >
+                  {totalExpenses >= 10000000 ? (
+                    // Use compact notation for extremely large values (10M+)
+                    new Intl.NumberFormat('en-US', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                      style: 'currency',
+                      currency: baseCurrency || 'USD'
+                    }).format(totalExpenses)
+                  ) : (
+                    `${currencySymbol}${formatAmountOnly(totalExpenses, baseCurrency)}`
+                  )}
                 </p>
               </div>
             </div>
