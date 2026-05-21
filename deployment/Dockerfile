@@ -5,13 +5,16 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy workspace manifests first so npm can install workspace dependencies.
-COPY package.json package-lock.json ./
+# Install pnpm
+RUN npm install -g pnpm@11
+
+# Copy workspace manifests first so pnpm can install workspace dependencies.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/mcp/package.json ./apps/mcp/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy application source code
 COPY . .
@@ -29,7 +32,7 @@ RUN rm -f .env .env.* apps/web/.env.* && \
     echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env.production && \
     echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" >> apps/web/.env.production
 
-RUN npm run build:web
+RUN pnpm --filter devcents build
 
 # -------------------------
 # Production Stage 

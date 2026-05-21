@@ -37,8 +37,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Deploy Convex Functions
         env:
@@ -46,7 +51,7 @@ jobs:
         run: |
           # Strip any accidental newlines or spaces from the secret
           CLEAN_KEY=$(echo -n "$CONVEX_DEPLOY_KEY" | tr -d '\n\r ')
-          npx convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key "$CLEAN_KEY"
+          pnpm --filter devcents exec convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key "$CLEAN_KEY"
         working-directory: apps/web
 
       - name: Build and start Docker services
