@@ -1,0 +1,62 @@
+name: Audit Income Rows
+
+# Read-only diagnostic workflow used to investigate suspicious income
+# totals. Triggered manually from the Actions tab. Calls two internal
+# Convex queries that return per-currency breakdowns and a row-by-row
+# listing of all income transactions. Encrypted amounts are NOT
+# decrypted — only their shape, date, and currency are exposed.
+
+on:
+  workflow_dispatch:
+
+env:
+  VITE_CONVEX_URL: https://devcents-convex.012140.xyz
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  audit:
+    runs-on:
+      - serverone
+      - self-hosted
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Income breakdown
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::audit:incomeBreakdown"
+          pnpm --filter devcents exec convex run audit:incomeBreakdown \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Income rows
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::audit:incomeRows"
+          pnpm --filter devcents exec convex run audit:incomeRows \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
