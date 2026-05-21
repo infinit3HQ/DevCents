@@ -1,0 +1,105 @@
+name: Cleanup Locked Exchange Rates
+
+# One-off operational workflow used to migrate prod data after the historical
+# exchange-rates feature was reverted. Run this AFTER the revert + cleanup.ts
+# module has been deployed to prod via deploy.yml, but BEFORE merging the
+# Phase 2 PR that prunes the schema.
+#
+# Recommended sequence:
+#   1. Run with action=inspect → confirm there is data to clean.
+#   2. Run with action=run     → strips the fields and clears exchangeRates.
+#   3. Run with action=inspect → confirm everything is zero.
+#   4. Merge the Phase 2 schema-cleanup PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do"
+        required: true
+        default: inspect
+        type: choice
+        options:
+          - inspect
+          - run
+
+env:
+  VITE_CONVEX_URL: https://devcents-convex.012140.xyz
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  cleanup:
+    # Match deploy.yml so we run inside the same trusted environment that
+    # already has network access to the Convex prod URL.
+    runs-on:
+      - serverone
+      - self-hosted
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Inspect (before)
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::cleanup:inspect"
+          pnpm --filter devcents exec convex run cleanup:inspect \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Strip locked rates
+        if: ${{ inputs.action == 'run' }}
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::cleanup:stripLockedRates"
+          pnpm --filter devcents exec convex run cleanup:stripLockedRates \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Clear exchangeRates table
+        if: ${{ inputs.action == 'run' }}
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::cleanup:clearExchangeRates"
+          pnpm --filter devcents exec convex run cleanup:clearExchangeRates \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Inspect (after)
+        if: ${{ inputs.action == 'run' }}
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::cleanup:inspect (verify)"
+          pnpm --filter devcents exec convex run cleanup:inspect \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
