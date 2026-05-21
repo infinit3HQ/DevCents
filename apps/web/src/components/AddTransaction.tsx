@@ -200,7 +200,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }, []);
 
   const txForm = useForm({
-    resolver: zodResolver(ledgerSchema),
+    resolver: zodResolver(ledgerSchema as any),
     defaultValues: {
       amount: "" as unknown as number,
       currency: baseCurrency || "USD",
@@ -211,7 +211,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   });
 
   const plannedForm = useForm({
-    resolver: zodResolver(plannedSchema),
+    resolver: zodResolver(plannedSchema as any),
     defaultValues: {
       amount: "" as unknown as number,
       currency: baseCurrency || "USD",
@@ -223,7 +223,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   });
 
   const recurringForm = useForm({
-    resolver: zodResolver(recurringSchema),
+    resolver: zodResolver(recurringSchema as any),
     defaultValues: {
       amount: "" as unknown as number,
       currency: baseCurrency || "USD",

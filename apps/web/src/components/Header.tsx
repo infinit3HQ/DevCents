@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { SignedIn, UserButton } from "@clerk/tanstack-react-start";
+import { Show, UserButton } from "@clerk/tanstack-react-start";
 import { motion } from "framer-motion";
 import {
   Upload,
@@ -97,7 +97,7 @@ export default function Header() {
 
       {/* ── Right actions ──────────────────────────────────────────── */}
       <nav className="flex items-center gap-2">
-        <SignedIn>
+        <Show when="signed-in">
           <EncryptionBadge />
 
           {/* Import */}
@@ -142,9 +142,9 @@ export default function Header() {
           </button>
 
           <div className="h-7 w-7 flex items-center justify-center">
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </div>
-        </SignedIn>
+        </Show>
       </nav>
     </motion.header>
   );

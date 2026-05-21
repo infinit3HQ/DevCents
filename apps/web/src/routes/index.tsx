@@ -1,4 +1,4 @@
-import { SignedOut, SignedIn } from '@clerk/tanstack-react-start';
+import { Show } from '@clerk/tanstack-react-start';
 import { createFileRoute } from '@tanstack/react-router';
 import { LandingPage } from '@/components/LandingPage';
 import { Dashboard } from '@/components/Dashboard';
@@ -10,12 +10,12 @@ export const Route = createFileRoute('/')({
 function Home() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <SignedOut>
+      <Show when="signed-out">
         <LandingPage />
-      </SignedOut>
-      <SignedIn>
+      </Show>
+      <Show when="signed-in">
         <Dashboard />
-      </SignedIn>
+      </Show>
     </div>
   );
 }

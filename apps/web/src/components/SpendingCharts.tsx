@@ -412,8 +412,8 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                 contentStyle={TOOLTIP_STYLE}
                 cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
                 itemStyle={{ color: "var(--color-foreground)" }}
-                formatter={(v: number | undefined) => [
-                  `${currencySymbol}${formatAmountOnly(v ?? 0, baseCurrency)}`,
+                formatter={(v: any) => [
+                  `${currencySymbol}${formatAmountOnly(Number(v) ?? 0, baseCurrency)}`,
                 ]}
               />
               <Legend

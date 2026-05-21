@@ -43,7 +43,6 @@ async function getEncryptionKey(tokenHash: string) {
   return await deriveKey(PASSPHRASE, salt);
 }
 
-// @ts-expect-error Type instantiation is excessively deep due to zod inference
 server.tool(
   "get_transactions",
   "Get the user's recent DevCents transactions. The MCP server decrypts them automatically.",
@@ -94,7 +93,6 @@ server.tool(
   },
 );
 
-// @ts-expect-error Type instantiation is excessively deep due to zod inference
 server.tool(
   "add_transaction",
   "Add a new expense or income to DevCents. Automatically encrypted before saving.",

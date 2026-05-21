@@ -82,7 +82,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
           {rightTabs.map(tabBtn)}
           <div className="flex flex-col items-center gap-1 flex-1 py-2 text-muted-foreground">
             <div className="h-[18px] w-[18px] flex items-center justify-center">
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </div>
             <span className="text-[8px] font-mono uppercase tracking-widest">
               account

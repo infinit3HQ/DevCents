@@ -11,7 +11,7 @@
     "@modelcontextprotocol/sdk": "^1.6.0",
     "convex": "^1.31.7",
     "zod": "^3.24.2",
-    "@devcents/shared": "*"
+    "@devcents/shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.3",

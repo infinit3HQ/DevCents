@@ -53,6 +53,8 @@ type CashflowEvent = {
   currency: string;
   category: string;
   description: string;
+  exchangeRate?: number;
+  baseCurrencyAtTime?: string;
 };
 
 const TOOLTIP_STYLE = {

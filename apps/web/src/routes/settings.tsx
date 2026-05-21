@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  SignedIn,
-  SignedOut,
+  Show,
   RedirectToSignIn,
 } from "@clerk/tanstack-react-start";
 import { Settings } from "@/components/Settings";
@@ -13,12 +12,12 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   return (
     <>
-      <SignedOut>
+      <Show when="signed-out">
         <RedirectToSignIn />
-      </SignedOut>
-      <SignedIn>
+      </Show>
+      <Show when="signed-in">
         <Settings />
-      </SignedIn>
+      </Show>
     </>
   );
 }

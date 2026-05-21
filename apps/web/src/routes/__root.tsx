@@ -1,5 +1,4 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { shadcn } from "@clerk/ui/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import React from "react";
 import { getEnv } from "@/lib/env";
@@ -182,16 +181,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <ClerkProvider
       publishableKey={getEnv("VITE_CLERK_PUBLISHABLE_KEY")}
       appearance={{
-        baseTheme: shadcn,
         cssLayerName: "clerk",
         variables: {
           colorPrimary: "oklch(0.75 0.15 142)",
           colorBackground: "oklch(0.2 0 0)",
-          colorText: "oklch(0.9 0.02 120)",
-          colorTextSecondary: "oklch(0.5 0 0)",
-          colorInputBackground: "oklch(0.18 0 0)",
-          colorInputText: "oklch(0.9 0.02 120)",
-          colorNeutral: "oklch(0.9 0.02 120)",
           colorDanger: "oklch(0.6 0.2 25)",
           borderRadius: "0.375rem",
           fontFamily: "Inter, system-ui, sans-serif",
