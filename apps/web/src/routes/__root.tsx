@@ -186,12 +186,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         cssLayerName: "clerk",
         variables: {
           colorPrimary: "hsl(142, 60%, 52%)",
-          colorBackground: "oklch(0.18 0 0)",
-          colorText: "oklch(0.9 0.02 120)",
-          colorTextSecondary: "oklch(0.5 0 0)",
-          colorInputBackground: "oklch(0.18 0 0)",
-          colorInputText: "oklch(0.9 0.02 120)",
-        } as any,
+        },
         elements: {
           modalBackdrop: {
             background: "rgb(0 0 0 / 0.6)",
