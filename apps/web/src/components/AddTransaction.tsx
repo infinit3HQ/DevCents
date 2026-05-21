@@ -171,7 +171,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const createRecurring = useMutation(api.recurring.create);
   const updateRecurringMut = useMutation(api.recurring.update);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
-  const { baseCurrency } = useCurrency();
+  const { baseCurrency, getHistoricalRate } = useCurrency();
 
   const isEditing = editData !== null;
 
@@ -321,11 +321,21 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
 
+      let exchangeRate: number | undefined;
+      let baseCurrencyAtTime: string | undefined;
+
+      if (values.currency !== baseCurrency) {
+        exchangeRate = await getHistoricalRate(Date.now(), values.currency, baseCurrency);
+        baseCurrencyAtTime = baseCurrency;
+      }
+
       if (isEditing) {
         await updateTransactionMut({
           id: editData.id as any,
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           category: values.category,
           encrypted: shouldEncrypt || undefined,
@@ -334,6 +344,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createTransaction({
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           type: values.type,
           category: values.category,
@@ -359,11 +371,21 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
 
+      let exchangeRate: number | undefined;
+      let baseCurrencyAtTime: string | undefined;
+
+      if (values.currency !== baseCurrency) {
+        exchangeRate = await getHistoricalRate(parseLocalDateInputToNoonMs(values.date), values.currency, baseCurrency);
+        baseCurrencyAtTime = baseCurrency;
+      }
+
       if (isEditing) {
         await updatePlannedMut({
           id: editData.id as any,
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           category: values.category,
           date: parseLocalDateInputToNoonMs(values.date),
@@ -373,6 +395,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createPlanned({
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           type: values.type,
           category: values.category,
@@ -398,11 +422,21 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
 
+      let exchangeRate: number | undefined;
+      let baseCurrencyAtTime: string | undefined;
+
+      if (values.currency !== baseCurrency) {
+        exchangeRate = await getHistoricalRate(parseLocalDateInputToNoonMs(values.startDate), values.currency, baseCurrency);
+        baseCurrencyAtTime = baseCurrency;
+      }
+
       if (isEditing) {
         await updateRecurringMut({
           id: editData.id as any,
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           category: values.category,
           startDate: parseLocalDateInputToNoonMs(values.startDate),
@@ -413,6 +447,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createRecurring({
           amount,
           currency: values.currency,
+          exchangeRate,
+          baseCurrencyAtTime,
           description,
           type: values.type,
           category: values.category,

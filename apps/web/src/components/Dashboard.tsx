@@ -70,10 +70,18 @@ export function Dashboard() {
       return { balance: 0, income: 0, expenses: 0, txCount: 0 };
     const income = transactions
       .filter((t) => t.type === "income")
-      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
+      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD", {
+        lockedRate: t.exchangeRate,
+        baseCurrencyAtTime: t.baseCurrencyAtTime,
+        date: t.date,
+      }), 0);
     const expenses = transactions
       .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
+      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD", {
+        lockedRate: t.exchangeRate,
+        baseCurrencyAtTime: t.baseCurrencyAtTime,
+        date: t.date,
+      }), 0);
     return {
       balance: income - expenses,
       income,

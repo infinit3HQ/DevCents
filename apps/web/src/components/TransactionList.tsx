@@ -73,7 +73,11 @@ export function TransactionList({
         groups[key] = { transactions: [], income: 0, expense: 0, date: t.date };
       }
       groups[key].transactions.push(t);
-      const amountInBase = convertAmount(t.amount, t.currency || "USD");
+      const amountInBase = convertAmount(t.amount, t.currency || "USD", {
+        lockedRate: t.exchangeRate,
+        baseCurrencyAtTime: t.baseCurrencyAtTime,
+        date: t.date,
+      });
       if (t.type === "income") {
         groups[key].income += amountInBase;
       } else {

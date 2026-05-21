@@ -19,6 +19,8 @@ export const create = mutation({
   args: {
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
+    exchangeRate: v.optional(v.number()),
+    baseCurrencyAtTime: v.optional(v.string()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(),
@@ -42,6 +44,8 @@ export const createMany = mutation({
       v.object({
         amount: v.union(v.number(), v.string()),
         currency: v.optional(v.string()),
+        exchangeRate: v.optional(v.number()),
+        baseCurrencyAtTime: v.optional(v.string()),
         type: v.union(v.literal("income"), v.literal("expense")),
         category: v.string(),
         description: v.string(),
@@ -72,6 +76,8 @@ export const update = mutation({
     id: v.id("transactions"),
     amount: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
+    exchangeRate: v.optional(v.number()),
+    baseCurrencyAtTime: v.optional(v.string()),
     category: v.optional(v.string()),
     description: v.optional(v.string()),
     encrypted: v.optional(v.boolean()),
