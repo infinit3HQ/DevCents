@@ -53,8 +53,6 @@ type CashflowEvent = {
   currency: string;
   category: string;
   description: string;
-  exchangeRate?: number;
-  baseCurrencyAtTime?: string;
 };
 
 const TOOLTIP_STYLE = {
@@ -140,8 +138,6 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         currency: p.currency || baseCurrency || "USD",
         category: p.category,
         description: p.description,
-        exchangeRate: p.exchangeRate,
-        baseCurrencyAtTime: p.baseCurrencyAtTime,
       });
     }
 
@@ -166,8 +162,6 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           currency: r.currency || baseCurrency || "USD",
           category: r.category,
           description: r.description,
-          exchangeRate: r.exchangeRate,
-          baseCurrencyAtTime: r.baseCurrencyAtTime,
         });
       }
     }
