@@ -6,8 +6,6 @@ export default defineSchema({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
     currency: v.optional(v.string()), // USD, LKR, JPY
-    exchangeRate: v.optional(v.number()), // Rate relative to baseCurrencyAtTime
-    baseCurrencyAtTime: v.optional(v.string()), // The base currency when the transaction was created
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -20,8 +18,6 @@ export default defineSchema({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
     currency: v.optional(v.string()),
-    exchangeRate: v.optional(v.number()),
-    baseCurrencyAtTime: v.optional(v.string()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -44,8 +40,6 @@ export default defineSchema({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
     currency: v.optional(v.string()),
-    exchangeRate: v.optional(v.number()),
-    baseCurrencyAtTime: v.optional(v.string()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -61,12 +55,6 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_startDate", ["userId", "startDate"]),
-
-  exchangeRates: defineTable({
-    date: v.string(), // Format: "YYYY-MM-DD"
-    base: v.string(), // e.g., "USD"
-    rates: v.any(), // Map of currency code to rate relative to base
-  }).index("by_date", ["date"]),
 
   // Tracks which recurring occurrences have been posted to the ledger.
   postedRecurringOccurrences: defineTable({
