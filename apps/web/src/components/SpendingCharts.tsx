@@ -98,7 +98,11 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
     const byCategory: Record<string, number> = {};
     for (const t of filteredTransactions) {
       if (t.type === "expense") {
-        const converted = convertAmount(t.amount, t.currency || "USD");
+        const converted = convertAmount(t.amount, t.currency || "USD", {
+        lockedRate: t.exchangeRate,
+        baseCurrencyAtTime: t.baseCurrencyAtTime,
+        date: t.date,
+      });
         byCategory[t.category] = (byCategory[t.category] ?? 0) + converted;
       }
     }
@@ -121,7 +125,11 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
 
-      const converted = convertAmount(t.amount, t.currency || "USD");
+      const converted = convertAmount(t.amount, t.currency || "USD", {
+        lockedRate: t.exchangeRate,
+        baseCurrencyAtTime: t.baseCurrencyAtTime,
+        date: t.date,
+      });
       if (t.type === "income") byMonth[key].income += converted;
       else byMonth[key].expenses += converted;
     }
