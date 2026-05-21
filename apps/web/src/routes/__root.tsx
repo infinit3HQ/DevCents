@@ -1,5 +1,5 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { dark, shadcn } from "@clerk/themes";
+import { dark } from "@clerk/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import React from "react";
 import { getEnv } from "@/lib/env";
@@ -182,11 +182,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <ClerkProvider
       publishableKey={getEnv("VITE_CLERK_PUBLISHABLE_KEY")}
       appearance={{
-        baseTheme: [dark, shadcn],
+        baseTheme: dark,
         cssLayerName: "clerk",
         variables: {
           colorPrimary: "hsl(142, 60%, 52%)",
-        },
+          colorBackground: "oklch(0.18 0 0)",
+          colorText: "oklch(0.9 0.02 120)",
+          colorTextSecondary: "oklch(0.5 0 0)",
+          colorInputBackground: "oklch(0.18 0 0)",
+          colorInputText: "oklch(0.9 0.02 120)",
+        } as any,
         elements: {
           modalBackdrop: {
             background: "rgb(0 0 0 / 0.6)",
