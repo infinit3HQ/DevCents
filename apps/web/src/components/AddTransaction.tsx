@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -170,6 +170,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const updatePlannedMut = useMutation(api.planned.update);
   const createRecurring = useMutation(api.recurring.create);
   const updateRecurringMut = useMutation(api.recurring.update);
+  const fetchRateToUSD = useAction(api.exchangeRates.getRateToUSD);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
   const { baseCurrency } = useCurrency();
 
@@ -280,6 +281,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const formatSubmitError = (err: unknown): string => {
     if (err instanceof Error) {
       if (
+        /rate for|rate from|fxratesapi/i.test(err.message)
+      ) {
+        return `Could not lock the exchange rate. ${err.message}. Try again, or pick a different currency / date.`;
+      }
+      if (
         /clerk/i.test(err.message) ||
         /\/tokens/i.test(err.message) ||
         /sess_/i.test(err.message)
@@ -292,6 +298,22 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     }
     return "Something went wrong. Please try again.";
   };
+
+  // Fetch the locked rate-to-USD for a non-USD entry. Throws on failure
+  // so the submit handler can refuse to save without a real rate (no
+  // silent fallback to 1, which was yesterday's prod-breaking bug).
+  async function resolveRateToUSD(
+    currency: string,
+    dateMs: number,
+  ): Promise<number> {
+    if (currency === "USD") return 1;
+    const dateKey = new Date(dateMs).toISOString().slice(0, 10);
+    const rate = await fetchRateToUSD({ date: dateKey, currency });
+    if (typeof rate !== "number" || !isFinite(rate) || rate <= 0) {
+      throw new Error(`Could not resolve a valid ${currency}/USD rate for ${dateKey}.`);
+    }
+    return rate;
+  }
 
   const focusFirstField = () => {
     const root = contentRef.current;
@@ -320,6 +342,10 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const shouldEncrypt = isEnabled && isUnlocked;
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+      const dateMs = Date.now();
+      const rateToUSD = isEditing
+        ? undefined
+        : await resolveRateToUSD(values.currency, dateMs);
 
       if (isEditing) {
         await updateTransactionMut({
@@ -334,10 +360,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createTransaction({
           amount,
           currency: values.currency,
+          rateToUSD,
           description,
           type: values.type,
           category: values.category,
-          date: Date.now(),
+          date: dateMs,
           encrypted: shouldEncrypt || undefined,
         });
       }
@@ -358,6 +385,10 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const shouldEncrypt = isEnabled && isUnlocked;
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+      const dateMs = parseLocalDateInputToNoonMs(values.date);
+      const rateToUSD = isEditing
+        ? undefined
+        : await resolveRateToUSD(values.currency, dateMs);
 
       if (isEditing) {
         await updatePlannedMut({
@@ -366,17 +397,18 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           currency: values.currency,
           description,
           category: values.category,
-          date: parseLocalDateInputToNoonMs(values.date),
+          date: dateMs,
           encrypted: shouldEncrypt || undefined,
         });
       } else {
         await createPlanned({
           amount,
           currency: values.currency,
+          rateToUSD,
           description,
           type: values.type,
           category: values.category,
-          date: parseLocalDateInputToNoonMs(values.date),
+          date: dateMs,
           encrypted: shouldEncrypt || undefined,
         });
       }
@@ -397,6 +429,10 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const shouldEncrypt = isEnabled && isUnlocked;
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
+      const startDateMs = parseLocalDateInputToNoonMs(values.startDate);
+      const rateToUSD = isEditing
+        ? undefined
+        : await resolveRateToUSD(values.currency, startDateMs);
 
       if (isEditing) {
         await updateRecurringMut({
@@ -405,7 +441,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           currency: values.currency,
           description,
           category: values.category,
-          startDate: parseLocalDateInputToNoonMs(values.startDate),
+          startDate: startDateMs,
           cadence: values.cadence,
           encrypted: shouldEncrypt || undefined,
         });
@@ -413,10 +449,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createRecurring({
           amount,
           currency: values.currency,
+          rateToUSD,
           description,
           type: values.type,
           category: values.category,
-          startDate: parseLocalDateInputToNoonMs(values.startDate),
+          startDate: startDateMs,
           cadence: values.cadence,
           encrypted: shouldEncrypt || undefined,
         });
