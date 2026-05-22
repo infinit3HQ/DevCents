@@ -20,6 +20,7 @@ export const create = mutation({
   args: {
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
+    rateToUSD: v.optional(v.number()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(),
@@ -43,6 +44,7 @@ export const update = mutation({
     id: v.id("planned"),
     amount: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
+    rateToUSD: v.optional(v.number()),
     category: v.optional(v.string()),
     description: v.optional(v.string()),
     date: v.optional(v.number()),
@@ -118,6 +120,7 @@ export const postToLedger = mutation({
       userId: identity.subject,
       amount: item.amount,
       currency: item.currency,
+      rateToUSD: item.rateToUSD,
       type: item.type,
       category: item.category,
       description: item.description,

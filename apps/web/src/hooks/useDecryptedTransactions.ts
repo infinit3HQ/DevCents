@@ -14,6 +14,7 @@ export interface DecryptedTransaction {
   date: number;
   encrypted?: boolean;
   currency?: string;
+  rateToUSD?: number;
 }
 
 export function useDecryptedTransactions() {

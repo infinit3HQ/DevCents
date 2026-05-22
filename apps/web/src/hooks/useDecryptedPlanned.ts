@@ -9,6 +9,7 @@ export interface DecryptedPlannedItem {
   userId: string;
   amount: number;
   currency?: string;
+  rateToUSD?: number;
   type: "income" | "expense";
   category: string;
   description: string;

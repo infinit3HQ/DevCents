@@ -5,7 +5,8 @@ export default defineSchema({
   transactions: defineTable({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
-    currency: v.optional(v.string()), // USD, LKR, JPY
+    currency: v.optional(v.string()), // ISO currency code, e.g. USD, LKR, JPY, EUR, ...
+    rateToUSD: v.optional(v.number()), // Locked rate from `currency` -> USD on `date`. 1.0 for USD entries. Filled at save time and on backfill.
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -18,6 +19,7 @@ export default defineSchema({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
     currency: v.optional(v.string()),
+    rateToUSD: v.optional(v.number()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -40,6 +42,7 @@ export default defineSchema({
     userId: v.string(),
     amount: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
     currency: v.optional(v.string()),
+    rateToUSD: v.optional(v.number()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(), // plaintext or encrypted string
@@ -55,6 +58,15 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_startDate", ["userId", "startDate"]),
+
+  // Cache of full daily fxratesapi snapshots, USD-relative.
+  // One row per YYYY-MM-DD; the `rates` map is the API's `rates` object plus
+  // an explicit `USD: 1` to make every currency uniformly looked up.
+  exchangeRates: defineTable({
+    date: v.string(), // "YYYY-MM-DD"
+    base: v.string(), // always "USD" today
+    rates: v.any(), // { USD: 1, LKR: 320.45, JPY: 156.7, EUR: 0.92, ... }
+  }).index("by_date", ["date"]),
 
   // Tracks which recurring occurrences have been posted to the ledger.
   postedRecurringOccurrences: defineTable({
@@ -79,7 +91,7 @@ export default defineSchema({
 
   user_settings: defineTable({
     userId: v.string(),
-    currency: v.string(), // Base currency preference, e.g., "USD", "LKR", "JPY"
+    currency: v.string(), // Base/display currency, e.g. "USD", "LKR", "JPY", "EUR", ...
   }).index("by_user", ["userId"]),
 
   apiTokens: defineTable({
