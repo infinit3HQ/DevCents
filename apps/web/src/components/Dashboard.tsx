@@ -63,24 +63,56 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<MobileTab>("overview");
   const [desktopLeftPane, setDesktopLeftPane] =
     useState<DesktopLeftPane>("analytics_category");
-  const { baseCurrency, convertAmount } = useCurrency();
+  const { baseCurrency, computeBalances, rates, ratesLoaded } = useCurrency();
 
+  // Per-wallet native balances via the greedy-spillover walk. Stable —
+  // doesn't drift when fxratesapi rates move because wallet amounts are
+  // in their own currencies.
+  const wallets = useMemo(() => {
+    if (!transactions) return null;
+    return computeBalances(transactions);
+  }, [transactions, computeBalances]);
+
+  // Approximate consolidated total in the user's base currency, using
+  // today's rates. This is the only number on the page that can drift,
+  // and it's clearly labelled as approximate.
+  const totalApproxBase = useMemo(() => {
+    if (!wallets || !ratesLoaded) return 0;
+    const baseFx = rates[baseCurrency] ?? 1;
+    let totalUSD = 0;
+    for (const [ccy, bal] of Object.entries(wallets)) {
+      const r = rates[ccy] ?? 1;
+      totalUSD += bal / r;
+    }
+    return totalUSD * baseFx;
+  }, [wallets, rates, ratesLoaded, baseCurrency]);
+
+  // Income / expense / balance summed via per-row locked rateToUSD.
+  // Rows that don't have a locked rate (legacy / not yet backfilled)
+  // fall back to today's rate so the dashboard never silently swallows
+  // them. After the prod backfill ran, every row has rateToUSD set.
   const stats = useMemo(() => {
-    if (!transactions)
+    if (!transactions || !ratesLoaded)
       return { balance: 0, income: 0, expenses: 0, txCount: 0 };
-    const income = transactions
-      .filter((t) => t.type === "income")
-      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
-    const expenses = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + convertAmount(t.amount, t.currency || "USD"), 0);
+    const baseFx = rates[baseCurrency] ?? 1;
+    let incomeUSD = 0;
+    let expenseUSD = 0;
+    for (const t of transactions) {
+      const locked = t.rateToUSD;
+      const valueUSD =
+        locked !== undefined && locked > 0
+          ? t.amount * locked
+          : t.amount / (rates[t.currency || "USD"] || 1);
+      if (t.type === "income") incomeUSD += valueUSD;
+      else expenseUSD += valueUSD;
+    }
     return {
-      balance: income - expenses,
-      income,
-      expenses,
+      income: incomeUSD * baseFx,
+      expenses: expenseUSD * baseFx,
+      balance: (incomeUSD - expenseUSD) * baseFx,
       txCount: transactions.length,
     };
-  }, [transactions, convertAmount, baseCurrency]);
+  }, [transactions, rates, ratesLoaded, baseCurrency]);
 
   return (
     <div className="bg-background text-foreground h-full flex flex-col overflow-hidden">
@@ -110,38 +142,60 @@ export function Dashboard() {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                {/* Label */}
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
-                    net_worth
+                {/* Per-wallet net worth */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">
+                    net_worth (per wallet, locked rates)
                   </p>
-                  <div className="flex items-baseline gap-3">
-                    <span
-                      className={`font-mono text-4xl sm:text-5xl lg:text-6xl num-display leading-none ${
-                        stats.balance < 0
-                          ? "text-destructive"
-                          : "text-foreground"
-                      }`}
-                      style={
-                        stats.balance >= 0
-                          ? {
-                              textShadow:
-                                "0 0 30px color-mix(in oklch, var(--color-foreground), transparent 92%)",
-                            }
-                          : {}
-                      }
-                    >
-                      {stats.balance < 0 ? "-" : ""}
-                      {fmt(stats.balance, baseCurrency)}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground uppercase">
-                      {baseCurrency}
-                    </span>
-                  </div>
+                  {!wallets ? (
+                    <div className="font-mono text-2xl text-muted-foreground">…</div>
+                  ) : Object.keys(wallets).length === 0 ? (
+                    <div className="font-mono text-sm text-muted-foreground">
+                      no transactions yet
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-w-md">
+                      {Object.entries(wallets)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([ccy, balance]) => (
+                          <div
+                            key={ccy}
+                            className="flex items-baseline justify-between gap-4 border-l-2 border-border/40 pl-3"
+                          >
+                            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                              {ccy}
+                            </span>
+                            <span
+                              className={cn(
+                                "font-mono text-2xl sm:text-3xl num-display tabular-nums",
+                                balance < 0
+                                  ? "text-destructive"
+                                  : "text-foreground",
+                              )}
+                            >
+                              {balance < 0 ? "-" : ""}
+                              {fmt(balance, ccy)}
+                            </span>
+                          </div>
+                        ))}
+                      <div className="pt-2 mt-1 border-t border-border/30 flex items-baseline justify-between gap-4 pl-3">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/70">
+                          ≈ total at today's rate
+                        </span>
+                        <span className="font-mono text-sm text-muted-foreground tabular-nums">
+                          {totalApproxBase < 0 ? "-" : ""}
+                          {fmt(totalApproxBase, baseCurrency)}
+                          <span className="ml-1.5 text-[9px] uppercase tracking-widest opacity-70">
+                            {baseCurrency}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick badges */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 shrink-0">
                   <Tag color={stats.balance >= 0 ? "green" : "red"}>
                     {stats.balance >= 0 ? (
                       <ArrowUpRight className="h-3 w-3" />
