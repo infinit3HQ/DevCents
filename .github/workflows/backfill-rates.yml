@@ -1,0 +1,93 @@
+name: Backfill rateToUSD
+
+# One-shot operational workflow that stamps `rateToUSD` on existing
+# transactions / planned / recurring rows. Run after the foundation PR
+# (commit 716f0da) has shipped to prod.
+#
+# Sequence:
+#   1. Run with action=inspect  → see the missing-counts (read-only).
+#   2. Run with action=run      → fetches historical rates per row's date
+#                                  via fxratesapi, caches each day's rates,
+#                                  and patches rateToUSD onto each row.
+#   3. Run with action=inspect  → verify every row now has rateToUSD set.
+#
+# After all counts read 0 missing, this workflow can be deleted along with
+# apps/web/convex/backfill.ts in a later cleanup commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do"
+        required: true
+        default: inspect
+        type: choice
+        options:
+          - inspect
+          - run
+
+env:
+  VITE_CONVEX_URL: https://devcents-convex.012140.xyz
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  backfill:
+    runs-on:
+      - serverone
+      - self-hosted
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Inspect (before)
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::backfill:inspect"
+          pnpm --filter devcents exec convex run backfill:inspect \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Run backfill
+        if: ${{ inputs.action == 'run' }}
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::backfill:run"
+          pnpm --filter devcents exec convex run backfill:run \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web
+
+      - name: Inspect (after)
+        if: ${{ inputs.action == 'run' }}
+        env:
+          CONVEX_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+        run: |
+          CLEAN_KEY=$(echo -n "$CONVEX_ADMIN_KEY" | tr -d '\n\r ')
+          echo "::group::backfill:inspect (verify)"
+          pnpm --filter devcents exec convex run backfill:inspect \
+            --url "${{ env.VITE_CONVEX_URL }}" \
+            --admin-key "$CLEAN_KEY"
+          echo "::endgroup::"
+        working-directory: apps/web

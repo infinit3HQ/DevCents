@@ -10,6 +10,7 @@
 
 import type * as encryptionSettings from "../encryptionSettings.js";
 import type * as exchangeRates from "../exchangeRates.js";
+import type * as backfill from "../backfill.js";
 import type * as mcp from "../mcp.js";
 import type * as planned from "../planned.js";
 import type * as recurring from "../recurring.js";
@@ -25,6 +26,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   encryptionSettings: typeof encryptionSettings;
   exchangeRates: typeof exchangeRates;
+  backfill: typeof backfill;
   mcp: typeof mcp;
   planned: typeof planned;
   recurring: typeof recurring;
