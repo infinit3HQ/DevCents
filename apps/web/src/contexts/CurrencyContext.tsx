@@ -1,6 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import {
+  computeWalletBalances,
+  type WalletBalances,
+  type WalletInputTx,
+} from "@/lib/walletBalances";
 
 type ExchangeRates = {
   [currencyCode: string]: number;
@@ -9,7 +14,22 @@ type ExchangeRates = {
 interface CurrencyContextType {
   baseCurrency: string;
   setBaseCurrency: (code: string) => Promise<void>;
+  /**
+   * Convert an amount from `fromCurrency` to the user's current base
+   * currency using the latest fxratesapi snapshot. This is for live /
+   * "approximate" displays only — historical-locked numbers are produced
+   * by `computeBalances` instead, which never re-prices through today's
+   * rates.
+   */
   convertAmount: (amount: number, fromCurrency: string) => number;
+  /**
+   * Walk a transaction history chronologically and return per-wallet
+   * native-currency balances with greedy spillover. Returns null until
+   * the live rates fallback table is loaded so we don't silently miss
+   * spillover decisions for currencies a date doesn't have rates for.
+   */
+  computeBalances: (txs: ReadonlyArray<WalletInputTx>) => WalletBalances | null;
+  rates: ExchangeRates;
   ratesLoaded: boolean;
 }
 
@@ -24,7 +44,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [ratesLoaded, setRatesLoaded] = useState(false);
 
   useEffect(() => {
-    // Fetch latest exchange rates with USD as the implicit base for API response
     async function fetchRates() {
       try {
         const res = await fetch("https://api.fxratesapi.com/latest");
@@ -52,28 +71,42 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     await updateCurrency({ currency: code });
   };
 
-  const convertAmount = (amount: number, fromCurrency: string) => {
-    if (!ratesLoaded || !rates[fromCurrency] || !rates[baseCurrency]) {
-      return amount; // Just return un-converted if loading or missing
-    }
-    if (fromCurrency === baseCurrency) {
-      return amount;
-    }
+  const convertAmount = useCallback(
+    (amount: number, fromCurrency: string) => {
+      if (!ratesLoaded || !rates[fromCurrency] || !rates[baseCurrency]) {
+        return amount;
+      }
+      if (fromCurrency === baseCurrency) return amount;
+      const amountInUSD = amount / rates[fromCurrency];
+      return amountInUSD * rates[baseCurrency];
+    },
+    [rates, ratesLoaded, baseCurrency],
+  );
 
-    // Convert logic: amount * (targetRate / sourceRate)
-    const amountInUSD = amount / rates[fromCurrency];
-    return amountInUSD * rates[baseCurrency];
-  };
+  const computeBalances = useCallback(
+    (txs: ReadonlyArray<WalletInputTx>): WalletBalances | null => {
+      if (!ratesLoaded) return null;
+      return computeWalletBalances(txs, { liveRates: rates });
+    },
+    [rates, ratesLoaded],
+  );
+
+  const value = useMemo<CurrencyContextType>(
+    () => ({
+      baseCurrency,
+      setBaseCurrency: handleSetBaseCurrency,
+      convertAmount,
+      computeBalances,
+      rates,
+      ratesLoaded,
+    }),
+    // handleSetBaseCurrency is stable enough; rest must be tracked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseCurrency, convertAmount, computeBalances, rates, ratesLoaded],
+  );
 
   return (
-    <CurrencyContext.Provider
-      value={{
-        baseCurrency,
-        setBaseCurrency: handleSetBaseCurrency,
-        convertAmount,
-        ratesLoaded,
-      }}
-    >
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );

@@ -6,7 +6,7 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "convex:local": "sh -c 'convex dev --url \"${CONVEX_SELF_HOSTED_URL:?CONVEX_SELF_HOSTED_URL is required}\" --admin-key \"${CONVEX_SELF_HOSTED_ADMIN_KEY:?CONVEX_SELF_HOSTED_ADMIN_KEY is required}\"'",
     "dev:all": "bash ../../scripts/dev.sh",
     "mcp": "tsx src/mcp-server/index.ts"
