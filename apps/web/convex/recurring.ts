@@ -116,6 +116,7 @@ export const postOccurrenceToLedger = mutation({
   args: {
     id: v.id("recurring"),
     date: v.number(),
+    rateToUSD: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -134,11 +135,17 @@ export const postOccurrenceToLedger = mutation({
       .first();
     if (existing) return;
 
+    // Prefer the rate the client resolved for THIS occurrence's date.
+    // Each occurrence locks at its own date, not at the recurring item's
+    // start date — that's the whole point of a per-occurrence locked rate.
+    // Fall back to item.rateToUSD only as legacy compatibility.
+    const rateToUSD = args.rateToUSD ?? item.rateToUSD;
+
     await ctx.db.insert("transactions", {
       userId: identity.subject,
       amount: item.amount,
       currency: item.currency,
-      rateToUSD: item.rateToUSD,
+      rateToUSD,
       type: item.type,
       category: item.category,
       description: item.description,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarClock,
@@ -104,6 +104,55 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
   const removeRecurring = useMutation(api.recurring.remove);
   const toggleRecurring = useMutation(api.recurring.toggleActive);
   const postRecurring = useMutation(api.recurring.postOccurrenceToLedger);
+
+  const fetchRateToUSD = useAction(api.exchangeRates.getRateToUSD);
+
+  // Wrappers that lock the historical rate for the OCCURRENCE/POST date
+  // before posting, so each ledger row gets the rate of its actual day —
+  // not the rate that was on the recurring item's start date or the
+  // planned item's creation date. On rate-fetch failure we surface a
+  // console error and skip the post; the user can retry.
+  async function postPlannedWithRate(plannedId: Id<"planned">, dateMs: number, currency: string | undefined) {
+    try {
+      const ccy = currency || "USD";
+      const rateToUSD =
+        ccy === "USD"
+          ? 1
+          : await fetchRateToUSD({
+              date: new Date(dateMs).toISOString().slice(0, 10),
+              currency: ccy,
+            });
+      await postPlanned({ id: plannedId, rateToUSD });
+    } catch (err) {
+      console.error("Failed to post planned to ledger:", err);
+      window.alert(
+        `Could not post to ledger: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  async function postRecurringWithRate(
+    recurringId: Id<"recurring">,
+    dateMs: number,
+    currency: string | undefined,
+  ) {
+    try {
+      const ccy = currency || "USD";
+      const rateToUSD =
+        ccy === "USD"
+          ? 1
+          : await fetchRateToUSD({
+              date: new Date(dateMs).toISOString().slice(0, 10),
+              currency: ccy,
+            });
+      await postRecurring({ id: recurringId, date: dateMs, rateToUSD });
+    } catch (err) {
+      console.error("Failed to post recurring occurrence:", err);
+      window.alert(
+        `Could not post to ledger: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 
   const [horizon, setHorizon] = useState<HorizonDays>(90);
 
@@ -563,13 +612,18 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         <button
                           onClick={() => {
                             if (e.source === "planned") {
-                              postPlanned({ id: e.sourceId as Id<"planned"> });
+                              postPlannedWithRate(
+                                e.sourceId as Id<"planned">,
+                                e.date,
+                                e.currency,
+                              );
                               return;
                             }
-                            postRecurring({
-                              id: e.sourceId as Id<"recurring">,
-                              date: e.date,
-                            });
+                            postRecurringWithRate(
+                              e.sourceId as Id<"recurring">,
+                              e.date,
+                              e.currency,
+                            );
                           }}
                           className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                         >
@@ -689,7 +743,11 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         <Tip label="Post to ledger">
                           <button
                             onClick={() =>
-                              postPlanned({ id: p._id as Id<"planned"> })
+                              postPlannedWithRate(
+                                p._id as Id<"planned">,
+                                p.date,
+                                p.currency,
+                              )
                             }
                             className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                           >
@@ -853,10 +911,11 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       <Tip label="Post next occurrence">
                         <button
                           onClick={() =>
-                            postRecurring({
-                              id: r._id as Id<"recurring">,
-                              date: next,
-                            })
+                            postRecurringWithRate(
+                              r._id as Id<"recurring">,
+                              next,
+                              r.currency,
+                            )
                           }
                           className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                         >

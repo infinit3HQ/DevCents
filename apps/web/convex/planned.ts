@@ -106,6 +106,7 @@ export const setStatus = mutation({
 export const postToLedger = mutation({
   args: {
     id: v.id("planned"),
+    rateToUSD: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -116,11 +117,15 @@ export const postToLedger = mutation({
     if (item.userId !== identity.subject) throw new Error("Unauthorized");
     if (item.status === "posted") return;
 
+    // Prefer the rate the client just resolved for `item.date`. Fall back to
+    // whatever was stamped on the planned template (legacy data path).
+    const rateToUSD = args.rateToUSD ?? item.rateToUSD;
+
     const transactionId = (await ctx.db.insert("transactions", {
       userId: identity.subject,
       amount: item.amount,
       currency: item.currency,
-      rateToUSD: item.rateToUSD,
+      rateToUSD,
       type: item.type,
       category: item.category,
       description: item.description,

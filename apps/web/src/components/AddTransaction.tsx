@@ -386,9 +386,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
       const dateMs = parseLocalDateInputToNoonMs(values.date);
-      const rateToUSD = isEditing
-        ? undefined
-        : await resolveRateToUSD(values.currency, dateMs);
 
       if (isEditing) {
         await updatePlannedMut({
@@ -404,7 +401,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createPlanned({
           amount,
           currency: values.currency,
-          rateToUSD,
           description,
           type: values.type,
           category: values.category,
@@ -430,9 +426,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
       const startDateMs = parseLocalDateInputToNoonMs(values.startDate);
-      const rateToUSD = isEditing
-        ? undefined
-        : await resolveRateToUSD(values.currency, startDateMs);
 
       if (isEditing) {
         await updateRecurringMut({
@@ -449,7 +442,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
         await createRecurring({
           amount,
           currency: values.currency,
-          rateToUSD,
           description,
           type: values.type,
           category: values.category,
