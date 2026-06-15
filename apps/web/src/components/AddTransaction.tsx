@@ -55,7 +55,7 @@ export type EditData = {
   description: string;
   category: string;
   type: "income" | "expense";
-  // planned
+  // ledger + planned
   date?: string;
   // recurring
   startDate?: string;
@@ -71,6 +71,7 @@ const ledgerSchema = z.object({
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   type: z.enum(["income", "expense"]),
+  date: z.string().min(10, "Date is required"),
 });
 
 const plannedSchema = ledgerSchema.extend({
@@ -208,6 +209,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       description: "",
       category: "food",
       type: "expense" as const,
+      date: todayInputValue(),
     },
   });
 
@@ -254,17 +256,18 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
 
   useEffect(() => {
     if (!open) return;
+    if (mode === "ledger") txForm.setValue("date", todayInputValue());
     if (mode === "planned") plannedForm.setValue("date", todayInputValue());
     if (mode === "recurring")
       recurringForm.setValue("startDate", todayInputValue());
-  }, [open, mode, plannedForm, recurringForm]);
+  }, [open, mode, txForm, plannedForm, recurringForm]);
 
   // Pre-fill forms when editing
   useEffect(() => {
     if (!open || !editData) return;
     const { amount, currency, description, category, type } = editData;
     if (mode === "ledger") {
-      txForm.reset({ amount, currency, description, category, type });
+      txForm.reset({ amount, currency, description, category, type, date: editData.date ?? todayInputValue() });
     } else if (mode === "planned") {
       plannedForm.reset({ amount, currency, description, category, type, date: editData.date ?? todayInputValue() });
     } else if (mode === "recurring") {
@@ -342,7 +345,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const shouldEncrypt = isEnabled && isUnlocked;
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
-      const dateMs = Date.now();
+      const dateMs = parseLocalDateInputToNoonMs(values.date);
       const rateToUSD = isEditing
         ? undefined
         : await resolveRateToUSD(values.currency, dateMs);
@@ -354,6 +357,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           currency: values.currency,
           description,
           category: values.category,
+          date: dateMs,
           encrypted: shouldEncrypt || undefined,
         });
       } else {
@@ -565,6 +569,34 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       onSubmit={txForm.handleSubmit(submitLedger)}
                       className="space-y-6"
                     >
+                      {/* Date field */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.03 }}
+                      >
+                        <FormField
+                          control={txForm.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Date
+                              </FormLabel>
+                              <FormControl>
+                                <DatePickerField
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  label="Entry date"
+                                  className="rounded-none"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[10px]" />
+                            </FormItem>
+                          )}
+                        />
+                      </motion.div>
+
                       <div className="grid grid-cols-2 gap-6">
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}

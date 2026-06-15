@@ -420,6 +420,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
                         description: t.description,
                         category: t.category,
                         type: t.type,
+                        date: new Date(t.date).toISOString().slice(0, 10),
                       } satisfies EditData,
                     },
                   }));
@@ -522,6 +523,7 @@ function TransactionDesktopRow({ t, index, deleteTransaction, updateTransaction 
                     description: t.description,
                     category: t.category,
                     type: t.type,
+                    date: new Date(t.date).toISOString().slice(0, 10),
                   } satisfies EditData,
                 },
               }));

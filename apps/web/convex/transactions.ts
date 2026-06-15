@@ -77,6 +77,7 @@ export const update = mutation({
     rateToUSD: v.optional(v.number()),
     category: v.optional(v.string()),
     description: v.optional(v.string()),
+    date: v.optional(v.number()),
     encrypted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
