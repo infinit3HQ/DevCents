@@ -30,6 +30,7 @@ import {
   createVerificationHash,
   generateSalt,
   saltToBase64,
+  exportKeyToBase64,
 } from "@devcents/shared";
 import { saveKey, clearKey } from "@devcents/shared";
 import { useQuery, useMutation } from "convex/react";
@@ -372,24 +373,66 @@ function generateRawToken(): string {
 
 function ApiAccessSection() {
   const tokens = useQuery(api.mcp.listTokens) || [];
+  const encSettings = useQuery(api.encryptionSettings.get);
   const generateTokenMutation = useMutation(api.mcp.generateToken);
   const revokeTokenMutation = useMutation(api.mcp.revokeToken);
 
   const [newToken, setNewToken] = useState("");
+  const [passphrase, setPassphrase] = useState("");
+  const [showPassphraseInput, setShowPassphraseInput] = useState(false);
+  const [passphraseError, setPassphraseError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [copiedConfig, setCopiedConfig] = useState(false);
+
+  const mcpUrl = typeof window !== "undefined" ? `${window.location.origin}/mcp` : "https://devcents.012140.xyz/mcp";
+
+  const getMcpConfigSnippet = (token: string) => {
+    return JSON.stringify(
+      {
+        mcpServers: {
+          devcents: {
+            url: mcpUrl,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        },
+      },
+      null,
+      2,
+    );
+  };
 
   const handleCreateToken = async () => {
     setLoading(true);
+    setPassphraseError("");
     try {
+      let keyB64: string | undefined = undefined;
+
+      if (passphrase && encSettings?.salt && encSettings?.verificationHash) {
+        const salt = base64ToSalt(encSettings.salt);
+        const key = await deriveKey(passphrase, salt, true);
+        const valid = await verifyPassphrase(key, encSettings.verificationHash);
+        if (!valid) {
+          setPassphraseError("err: incorrect passphrase");
+          setLoading(false);
+          return;
+        }
+        keyB64 = await exportKeyToBase64(key);
+      }
+
       const raw = generateRawToken();
       const hash = await hashToken(raw);
       await generateTokenMutation({
         name: `Token ${tokens.length + 1}`,
         tokenHash: hash,
+        keyB64,
       });
       setNewToken(raw);
+      setPassphrase("");
+      setShowPassphraseInput(false);
     } catch {
-      // token generation failed silently — user can retry
+      setPassphraseError("err: failed to generate token");
     } finally {
       setLoading(false);
     }
@@ -399,7 +442,17 @@ function ApiAccessSection() {
     try {
       await navigator.clipboard.writeText(newToken);
     } catch {
-      // clipboard unavailable — user can manually copy from the displayed token
+      // clipboard unavailable
+    }
+  };
+
+  const handleCopyConfig = async () => {
+    try {
+      await navigator.clipboard.writeText(getMcpConfigSnippet(newToken));
+      setCopiedConfig(true);
+      setTimeout(() => setCopiedConfig(false), 2000);
+    } catch {
+      // clipboard unavailable
     }
   };
 
@@ -408,7 +461,7 @@ function ApiAccessSection() {
   return (
     <Section
       title="api & ai access"
-      subtitle="Manage MCP Server access tokens."
+      subtitle="Manage MCP Server access tokens for local and remote AI agents."
     >
       {newToken ? (
         <div className="border border-primary bg-primary/5 p-4 space-y-3">
@@ -416,16 +469,31 @@ function ApiAccessSection() {
             New token created. Copy it now, you won't be able to see it again.
           </p>
           <div className="flex gap-2 items-center">
-            <code className="flex-1 font-mono text-[10px] bg-background border border-border p-2">
+            <code className="flex-1 font-mono text-[10px] bg-background border border-border p-2 break-all">
               {newToken}
             </code>
             <button
               onClick={handleCopy}
-              className="p-2 border border-border hover:bg-muted transition-colors text-primary"
+              className="p-2 border border-border hover:bg-muted transition-colors text-primary shrink-0"
+              title="Copy Token"
             >
               <Copy className="h-4 w-4" />
             </button>
           </div>
+
+          <div className="pt-2 border-t border-border space-y-2">
+            <p className="font-mono text-[10px] text-muted-foreground">
+              Remote MCP Endpoint: <span className="text-foreground">{mcpUrl}</span>
+            </p>
+            <button
+              onClick={handleCopyConfig}
+              className="font-mono text-[10px] uppercase tracking-widest text-primary hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {copiedConfig ? "Config Copied to Clipboard!" : "Copy Claude / Cursor MCP Config"}
+            </button>
+          </div>
+
           <button
             onClick={clearNewToken}
             className="w-full font-mono text-[10px] uppercase tracking-widest text-muted-foreground pt-2 border-t border-border mt-2"
@@ -433,13 +501,62 @@ function ApiAccessSection() {
             done
           </button>
         </div>
+      ) : showPassphraseInput ? (
+        <div className="border border-border p-4 bg-card space-y-3">
+          <p className="font-mono text-[11px] text-foreground">
+            Enter your passphrase to attach the decryption key to this token.
+          </p>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            This enables remote AI clients (Claude / Cursor) to decrypt your transactions seamlessly over HTTPS without asking for your passphrase.
+          </p>
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => {
+              setPassphrase(e.target.value);
+              setPassphraseError("");
+            }}
+            placeholder="your encryption passphrase"
+            className="w-full font-mono text-[11px] bg-background border border-border p-2 focus:outline-none focus:border-primary"
+          />
+          {passphraseError && (
+            <p className="font-mono text-[10px] text-destructive">{passphraseError}</p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleCreateToken}
+              disabled={loading}
+              className="flex-1 font-mono text-[10px] uppercase tracking-widest bg-primary text-primary-foreground p-2 hover:opacity-90 transition-opacity"
+            >
+              {loading ? "generating..." : "confirm & generate"}
+            </button>
+            <button
+              onClick={() => {
+                setShowPassphraseInput(false);
+                setPassphrase("");
+                setPassphraseError("");
+              }}
+              className="font-mono text-[10px] uppercase tracking-widest border border-border px-3 text-muted-foreground hover:bg-muted"
+            >
+              cancel
+            </button>
+          </div>
+        </div>
       ) : (
-        <Row
-          label="generate token"
-          value="create a new token for local MCP and AI Agents"
-          action={loading ? "generating..." : "generate"}
-          onClick={loading ? undefined : handleCreateToken}
-        />
+        <div className="space-y-2">
+          <Row
+            label="generate remote token"
+            value="create token with server decryption for remote Claude & Cursor"
+            action="setup"
+            onClick={() => setShowPassphraseInput(true)}
+          />
+          <Row
+            label="generate standard token"
+            value="create token for local MCP or self-hosted env DEVCENTS_PASSPHRASE"
+            action={loading ? "generating..." : "generate"}
+            onClick={loading ? undefined : handleCreateToken}
+          />
+        </div>
       )}
 
       {tokens.length > 0 && (

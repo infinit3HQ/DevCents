@@ -131,6 +131,28 @@ DevCents ships an [MCP server](apps/mcp/) built on the **Model Context Protocol 
 
 **2.** Add to your Claude / Cursor MCP config (`claude_desktop_config.json` or `.cursor/mcp.json`):
 
+### Option A: Remote Web MCP (HTTP Endpoint)
+
+If you are running DevCents remotely (e.g., `https://devcents.012140.xyz`), you can connect Claude Desktop, Cursor, or remote agents directly over HTTPS without running local scripts or keeping local passphrases:
+
+```json
+{
+  "mcpServers": {
+    "devcents": {
+      "url": "https://devcents.012140.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer dct_live_your_token_here"
+      }
+    }
+  }
+}
+```
+*(When generating the token in **Settings → API & AI Access**, choose "Remote / Web MCP Token" so the decryption key is securely bound to the token, or set `DEVCENTS_PASSPHRASE` in your server environment.)*
+
+### Option B: Local Stdio MCP (Node/NPX)
+
+Alternatively, to run the MCP server locally over standard I/O:
+
 ```json
 {
   "mcpServers": {
@@ -147,7 +169,7 @@ DevCents ships an [MCP server](apps/mcp/) built on the **Model Context Protocol 
 }
 ```
 
-Alternatively, to run the local workspace server directly:
+To run directly from this repository workspace:
 
 ```json
 {

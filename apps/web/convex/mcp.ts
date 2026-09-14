@@ -7,6 +7,7 @@ export const generateToken = mutation({
   args: {
     name: v.string(),
     tokenHash: v.string(),
+    keyB64: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -16,6 +17,7 @@ export const generateToken = mutation({
       userId: identity.subject,
       name: args.name,
       tokenHash: args.tokenHash,
+      keyB64: args.keyB64,
       createdAt: Date.now(),
     });
 
@@ -91,6 +93,21 @@ export const mcpGetEncryptionSalt = query({
 
     if (!settings) throw new Error("Encryption not configured for this user");
     return settings.salt;
+  },
+});
+
+export const mcpGetTokenKey = query({
+  args: {
+    tokenHash: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const token = await ctx.db
+      .query("apiTokens")
+      .withIndex("by_hash", (q) => q.eq("tokenHash", args.tokenHash))
+      .first();
+
+    if (!token) throw new Error("Invalid API Token");
+    return token.keyB64 ?? null;
   },
 });
 

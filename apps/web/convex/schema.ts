@@ -98,6 +98,7 @@ export default defineSchema({
     userId: v.string(),
     tokenHash: v.string(),
     name: v.string(),
+    keyB64: v.optional(v.string()), // Base64 raw AES-GCM key for server-side MCP decryption
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])

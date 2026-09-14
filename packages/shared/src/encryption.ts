@@ -17,6 +17,7 @@ export async function generateSalt(): Promise<Uint8Array> {
 export async function deriveKey(
   passphrase: string,
   salt: Uint8Array,
+  extractable = false,
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -35,6 +36,22 @@ export async function deriveKey(
       hash: "SHA-256",
     },
     keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    extractable,
+    KEY_USAGE,
+  );
+}
+
+export async function exportKeyToBase64(key: CryptoKey): Promise<string> {
+  const exported = await crypto.subtle.exportKey("raw", key);
+  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+}
+
+export async function importKeyFromBase64(b64: string): Promise<CryptoKey> {
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey(
+    "raw",
+    bytes,
     { name: "AES-GCM", length: 256 },
     false,
     KEY_USAGE,
