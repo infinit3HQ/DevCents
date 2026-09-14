@@ -1,4 +1,3 @@
-import { defineEventHandler, getRequestHeader, readBody, setResponseHeaders, setResponseStatus } from "h3";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api.js";
 import {
@@ -19,7 +18,7 @@ function getConvexClient() {
   return new ConvexHttpClient(CONVEX_URL);
 }
 
-function getCorsHeaders() {
+export function getCorsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
@@ -100,7 +99,7 @@ async function resolveEncryptionKey(
     // ignore query failure, fallback to passphrase
   }
 
-  // 2. Check server environment variable
+  // 2. Check server environment variable or header
   const serverPassphrase =
     process.env.DEVCENTS_PASSPHRASE || passphraseHeader;
 
@@ -119,48 +118,50 @@ async function resolveEncryptionKey(
   return null;
 }
 
-export default defineEventHandler(async (event) => {
-  const method = event.method;
+export function handleMcpOptions(): Response {
+  return new Response(null, {
+    status: 204,
+    headers: getCorsHeaders(),
+  });
+}
 
-  // Set CORS headers on every response
-  setResponseHeaders(event, getCorsHeaders());
-
-  if (method === "OPTIONS") {
-    return "";
-  }
-
-  if (method === "GET") {
-    return {
+export function handleMcpGet(): Response {
+  return Response.json(
+    {
       status: "ok",
       service: "DevCents Remote Web MCP Server",
       version: "2.0.0",
       protocolVersion: "2026-07-28",
       endpoint: "/mcp",
       tools: TOOLS.map((t) => t.name),
-    };
-  }
+    },
+    {
+      headers: getCorsHeaders(),
+    },
+  );
+}
 
-  if (method !== "POST") {
-    setResponseStatus(event, 405);
-    return { error: "Method not allowed. Use POST for MCP JSON-RPC requests." };
-  }
-
-  const rawBody = await readBody(event);
-  if (!rawBody || typeof rawBody !== "object") {
-    setResponseStatus(event, 400);
-    return {
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32700, message: "Parse error: Invalid JSON" },
-    };
+export async function handleMcpPost(request: Request): Promise<Response> {
+  let rawBody: any;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32700, message: "Parse error: Invalid JSON" },
+      },
+      { status: 400, headers: getCorsHeaders() },
+    );
   }
 
   const client = getConvexClient();
 
   // Extract auth token from Authorization header or X-DevCents-API-Key
-  const authHeader = getRequestHeader(event, "authorization");
-  const apiKeyHeader = getRequestHeader(event, "x-devcents-api-key");
-  const passphraseHeader = getRequestHeader(event, "x-devcents-passphrase");
+  const authHeader = request.headers.get("authorization");
+  const apiKeyHeader = request.headers.get("x-devcents-api-key");
+  const passphraseHeader = request.headers.get("x-devcents-passphrase") || undefined;
 
   let rawToken = "";
   if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
@@ -185,7 +186,7 @@ export default defineEventHandler(async (event) => {
       return null;
     }
 
-    // 1. initialize
+    // 1. initialize / server/discover
     if (rpcMethod === "initialize" || rpcMethod === "server/discover") {
       return {
         jsonrpc: "2.0",
@@ -263,7 +264,7 @@ export default defineEventHandler(async (event) => {
               content: [
                 {
                   type: "text",
-                  text: "Encryption key error: Unable to resolve decryption key for this token. Please either link your passphrase when generating the token in Settings, set DEVCENTS_PASSPHRASE in server environment, or supply X-DevCents-Passphrase header.",
+                  text: "Decryption error: No encryption key available. Either generate a Remote Token in DevCents Settings (attaching decryption key) or set DEVCENTS_PASSPHRASE on the server.",
                 },
               ],
             },
@@ -271,17 +272,16 @@ export default defineEventHandler(async (event) => {
         }
 
         if (toolName === "get_transactions") {
-          const limit = toolArgs.limit;
-          const transactions = await client.query(
-            api.mcp.mcpGetTransactions,
-            {
-              tokenHash,
-              limit,
-            },
-          );
+          const limit =
+            typeof toolArgs.limit === "number" ? toolArgs.limit : 50;
+
+          const transactions = await client.query(api.mcp.mcpGetTransactions, {
+            tokenHash,
+            limit,
+          });
 
           const decrypted = await Promise.all(
-            transactions.map(async (t: any) => {
+            transactions.map(async (t) => {
               if (!t.encrypted) return t;
               try {
                 return {
@@ -316,7 +316,12 @@ export default defineEventHandler(async (event) => {
           const { amount, type, category, description, currency, date } =
             toolArgs;
 
-          if (amount === undefined || !type || !category || !description) {
+          if (
+            typeof amount !== "number" ||
+            !type ||
+            !category ||
+            !description
+          ) {
             return {
               jsonrpc: "2.0",
               id,
@@ -325,7 +330,7 @@ export default defineEventHandler(async (event) => {
                 content: [
                   {
                     type: "text",
-                    text: "Missing required parameters: amount, type, category, and description are required.",
+                    text: "Invalid arguments: amount, type, category, description are required.",
                   },
                 ],
               },
@@ -334,9 +339,9 @@ export default defineEventHandler(async (event) => {
 
           const encryptedAmount = await encrypt(amount.toString(), key);
           const encryptedDescription = await encrypt(description, key);
-          const txDate = date || Date.now();
+          const txDate = typeof date === "number" ? date : Date.now();
 
-          await client.mutation(api.mcp.mcpAddTransaction, {
+          const txId = await client.mutation(api.mcp.mcpAddTransaction, {
             tokenHash,
             amount: encryptedAmount,
             type,
@@ -354,7 +359,7 @@ export default defineEventHandler(async (event) => {
               content: [
                 {
                   type: "text",
-                  text: "Transaction encrypted and saved successfully.",
+                  text: `Transaction encrypted and saved successfully (ID: ${txId})`,
                 },
               ],
             },
@@ -364,12 +369,17 @@ export default defineEventHandler(async (event) => {
         return {
           jsonrpc: "2.0",
           id,
-          error: {
-            code: -32601,
-            message: `Unknown tool: '${toolName}'`,
+          result: {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Unknown tool: ${toolName}`,
+              },
+            ],
           },
         };
-      } catch (e: any) {
+      } catch (e: unknown) {
         return {
           jsonrpc: "2.0",
           id,
@@ -402,9 +412,31 @@ export default defineEventHandler(async (event) => {
     const responses = (
       await Promise.all(rawBody.map(handleSingleMessage))
     ).filter(Boolean);
-    return responses;
+    return Response.json(responses, { headers: getCorsHeaders() });
   }
 
   const response = await handleSingleMessage(rawBody);
-  return response || "";
-});
+  if (!response) {
+    return new Response(null, { status: 204, headers: getCorsHeaders() });
+  }
+  return Response.json(response, { headers: getCorsHeaders() });
+}
+
+export async function handleMcpHttpRequest(
+  request: Request,
+): Promise<Response> {
+  const method = request.method.toUpperCase();
+  if (method === "OPTIONS") {
+    return handleMcpOptions();
+  }
+  if (method === "GET") {
+    return handleMcpGet();
+  }
+  if (method === "POST") {
+    return handleMcpPost(request);
+  }
+  return new Response("Method not allowed", {
+    status: 405,
+    headers: getCorsHeaders(),
+  });
+}
