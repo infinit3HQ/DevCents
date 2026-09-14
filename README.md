@@ -123,13 +123,13 @@ Open [http://localhost:3000](http://localhost:3000) and create your account.
 
 ---
 
-## Claude MCP Setup
+## Claude & AI MCP Setup (MCP 2.0)
 
-DevCents ships an [MCP server](apps/mcp/) so Claude can read and add your transactions.
+DevCents ships an [MCP server](apps/mcp/) built on the **Model Context Protocol 2.0** specification, allowing Claude, Cursor, and other AI agents to securely query and add your transactions with end-to-end encryption.
 
 **1.** Generate an API token in **Settings → API & AI Access**
 
-**2.** Add to your Claude / Cursor MCP config:
+**2.** Add to your Claude / Cursor MCP config (`claude_desktop_config.json` or `.cursor/mcp.json`):
 
 ```json
 {
@@ -147,6 +147,24 @@ DevCents ships an [MCP server](apps/mcp/) so Claude can read and add your transa
 }
 ```
 
+Alternatively, to run the local workspace server directly:
+
+```json
+{
+  "mcpServers": {
+    "devcents": {
+      "command": "node",
+      "args": ["/absolute/path/to/DevCents/apps/mcp/src/index.ts"],
+      "env": {
+        "DEVCENTS_API_KEY": "dct_live_your_token_here",
+        "DEVCENTS_PASSPHRASE": "your_encryption_passphrase",
+        "CONVEX_URL": "http://127.0.0.1:3210"
+      }
+    }
+  }
+}
+```
+
 **3.** Ask Claude: *"What did I spend last week?"* or *"Add a $12 coffee expense."*
 
 ---
@@ -158,6 +176,7 @@ DevCents ships an [MCP server](apps/mcp/) so Claude can read and add your transa
 | `npm run dev:all` | Start local Convex backend + Vite dev server |
 | `npm run dev:tmux` | Same as above but in separate tmux panes |
 | `npm run dev` | Vite dev server only |
+| `npm run dev:mcp` | Start DevCents MCP 2.0 server in watch mode |
 | `npm run convex:local` | Sync Convex against local Docker backend |
 | `npm run build` | Build the production web app |
 | `npm run test` | Run tests with Vitest |

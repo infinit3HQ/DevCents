@@ -8,8 +8,7 @@
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
     "convex:local": "sh -c 'convex dev --url \"${CONVEX_SELF_HOSTED_URL:?CONVEX_SELF_HOSTED_URL is required}\" --admin-key \"${CONVEX_SELF_HOSTED_ADMIN_KEY:?CONVEX_SELF_HOSTED_ADMIN_KEY is required}\"'",
-    "dev:all": "bash ../../scripts/dev.sh",
-    "mcp": "tsx src/mcp-server/index.ts"
+    "dev:all": "bash ../../scripts/dev.sh"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.3",
@@ -18,7 +17,6 @@
     "@clerk/ui": "^1.0.0",
     "@devcents/shared": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
-    "@modelcontextprotocol/sdk": "^1.27.1",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

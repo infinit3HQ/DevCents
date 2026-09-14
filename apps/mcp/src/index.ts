@@ -1,5 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+#!/usr/bin/env node
+
+import { McpServer } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../web/convex/_generated/api.js";
@@ -27,12 +29,8 @@ if (!PASSPHRASE) {
 }
 
 const client = new ConvexHttpClient(CONVEX_URL);
-const server = new McpServer({
-  name: "DevCents MCP Server",
-  version: "1.0.0",
-});
 
-// ─── Tools ──────────────────────────────────────────────────────────────────
+// ─── Key derivation helper ──────────────────────────────────────────────────
 
 async function getEncryptionKey(tokenHash: string) {
   if (!PASSPHRASE) throw new Error("No passphrase provided");
@@ -43,119 +41,151 @@ async function getEncryptionKey(tokenHash: string) {
   return await deriveKey(PASSPHRASE, salt);
 }
 
-server.tool(
-  "get_transactions",
-  "Get the user's recent DevCents transactions. The MCP server decrypts them automatically.",
-  {
-    limit: z
-      .number()
-      .optional()
-      .describe("Number of transactions to fetch, defaults to 50"),
-  },
-  async ({ limit }) => {
-    try {
-      const tokenHash = await hashToken(API_KEY as string);
-      const key = await getEncryptionKey(tokenHash);
+// ─── MCP Server Factory ─────────────────────────────────────────────────────
 
-      const transactions = await client.query(api.mcp.mcpGetTransactions, {
-        tokenHash,
-        limit,
-      });
+function createServer() {
+  const server = new McpServer({
+    name: "DevCents MCP Server",
+    version: "2.0.0",
+  });
 
-      const decrypted = await Promise.all(
-        transactions.map(async (t) => {
-          if (!t.encrypted) return t;
-          try {
-            return {
-              ...t,
-              amount:
-                typeof t.amount === "string"
-                  ? parseFloat(await decrypt(t.amount, key))
-                  : t.amount,
-              description: await decrypt(t.description, key),
-            };
-          } catch (e) {
-            return { ...t, description: "[Decryption Failed]" };
-          }
-        }),
-      );
+  // Tool: get_transactions
+  server.registerTool(
+    "get_transactions",
+    {
+      description:
+        "Get the user's recent DevCents transactions. The MCP server decrypts them automatically.",
+      inputSchema: {
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of transactions to fetch, defaults to 50"),
+      },
+    },
+    async ({ limit }) => {
+      try {
+        const tokenHash = await hashToken(API_KEY as string);
+        const key = await getEncryptionKey(tokenHash);
 
-      return {
-        content: [{ type: "text", text: JSON.stringify(decrypted, null, 2) }],
-      };
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      return {
-        content: [{ type: "text", text: `Error fetching transactions: ${message}` }],
-        isError: true,
-      };
-    }
-  },
-);
+        const transactions = await client.query(api.mcp.mcpGetTransactions, {
+          tokenHash,
+          limit,
+        });
 
-server.tool(
-  "add_transaction",
-  "Add a new expense or income to DevCents. Automatically encrypted before saving.",
-  {
-    amount: z.number().describe("The numerical amount"),
-    type: z
-      .enum(["income", "expense"])
-      .describe("Whether it is an income or expense"),
-    category: z
-      .string()
-      .describe("The category (e.g., 'Food and Dining', 'Shopping')"),
-    description: z.string().describe("Description for the transaction"),
-    currency: z
-      .string()
-      .optional()
-      .describe(
-        "Currency code (e.g., 'USD', 'LKR'). Leaves empty if default base currency.",
-      ),
-    date: z
-      .number()
-      .optional()
-      .describe(
-        "Date as Unix timestamp. Current time will be used if omitted.",
-      ),
-  },
-  async ({ amount, type, category, description, currency, date }) => {
-    try {
-      const tokenHash = await hashToken(API_KEY as string);
-      const key = await getEncryptionKey(tokenHash);
+        const decrypted = await Promise.all(
+          transactions.map(async (t) => {
+            if (!t.encrypted) return t;
+            try {
+              return {
+                ...t,
+                amount:
+                  typeof t.amount === "string"
+                    ? parseFloat(await decrypt(t.amount, key))
+                    : t.amount,
+                description: await decrypt(t.description, key),
+              };
+            } catch (e) {
+              return { ...t, description: "[Decryption Failed]" };
+            }
+          }),
+        );
 
-      const encryptedAmount = await encrypt(amount.toString(), key);
-      const encryptedDescription = await encrypt(description, key);
+        return {
+          content: [{ type: "text", text: JSON.stringify(decrypted, null, 2) }],
+        };
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        return {
+          content: [{ type: "text", text: `Error fetching transactions: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
 
-      const txDate = date || Date.now();
+  // Tool: add_transaction
+  server.registerTool(
+    "add_transaction",
+    {
+      description:
+        "Add a new expense or income to DevCents. Automatically encrypted before saving.",
+      inputSchema: {
+        amount: z.number().describe("The numerical amount"),
+        type: z
+          .enum(["income", "expense"])
+          .describe("Whether it is an income or expense"),
+        category: z
+          .string()
+          .describe("The category (e.g., 'Food and Dining', 'Shopping')"),
+        description: z.string().describe("Description for the transaction"),
+        currency: z
+          .string()
+          .optional()
+          .describe(
+            "Currency code (e.g., 'USD', 'LKR'). Leaves empty if default base currency.",
+          ),
+        date: z
+          .number()
+          .optional()
+          .describe(
+            "Date as Unix timestamp. Current time will be used if omitted.",
+          ),
+      },
+    },
+    async ({ amount, type, category, description, currency, date }) => {
+      try {
+        const tokenHash = await hashToken(API_KEY as string);
+        const key = await getEncryptionKey(tokenHash);
 
-      await client.mutation(api.mcp.mcpAddTransaction, {
-        tokenHash,
-        amount: encryptedAmount,
-        type,
-        category,
-        description: encryptedDescription,
-        currency,
-        date: txDate,
-        encrypted: true,
-      });
+        const encryptedAmount = await encrypt(amount.toString(), key);
+        const encryptedDescription = await encrypt(description, key);
 
-      return {
-        content: [{ type: "text", text: "Transaction encrypted and saved successfully." }],
-      };
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      return {
-        content: [{ type: "text", text: `Error adding transaction: ${message}` }],
-        isError: true,
-      };
-    }
-  },
-);
+        const txDate = date || Date.now();
+
+        await client.mutation(api.mcp.mcpAddTransaction, {
+          tokenHash,
+          amount: encryptedAmount,
+          type,
+          category,
+          description: encryptedDescription,
+          currency,
+          date: txDate,
+          encrypted: true,
+        });
+
+        return {
+          content: [{ type: "text", text: "Transaction encrypted and saved successfully." }],
+        };
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        return {
+          content: [{ type: "text", text: `Error adding transaction: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  return server;
+}
+
+// ─── Entry Point ────────────────────────────────────────────────────────────
 
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("DevCents MCP Server is running securely.");
+  const handle = serveStdio(createServer);
+  console.error("DevCents MCP Server (v2.0) is running securely over stdio.");
+
+  const shutdown = async () => {
+    try {
+      await handle.close();
+    } catch {
+      // ignore errors during close
+    }
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 main().catch((e) => {
