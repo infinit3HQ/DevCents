@@ -30,6 +30,7 @@ jobs:
             printf 'VITE_CLERK_PUBLISHABLE_KEY=%s\n' '${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}'
             printf 'VITE_CONVEX_URL=%s\n' '${{ env.VITE_CONVEX_URL }}'
             printf 'TRAEFIK_WEB_HOST=%s\n' '${{ env.TRAEFIK_WEB_HOST }}'
+            printf 'DEVCENTS_PASSPHRASE=%s\n' '${{ secrets.DEVCENTS_PASSPHRASE }}'
           } > .env
 
       - name: Setup Node.js
