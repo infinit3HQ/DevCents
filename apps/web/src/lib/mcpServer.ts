@@ -9,13 +9,17 @@ import {
   importKeyFromBase64,
 } from "@devcents/shared";
 
-const CONVEX_URL =
-  process.env.CONVEX_URL ||
-  process.env.VITE_CONVEX_URL ||
-  "http://127.0.0.1:3210";
+function getConvexUrl(): string {
+  const url =
+    (typeof process !== "undefined" && process.env && process.env.CONVEX_URL) ||
+    (typeof process !== "undefined" && process.env && process.env.VITE_CONVEX_URL) ||
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_CONVEX_URL) ||
+    "http://127.0.0.1:3210";
+  return url;
+}
 
 function getConvexClient() {
-  return new ConvexHttpClient(CONVEX_URL);
+  return new ConvexHttpClient(getConvexUrl());
 }
 
 export function getCorsHeaders(): Record<string, string> {
@@ -88,20 +92,24 @@ async function resolveEncryptionKey(
   client: ConvexHttpClient,
   tokenHash: string,
   passphraseHeader?: string,
-): Promise<CryptoKey | null> {
+): Promise<{ key: CryptoKey | null; error?: string }> {
   // 1. Check if key is attached directly to the API token
+  let tokenLookupError: string | undefined;
   try {
     const keyB64 = await client.query(api.mcp.mcpGetTokenKey, { tokenHash });
     if (keyB64) {
-      return await importKeyFromBase64(keyB64);
+      const key = await importKeyFromBase64(keyB64);
+      return { key };
     }
-  } catch {
-    // ignore query failure, fallback to passphrase
+  } catch (err: any) {
+    tokenLookupError = err?.message || String(err);
+    console.error("[mcp] Error querying mcpGetTokenKey:", err);
   }
 
   // 2. Check server environment variable or header
   const serverPassphrase =
-    process.env.DEVCENTS_PASSPHRASE || passphraseHeader;
+    (typeof process !== "undefined" && process.env && process.env.DEVCENTS_PASSPHRASE) ||
+    passphraseHeader;
 
   if (serverPassphrase) {
     try {
@@ -109,13 +117,29 @@ async function resolveEncryptionKey(
         tokenHash,
       });
       const salt = base64ToSalt(saltB64);
-      return await deriveKey(serverPassphrase, salt);
-    } catch {
-      return null;
+      const key = await deriveKey(serverPassphrase, salt);
+      return { key };
+    } catch (err: any) {
+      console.error("[mcp] Error querying salt or deriving key:", err);
+      return {
+        key: null,
+        error: `Failed to derive key from server passphrase: ${err?.message || String(err)}`,
+      };
     }
   }
 
-  return null;
+  if (tokenLookupError) {
+    return {
+      key: null,
+      error: `Convex token lookup failed: ${tokenLookupError}`,
+    };
+  }
+
+  return {
+    key: null,
+    error:
+      "No encryption key is attached to this token in Convex. If you just created this token, ensure you used 'Generate Remote Token' and entered your passphrase. Otherwise, set DEVCENTS_PASSPHRASE on the server.",
+  };
 }
 
 export function handleMcpOptions(): Response {
@@ -192,7 +216,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
         jsonrpc: "2.0",
         id,
         result: {
-          protocolVersion: params?.protocolVersion || "2026-07-28",
+          protocolVersion: "2026-07-28",
           capabilities: {
             tools: { listChanged: true },
           },
@@ -249,7 +273,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
       try {
         const tokenHash = await hashToken(effectiveToken);
-        const key = await resolveEncryptionKey(
+        const { key, error: keyError } = await resolveEncryptionKey(
           client,
           tokenHash,
           passphraseHeader,
@@ -264,7 +288,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
               content: [
                 {
                   type: "text",
-                  text: "Decryption error: No encryption key available. Either generate a Remote Token in DevCents Settings (attaching decryption key) or set DEVCENTS_PASSPHRASE on the server.",
+                  text: `Decryption error: ${keyError || "No encryption key available."}`,
                 },
               ],
             },

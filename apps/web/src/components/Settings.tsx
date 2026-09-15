@@ -409,7 +409,17 @@ function ApiAccessSection() {
     try {
       let keyB64: string | undefined = undefined;
 
-      if (passphrase && encSettings?.salt && encSettings?.verificationHash) {
+      if (showPassphraseInput) {
+        if (!passphrase.trim()) {
+          setPassphraseError("err: passphrase is required for remote token");
+          setLoading(false);
+          return;
+        }
+        if (!encSettings?.salt || !encSettings?.verificationHash) {
+          setPassphraseError("err: encryption settings not found for this account");
+          setLoading(false);
+          return;
+        }
         const salt = base64ToSalt(encSettings.salt);
         const key = await deriveKey(passphrase, salt, true);
         const valid = await verifyPassphrase(key, encSettings.verificationHash);
@@ -424,7 +434,7 @@ function ApiAccessSection() {
       const raw = generateRawToken();
       const hash = await hashToken(raw);
       await generateTokenMutation({
-        name: `Token ${tokens.length + 1}`,
+        name: showPassphraseInput ? `Remote Token ${tokens.length + 1}` : `Token ${tokens.length + 1}`,
         tokenHash: hash,
         keyB64,
       });
