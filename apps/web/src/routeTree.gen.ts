@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OauthAuthorizeRouteImport } from './routes/oauth.authorize'
 import { Route as ApiMcpRouteImport } from './routes/api.mcp'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthAuthorizeRoute = OauthAuthorizeRouteImport.update({
+  id: '/oauth/authorize',
+  path: '/oauth/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
   path: '/api/mcp',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/mcp': typeof McpRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/mcp' | '/settings' | '/api/mcp'
+  fullPaths: '/' | '/mcp' | '/settings' | '/api/mcp' | '/oauth/authorize'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/mcp' | '/settings' | '/api/mcp'
-  id: '__root__' | '/' | '/mcp' | '/settings' | '/api/mcp'
+  to: '/' | '/mcp' | '/settings' | '/api/mcp' | '/oauth/authorize'
+  id: '__root__' | '/' | '/mcp' | '/settings' | '/api/mcp' | '/oauth/authorize'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   SettingsRoute: typeof SettingsRoute
   ApiMcpRoute: typeof ApiMcpRoute
+  OauthAuthorizeRoute: typeof OauthAuthorizeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/authorize': {
+      id: '/oauth/authorize'
+      path: '/oauth/authorize'
+      fullPath: '/oauth/authorize'
+      preLoaderRoute: typeof OauthAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mcp': {
       id: '/api/mcp'
       path: '/api/mcp'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   SettingsRoute: SettingsRoute,
   ApiMcpRoute: ApiMcpRoute,
+  OauthAuthorizeRoute: OauthAuthorizeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

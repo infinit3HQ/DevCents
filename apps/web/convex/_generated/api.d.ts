@@ -12,6 +12,7 @@ import type * as encryptionSettings from "../encryptionSettings.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as backfill from "../backfill.js";
 import type * as mcp from "../mcp.js";
+import type * as oauth from "../oauth.js";
 import type * as planned from "../planned.js";
 import type * as recurring from "../recurring.js";
 import type * as settings from "../settings.js";
@@ -28,11 +29,13 @@ declare const fullApi: ApiFromModules<{
   exchangeRates: typeof exchangeRates;
   backfill: typeof backfill;
   mcp: typeof mcp;
+  oauth: typeof oauth;
   planned: typeof planned;
   recurring: typeof recurring;
   settings: typeof settings;
   transactions: typeof transactions;
 }>;
+
 
 /**
  * A utility for referencing Convex functions in your app's public API.

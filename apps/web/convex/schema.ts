@@ -103,4 +103,43 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_hash", ["tokenHash"]),
+
+  // ─── OAuth 2.1 Tables for MCP ─────────────────────────────────────────
+  oauth_clients: defineTable({
+    clientId: v.string(),
+    clientSecret: v.optional(v.string()),
+    clientName: v.string(),
+    redirectUris: v.array(v.string()),
+    grantTypes: v.array(v.string()),
+    responseTypes: v.array(v.string()),
+    scope: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_client_id", ["clientId"]),
+
+  oauth_codes: defineTable({
+    codeHash: v.string(),
+    clientId: v.string(),
+    userId: v.string(),
+    redirectUri: v.string(),
+    codeChallenge: v.string(),
+    codeChallengeMethod: v.string(), // "S256" | "plain"
+    scope: v.string(),
+    keyB64: v.optional(v.string()),
+    expiresAt: v.number(),
+  }).index("by_hash", ["codeHash"]),
+
+  oauth_tokens: defineTable({
+    tokenHash: v.string(),
+    refreshTokenHash: v.optional(v.string()),
+    clientId: v.string(),
+    userId: v.string(),
+    scope: v.string(),
+    keyB64: v.optional(v.string()),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_hash", ["tokenHash"])
+    .index("by_refresh_hash", ["refreshTokenHash"])
+    .index("by_user", ["userId"]),
 });
+
