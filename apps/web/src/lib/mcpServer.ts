@@ -22,6 +22,27 @@ function getConvexClient() {
   return new ConvexHttpClient(getConvexUrl());
 }
 
+export const SUPPORTED_PROTOCOL_VERSIONS = [
+  "2026-07-28", // MCP 2.0 draft
+  "2025-11-25", // Latest standard SDK (OpenClaw, Claude, Cursor)
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05", // Legacy MCP 1.0
+  "2024-10-07",
+];
+
+export const DEFAULT_PROTOCOL_VERSION = "2025-11-25";
+
+export function negotiateProtocolVersion(requested?: string): string {
+  if (!requested) {
+    return DEFAULT_PROTOCOL_VERSION;
+  }
+  if (SUPPORTED_PROTOCOL_VERSIONS.includes(requested)) {
+    return requested;
+  }
+  return DEFAULT_PROTOCOL_VERSION;
+}
+
 export function getCorsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -155,7 +176,8 @@ export function handleMcpGet(): Response {
       status: "ok",
       service: "DevCents Remote Web MCP Server",
       version: "2.0.0",
-      protocolVersion: "2026-07-28",
+      protocolVersion: DEFAULT_PROTOCOL_VERSION,
+      supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS,
       endpoint: "/mcp",
       tools: TOOLS.map((t) => t.name),
     },
@@ -212,11 +234,12 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
     // 1. initialize / server/discover
     if (rpcMethod === "initialize" || rpcMethod === "server/discover") {
+      const protocolVersion = negotiateProtocolVersion(params?.protocolVersion);
       return {
         jsonrpc: "2.0",
         id,
         result: {
-          protocolVersion: "2026-07-28",
+          protocolVersion,
           capabilities: {
             tools: { listChanged: true },
           },
