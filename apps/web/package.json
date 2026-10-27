@@ -11,8 +11,8 @@
     "dev:all": "bash ../../scripts/dev.sh"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.61.3",
-    "@clerk/tanstack-react-start": "^1.1.8",
+    "@clerk/clerk-react": "^5.61.11",
+    "@clerk/tanstack-react-start": "^1.7.7",
     "@clerk/themes": "^2.4.57",
     "@clerk/ui": "^1.0.0",
     "@devcents/shared": "workspace:*",
@@ -27,15 +27,15 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "^0.7.0",
-    "@tanstack/react-router": "^1.132.0",
-    "@tanstack/react-router-devtools": "^1.132.0",
-    "@tanstack/react-router-ssr-query": "^1.131.7",
-    "@tanstack/react-start": "^1.132.0",
-    "@tanstack/router-plugin": "^1.132.0",
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/react-router-devtools": "^1.167.2",
+    "@tanstack/react-router-ssr-query": "^1.167.3",
+    "@tanstack/react-start": ">=1.168.61 <1.169.0",
+    "@tanstack/router-plugin": "^1.168.48",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "convex": "^1.31.7",
+    "convex": "^1.48.0",
     "convex-helpers": "^0.1.111",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.34.3",
@@ -48,13 +48,13 @@
     "tailwind-merge": "^3.4.0",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
@@ -64,8 +64,8 @@
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vite": "^7.3.2",
-    "vitest": "^3.0.5",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12",
     "web-vitals": "^5.1.0"
   }
 }

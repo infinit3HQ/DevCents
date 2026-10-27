@@ -1,7 +1,8 @@
 # -------------------------
 # Build Stage
 # -------------------------
-FROM node:24-alpine AS builder
+# node:26-alpine tracks the newest Node 26 patch, including later security releases.
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -37,7 +38,7 @@ RUN pnpm --filter devcents build
 # -------------------------
 # Production Stage 
 # -------------------------
-FROM node:24-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 

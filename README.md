@@ -105,13 +105,13 @@ Your money data stays on your server, encrypted by your passphrase, visible only
 
 ## Quick Start
 
-**Prerequisites:** Node.js ≥ 22, Docker
+**Prerequisites:** Node.js 26 (latest), pnpm 11, Docker
 
 ```bash
 # 1. Clone and install
 git clone https://github.com/infinit3HQ/DevCents.git
 cd DevCents
-npm install
+pnpm install
 
 # 2. Start everything (Convex backend + Vite dev server)
 npm run dev:all
