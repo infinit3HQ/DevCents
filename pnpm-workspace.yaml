@@ -1,6 +1,20 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+minimumReleaseAge: 1440
+# The deploy host rejects releases newer than 24 hours. These are the
+# patched packages from this upgrade that are still inside that window.
+minimumReleaseAgeExclude:
+  - '@clerk/backend'
+  - '@clerk/react'
+  - '@clerk/shared'
+  - '@clerk/tanstack-react-start'
+  - '@tanstack/query-core'
+  - '@tanstack/react-query'
+  - electron-to-chromium
+  - nitro-nightly
+  - srvx
+  - stream-chain
 allowBuilds:
   '@clerk/shared': false
   bufferutil: false
