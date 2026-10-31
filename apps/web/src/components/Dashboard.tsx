@@ -1,5 +1,5 @@
 import { useUser } from "@clerk/tanstack-react-start";
-import { useMemo, useState, type ElementType } from "react";
+import { useCallback, useMemo, useState, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
@@ -18,6 +18,8 @@ import { Planning } from "@/components/Planning";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly } from "@/lib/currencyUtils";
+import { isTransferCategory } from "@/lib/categoryUtils";
+import { LedgerFilterContext, type LedgerFilter } from "@/contexts/LedgerFilterContext";
 
 type MobileTab = "overview" | "transactions" | "planning" | "analytics";
 type DesktopLeftPane = "analytics_category" | "analytics_monthly" | "planning";
@@ -64,6 +66,19 @@ export function Dashboard() {
   const [desktopLeftPane, setDesktopLeftPane] =
     useState<DesktopLeftPane>("analytics_category");
   const { baseCurrency, computeBalances, rates, ratesLoaded } = useCurrency();
+  const [ledgerFilter, setLedgerFilterState] = useState<LedgerFilter | null>(null);
+  // Selecting a category in the chart filters the ledger. On mobile the
+  // ledger is a separate tab, so jump to it.
+  const setLedgerFilter = useCallback((filter: LedgerFilter | null) => {
+    setLedgerFilterState(filter);
+    if (filter && typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setActiveTab("transactions");
+    }
+  }, []);
+  const ledgerFilterValue = useMemo(
+    () => ({ filter: ledgerFilter, setFilter: setLedgerFilter }),
+    [ledgerFilter, setLedgerFilter],
+  );
 
   // Per-wallet native balances via the greedy-spillover walk. Stable —
   // doesn't drift when fxratesapi rates move because wallet amounts are
@@ -98,6 +113,8 @@ export function Dashboard() {
     let incomeUSD = 0;
     let expenseUSD = 0;
     for (const t of transactions) {
+      // Own-money moves (bank → cash) aren't income or spending.
+      if (isTransferCategory(t.category, t.type)) continue;
       const locked = t.rateToUSD;
       const valueUSD =
         locked !== undefined && locked > 0
@@ -115,6 +132,7 @@ export function Dashboard() {
   }, [transactions, rates, ratesLoaded, baseCurrency]);
 
   return (
+    <LedgerFilterContext.Provider value={ledgerFilterValue}>
     <div className="bg-background text-foreground h-full flex flex-col overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── HERO ──────────────────────────────────────────────────────── */}
@@ -432,5 +450,6 @@ export function Dashboard() {
         <MobileNav onTabChange={setActiveTab} activeTab={activeTab} />
       </div>
     </div>
+    </LedgerFilterContext.Provider>
   );
 }

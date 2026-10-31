@@ -1,5 +1,6 @@
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { EXPENSE_CATEGORY_VALUES, normalizeCategory } from "@devcents/shared/categories";
 
 // ─── Token Management (Used by Frontend) ────────────────────────────────
 
@@ -141,7 +142,7 @@ export const mcpGetTransactions = query({
         if (args.type && t.type !== args.type) return false;
         if (args.since && t.date < args.since) return false;
         if (args.until && t.date > args.until) return false;
-        if (args.category && t.category !== args.category) return false;
+        if (args.category && normalizeCategory(t.category, t.type) !== normalizeCategory(args.category, t.type)) return false;
         return true;
       })
       .slice(0, limit);
@@ -182,6 +183,7 @@ export const mcpAddTransaction = mutation({
     const transactionId = await ctx.db.insert("transactions", {
       userId,
       ...transactionData,
+      category: normalizeCategory(transactionData.category, transactionData.type),
     });
 
     return transactionId;
@@ -228,6 +230,7 @@ export const mcpAddPlanned = mutation({
       userId,
       status: "planned",
       ...data,
+      category: normalizeCategory(data.category, data.type),
     });
   },
 });
@@ -277,7 +280,62 @@ export const mcpAddRecurring = mutation({
       userId,
       active: true,
       ...data,
+      category: normalizeCategory(data.category, data.type),
     });
+  },
+});
+
+export const mcpGetCategoryRules = query({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    return await ctx.db
+      .query("categoryRules")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+  },
+});
+
+export const mcpGetCategoryBudgets = query({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    return await ctx.db
+      .query("categoryBudgets")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+  },
+});
+
+/** Sets a category's monthly limit; `remove: true` deletes it. */
+export const mcpSetCategoryBudget = mutation({
+  args: {
+    tokenHash: v.string(),
+    category: v.string(),
+    limit: v.optional(v.union(v.number(), v.string())),
+    currency: v.optional(v.string()),
+    encrypted: v.optional(v.boolean()),
+    remove: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    if (!EXPENSE_CATEGORY_VALUES.includes(args.category) || args.category === "transfer")
+      throw new Error(`Unknown expense category: ${args.category}`);
+    const existing = await ctx.db
+      .query("categoryBudgets")
+      .withIndex("by_user_category", (q) => q.eq("userId", userId).eq("category", args.category))
+      .first();
+    if (args.remove) {
+      if (existing) await ctx.db.delete(existing._id);
+      return null;
+    }
+    if (args.limit === undefined || !args.currency) throw new Error("limit and currency are required");
+    const fields = { limit: args.limit, currency: args.currency.toUpperCase(), encrypted: args.encrypted };
+    if (existing) {
+      await ctx.db.patch(existing._id, fields);
+      return existing._id;
+    }
+    return await ctx.db.insert("categoryBudgets", { userId, category: args.category, ...fields });
   },
 });
 

@@ -11,6 +11,10 @@
 import type * as encryptionSettings from "../encryptionSettings.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as backfill from "../backfill.js";
+import type * as backup from "../backup.js";
+import type * as categories from "../categories.js";
+import type * as categoryBudgets from "../categoryBudgets.js";
+import type * as categoryRules from "../categoryRules.js";
 import type * as mcp from "../mcp.js";
 import type * as oauth from "../oauth.js";
 import type * as planned from "../planned.js";
@@ -28,6 +32,10 @@ declare const fullApi: ApiFromModules<{
   encryptionSettings: typeof encryptionSettings;
   exchangeRates: typeof exchangeRates;
   backfill: typeof backfill;
+  backup: typeof backup;
+  categories: typeof categories;
+  categoryBudgets: typeof categoryBudgets;
+  categoryRules: typeof categoryRules;
   mcp: typeof mcp;
   oauth: typeof oauth;
   planned: typeof planned;

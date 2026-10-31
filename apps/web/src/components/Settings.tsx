@@ -34,6 +34,7 @@ import {
 } from "@devcents/shared";
 import { saveKey, clearKey } from "@devcents/shared";
 import { useQuery, useMutation } from "convex/react";
+import { DataSection } from "@/components/DataSection";
 import { api } from "../../convex/_generated/api";
 
 // ─── Section wrapper ──────────────────────────────────────────────
@@ -784,6 +785,9 @@ export function Settings() {
 
             {/* ── API Access ──────────────────────────────────── */}
             <ApiAccessSection />
+
+            {/* ── Data ────────────────────────────────────────── */}
+            <DataSection />
 
             {/* ── Danger zone ─────────────────────────────────── */}
             {isEnabled && (

@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
-import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryLabel, isTransferCategory, normalizeCategory } from "@/lib/categoryUtils";
 import { cn } from "@/lib/utils";
+import { useLedgerFilter } from "@/contexts/LedgerFilterContext";
+import { CategoryBudgets } from "@/components/CategoryBudgets";
+import { DAY_MS } from "@/lib/planningUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import type { LucideIcon } from "lucide-react";
@@ -37,6 +40,108 @@ const TOOLTIP_STYLE = {
 
 type TimePeriod = "day" | "week" | "month" | "custom" | "all";
 
+type CategorySlice = {
+  key: string;
+  name: string;
+  value: number;
+  /** Spend in the matching slice of the previous period; null for "all". */
+  prev: number | null;
+  fill: string;
+  Icon: LucideIcon;
+};
+
+type DisplaySlice = CategorySlice & { members?: CategorySlice[] };
+
+const SMALL_SLICE_PCT = 2;
+const SMALL_GROUP_KEY = "__small";
+const SMALL_GROUP_COLOR = "#4b5563";
+
+function ChangeBadge({ value, prev, prevLabel, formatPrev }: { value: number; prev: number | null; prevLabel: string | null; formatPrev: (n: number) => string }) {
+  if (prev === null || !prevLabel) return null;
+  let text: string;
+  let tone: string;
+  if (prev <= 0) {
+    text = value > 0 ? "new" : "–";
+    tone = "text-muted-foreground";
+  } else {
+    const pct = ((value - prev) / prev) * 100;
+    if (Math.abs(pct) < 1) {
+      text = "±0%";
+      tone = "text-muted-foreground";
+    } else {
+      // Spending more is bad (red), spending less is good (green).
+      text = `${pct > 0 ? "▲" : "▼"}${Math.min(Math.round(Math.abs(pct)), 999)}%`;
+      tone = pct > 0 ? "text-destructive/80" : "text-primary/80";
+    }
+  }
+  return (
+    <span className={cn("w-12 text-right tabular-nums shrink-0", tone)} title={`${prevLabel}: ${formatPrev(prev)}`}>
+      {text}
+    </span>
+  );
+}
+
+function LegendRow({
+  entry,
+  index,
+  total,
+  currencySymbol,
+  baseCurrency,
+  prevLabel,
+  active,
+  dimmed,
+  expanded,
+  onClick,
+}: {
+  entry: DisplaySlice;
+  index: number;
+  total: number;
+  currencySymbol: string;
+  baseCurrency: string;
+  prevLabel: string | null;
+  active: boolean;
+  dimmed: boolean;
+  /** Set for the expandable "smaller categories" row. */
+  expanded?: boolean;
+  onClick: () => void;
+}) {
+  const rawPct = total > 0 ? (entry.value / total) * 100 : 0;
+  const pctLabel = rawPct > 0 && rawPct < 1 ? "<1" : String(Math.round(rawPct));
+  const amount = `${currencySymbol}${formatAmountOnly(entry.value, baseCurrency)}`;
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  return (
+    <motion.button
+      type="button"
+      initial={{ opacity: 0, x: -4 }}
+      animate={{ opacity: dimmed ? 0.45 : 1, x: 0 }}
+      transition={{ delay: 0.1 + index * 0.03 }}
+      onClick={onClick}
+      aria-pressed={expanded === undefined ? active : undefined}
+      aria-expanded={expanded}
+      className={cn(
+        "w-full flex items-center gap-2 font-mono text-[10px] group min-w-0 px-1.5 py-1.5 text-left transition-colors border-l-2",
+        active ? "bg-primary/10 border-l-primary" : "border-l-transparent hover:bg-muted/40",
+      )}
+      title={`${entry.name}: ${amount}`}
+    >
+      <div className="w-2.5 h-2.5 shrink-0 transition-transform group-hover:scale-125" style={{ background: entry.fill }} />
+      <entry.Icon className="h-3 w-3 shrink-0" style={{ color: entry.fill }} />
+      <span className="uppercase tracking-wider text-muted-foreground truncate group-hover:text-foreground">
+        {entry.name}
+      </span>
+      {expanded !== undefined && <Chevron className="h-3 w-3 shrink-0 text-muted-foreground" />}
+      <span className="ml-auto tabular-nums text-muted-foreground/70 shrink-0 hidden @xs:inline">{amount}</span>
+      <ChangeBadge
+        value={entry.value}
+        prev={entry.prev}
+        prevLabel={prevLabel}
+        formatPrev={(n) => `${currencySymbol}${formatAmountOnly(n, baseCurrency)}`}
+      />
+      <span className="w-9 text-right tabular-nums text-foreground/70 shrink-0">{pctLabel}%</span>
+    </motion.button>
+  );
+}
+
 const TIME_PERIODS: { id: TimePeriod; label: string }[] = [
   { id: "day", label: "today" },
   { id: "week", label: "week" },
@@ -66,53 +171,126 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
   });
   const [customEnd, setCustomEnd] = useState<string>(() => toDateInput(Date.now()));
   
+  const [smallExpanded, setSmallExpanded] = useState(false);
+  const { filter: ledgerFilter, setFilter: setLedgerFilter } = useLedgerFilter();
   const transactions = useDecryptedTransactions();
   const { baseCurrency, convertAmount } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
 
+  // Current period plus the matching slice of the previous period, so
+  // "this month so far" compares against the same number of days last month.
+  const range = useMemo(() => {
+    const now = new Date();
+    const nowMs = now.getTime();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const d = now.getDate();
+    if (timePeriod === "day") {
+      const start = getStartOfDay(now);
+      const prevStart = new Date(y, m, d - 1).getTime();
+      return { start, end: Infinity, prevStart, prevEnd: prevStart + (nowMs - start), label: "today", prevLabel: "yesterday" };
+    }
+    if (timePeriod === "week") {
+      const day = now.getDay();
+      const monday = d - day + (day === 0 ? -6 : 1);
+      const start = new Date(y, m, monday).getTime();
+      const prevStart = new Date(y, m, monday - 7).getTime();
+      return { start, end: Infinity, prevStart, prevEnd: prevStart + (nowMs - start), label: "this week", prevLabel: "last week" };
+    }
+    if (timePeriod === "month") {
+      const start = new Date(y, m, 1).getTime();
+      const prevStart = new Date(y, m - 1, 1).getTime();
+      const prevEnd = Math.min(prevStart + (nowMs - start), start - 1);
+      return { start, end: Infinity, prevStart, prevEnd, label: "this month", prevLabel: "last month" };
+    }
+    if (timePeriod === "custom") {
+      const start = getStartOfDay(new Date(customStart));
+      const end = getStartOfDay(new Date(customEnd)) + DAY_MS - 1;
+      const length = end - start + 1;
+      return { start, end, prevStart: start - length, prevEnd: start - 1, label: "selected range", prevLabel: "previous range" };
+    }
+    return { start: 0, end: Infinity, prevStart: null, prevEnd: null, label: "all time", prevLabel: null };
+  }, [timePeriod, customStart, customEnd]);
+
   const filteredTransactions = useMemo(() => {
     if (!transactions?.length) return [];
-    
-    const now = new Date();
-    let startTime = 0;
-    let endTime = Infinity;
-    
-    if (timePeriod === "day") {
-      startTime = getStartOfDay(now);
-    } else if (timePeriod === "week") {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-      startTime = new Date(now.getFullYear(), now.getMonth(), diff).getTime();
-    } else if (timePeriod === "month") {
-      startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    } else if (timePeriod === "custom") {
-      startTime = getStartOfDay(new Date(customStart));
-      endTime = getStartOfDay(new Date(customEnd)) + 24 * 60 * 60 * 1000 - 1;
-    }
-    // "all" keeps startTime = 0
-    
-    return transactions.filter((t) => t.date >= startTime && t.date <= endTime);
-  }, [transactions, timePeriod, customStart, customEnd]);
+    return transactions.filter((t) => t.date >= range.start && t.date <= range.end);
+  }, [transactions, range]);
 
-  const categoryData = useMemo(() => {
+  const prevByCategory = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!transactions?.length || range.prevStart === null || range.prevEnd === null) return out;
+    for (const t of transactions) {
+      if (t.type !== "expense" || t.date < range.prevStart || t.date > range.prevEnd) continue;
+      if (isTransferCategory(t.category, t.type)) continue;
+      const key = normalizeCategory(t.category, "expense");
+      out[key] = (out[key] ?? 0) + convertAmount(t.amount, t.currency || "USD");
+    }
+    return out;
+  }, [transactions, range, convertAmount]);
+
+  const categoryData = useMemo((): CategorySlice[] => {
     if (!filteredTransactions?.length) return [];
     const byCategory: Record<string, number> = {};
     for (const t of filteredTransactions) {
-      if (t.type === "expense") {
+      if (t.type === "expense" && !isTransferCategory(t.category, t.type)) {
         const converted = convertAmount(t.amount, t.currency || "USD");
-        byCategory[t.category] = (byCategory[t.category] ?? 0) + converted;
+        // Merge legacy free-text values ("Food and Dining") into one slice.
+        const key = normalizeCategory(t.category, "expense");
+        byCategory[key] = (byCategory[key] ?? 0) + converted;
       }
     }
+    const hasPrev = range.prevStart !== null;
     return Object.entries(byCategory)
-      .map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        key: name,
+      .map(([key, value]) => ({
+        name: getCategoryLabel(key, "expense"),
+        key,
         value: Math.round(value * 100) / 100,
-        fill: CATEGORY_COLORS[name] ?? CATEGORY_COLORS.other,
-        Icon: (CATEGORY_ICONS[name] ?? CATEGORY_ICONS.other) as LucideIcon,
+        prev: hasPrev ? Math.round((prevByCategory[key] ?? 0) * 100) / 100 : null,
+        fill: CATEGORY_COLORS[key] ?? CATEGORY_COLORS.other,
+        Icon: (CATEGORY_ICONS[key] ?? CATEGORY_ICONS.other) as LucideIcon,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredTransactions, convertAmount]);
+  }, [filteredTransactions, convertAmount, prevByCategory, range.prevStart]);
+
+  const totalExpenses = categoryData.reduce((s, d) => s + d.value, 0);
+
+  // Fold categories under SMALL_SLICE_PCT into one expandable row, but only
+  // when there are at least two of them (folding one row saves nothing).
+  const displayData = useMemo((): DisplaySlice[] => {
+    if (totalExpenses <= 0) return categoryData;
+    const small = categoryData.filter((c) => (c.value / totalExpenses) * 100 < SMALL_SLICE_PCT);
+    if (small.length < 2) return categoryData;
+    const big = categoryData.filter((c) => !small.includes(c));
+    const value = small.reduce((s, c) => s + c.value, 0);
+    const prev = small.every((c) => c.prev === null) ? null : small.reduce((s, c) => s + (c.prev ?? 0), 0);
+    return [
+      ...big,
+      {
+        key: SMALL_GROUP_KEY,
+        name: `${small.length} smaller categories`,
+        value: Math.round(value * 100) / 100,
+        prev,
+        fill: SMALL_GROUP_COLOR,
+        Icon: Layers as LucideIcon,
+        members: small,
+      },
+    ];
+  }, [categoryData, totalExpenses]);
+
+  const selectCategory = (key: string) => {
+    if (ledgerFilter?.category === key && ledgerFilter.type === "expense") {
+      setLedgerFilter(null);
+      return;
+    }
+    setLedgerFilter({
+      category: key,
+      type: "expense",
+      start: range.start,
+      end: range.end,
+      periodLabel: range.label,
+    });
+  };
 
   const monthlyData = useMemo(() => {
     if (!filteredTransactions?.length) return [];
@@ -121,6 +299,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       const d = new Date(t.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
+      if (isTransferCategory(t.category, t.type)) continue;
 
       const converted = convertAmount(t.amount, t.currency || "USD");
       if (t.type === "income") byMonth[key].income += converted;
@@ -151,7 +330,15 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       </div>
     );
 
-  const totalExpenses = categoryData.reduce((s, d) => s + d.value, 0);
+  const activeKey =
+    ledgerFilter?.type === "expense" && ledgerFilter.start === range.start && ledgerFilter.end === range.end
+      ? ledgerFilter.category
+      : null;
+
+  const handleSliceClick = (entry: DisplaySlice) => {
+    if (entry.key === SMALL_GROUP_KEY) setSmallExpanded((v) => !v);
+    else selectCategory(entry.key);
+  };
 
   const showCategory = mode === "all" || mode === "category";
   const showMonthly = mode === "all" || mode === "monthly";
@@ -262,17 +449,23 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           {/* ── Horizontal spending breakdown bar ── */}
           <div className="mb-5">
             <div className="h-2.5 w-full flex overflow-hidden">
-              {categoryData.map((entry, i) => {
+              {displayData.map((entry, i) => {
                 const pct = totalExpenses > 0 ? (entry.value / totalExpenses) * 100 : 0;
                 return (
-                  <motion.div
+                  <motion.button
+                    type="button"
                     key={entry.key}
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{ duration: 0.6, delay: i * 0.05, ease: "easeOut" }}
-                    className="h-full transition-opacity hover:opacity-80 cursor-pointer"
+                    onClick={() => handleSliceClick(entry)}
+                    className={cn(
+                      "h-full transition-opacity hover:opacity-80 cursor-pointer",
+                      activeKey && activeKey !== entry.key && "opacity-30",
+                    )}
                     style={{ backgroundColor: entry.fill, minWidth: pct > 0 ? "3px" : 0 }}
                     title={`${entry.name}: ${pct.toFixed(1)}%`}
+                    aria-label={`${entry.name} ${pct.toFixed(1)}%`}
                   />
                 );
               })}
@@ -284,7 +477,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
-                  data={categoryData}
+                  data={displayData}
                   cx="50%"
                   cy="50%"
                   innerRadius={70}
@@ -294,13 +487,15 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                   animationBegin={0}
                   animationDuration={600}
                 >
-                  {categoryData.map((entry, i) => (
+                  {displayData.map((entry) => (
                     <Cell
-                      key={i}
+                      key={entry.key}
                       fill={entry.fill}
                       stroke="var(--color-card)"
                       strokeWidth={2}
-                      className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+                      opacity={activeKey && activeKey !== entry.key ? 0.3 : 1}
+                      onClick={() => handleSliceClick(entry)}
+                      className="hover:opacity-80 transition-opacity duration-200 cursor-pointer outline-none"
                     />
                   ))}
                 </Pie>
@@ -347,34 +542,55 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           </div>
 
           {/* ── Legend ── */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-4">
-            {categoryData.map((e, i) => {
-              const pct = totalExpenses > 0 ? Math.round((e.value / totalExpenses) * 100) : 0;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + i * 0.04 }}
-                  className="flex items-center gap-2 font-mono text-[10px] group cursor-default"
-                >
-                  <div
-                    className="w-2.5 h-2.5 shrink-0 transition-transform group-hover:scale-125"
-                    style={{ background: e.fill }}
-                  />
-                  <span className="text-muted-foreground/80"><e.Icon className="h-3 w-3" style={{ color: e.fill }} /></span>
-                  <span className="uppercase tracking-wider text-muted-foreground truncate">
-                    {e.name}
-                  </span>
-                  <span className="ml-auto tabular-nums text-foreground/70 shrink-0">
-                    {pct}%
-                  </span>
-                </motion.div>
-              );
-            })}
+          <div className="flex items-center justify-between gap-3 mt-4 mb-2 font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground/70">
+            <span>click a category to filter the ledger</span>
+            {range.prevLabel && <span className="shrink-0">change vs {range.prevLabel}</span>}
+          </div>
+          <div className="@container">
+            <div className="grid grid-cols-1 @3xl:grid-cols-2 gap-x-6 gap-y-0.5">
+              {displayData.map((e, i) => {
+                const isGroup = e.key === SMALL_GROUP_KEY;
+                return (
+                  <div key={e.key} className={cn(isGroup && "@3xl:col-span-2")}>
+                    <LegendRow
+                      entry={e}
+                      index={i}
+                      total={totalExpenses}
+                      currencySymbol={currencySymbol}
+                      baseCurrency={baseCurrency}
+                      prevLabel={range.prevLabel}
+                      active={activeKey === e.key}
+                      dimmed={!!activeKey && activeKey !== e.key && !(isGroup && e.members?.some((m) => m.key === activeKey))}
+                      expanded={isGroup ? smallExpanded : undefined}
+                      onClick={() => handleSliceClick(e)}
+                    />
+                    {isGroup && smallExpanded && (
+                      <div className="grid grid-cols-1 @3xl:grid-cols-2 gap-x-6 gap-y-0.5 pl-5 border-l border-border/60 ml-1 mb-1">
+                        {e.members!.map((m, j) => (
+                          <LegendRow
+                            key={m.key}
+                            entry={m}
+                            index={j}
+                            total={totalExpenses}
+                            currencySymbol={currencySymbol}
+                            baseCurrency={baseCurrency}
+                            prevLabel={range.prevLabel}
+                            active={activeKey === m.key}
+                            dimmed={!!activeKey && activeKey !== m.key}
+                            onClick={() => selectCategory(m.key)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.div>
       )}
+
+      {showCategory && <CategoryBudgets />}
 
       {/* Monthly Overview */}
       {showMonthly && monthlyData.length > 0 && (

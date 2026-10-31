@@ -31,6 +31,7 @@ import Header from "../components/Header";
 import { ConvexClientProvider } from "../components/ConvexClientProvider";
 import { CommandPalette } from "../components/CommandPalette";
 import { EncryptionProvider } from "../components/EncryptionProvider";
+import { DecryptedTransactionsProvider } from "../hooks/useDecryptedTransactions";
 import { CurrencyProvider } from "../contexts/CurrencyContext";
 import appCss from "../app.css?url";
 
@@ -206,13 +207,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <ConvexClientProvider>
             <CurrencyProvider>
               <EncryptionProvider>
-                <div className="flex flex-col h-full overflow-hidden">
-                  <Header />
-                  <CommandPalette />
-                  <main className="flex-1 overflow-hidden flex flex-col">
-                    {children}
-                  </main>
-                </div>
+                <DecryptedTransactionsProvider>
+                  <div className="flex flex-col h-full overflow-hidden">
+                    <Header />
+                    <CommandPalette />
+                    <main className="flex-1 overflow-hidden flex flex-col">
+                      {children}
+                    </main>
+                  </div>
+                </DecryptedTransactionsProvider>
               </EncryptionProvider>
             </CurrencyProvider>
           </ConvexClientProvider>

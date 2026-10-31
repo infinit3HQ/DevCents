@@ -30,11 +30,12 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, formatCurrency, getCurrencySymbol } from "@/lib/currencyUtils";
-import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/categoryUtils";
+import { getCategoryMeta, isTransferCategory } from "@/lib/categoryUtils";
 import { useDecryptedPlanned } from "@/hooks/useDecryptedPlanned";
 import { useDecryptedRecurring } from "@/hooks/useDecryptedRecurring";
 import { AddPlanned } from "@/components/AddPlanned";
 import { AddRecurring } from "@/components/AddRecurring";
+import { DetectedRecurring } from "@/components/DetectedRecurring";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Tip } from "@/components/ui/Tip";
@@ -232,6 +233,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
     let income = 0;
     let expenses = 0;
     for (const e of events) {
+      if (isTransferCategory(e.category, e.type)) continue;
       const converted = convertAmount(e.amount, e.currency || "USD");
       if (e.type === "income") income += converted;
       else expenses += converted;
@@ -250,6 +252,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
     const deltaByDay: Record<string, number> = {};
     for (const e of events) {
+      if (isTransferCategory(e.category, e.type)) continue;
       const k = dayKey(e.date);
       const converted = convertAmount(e.amount, e.currency || "USD");
       const signed = e.type === "income" ? converted : -converted;
@@ -542,8 +545,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           <div className="divide-y border-border">
             <AnimatePresence mode="popLayout">
               {events.map((e, i) => {
-                const Icon = CATEGORY_ICONS[e.category] ?? CATEGORY_ICONS.other;
-                const accent = CATEGORY_COLORS[e.category] ?? CATEGORY_COLORS.other;
+                const { Icon, color: accent, label: categoryLabel } = getCategoryMeta(e.category, e.type);
                 const tone = e.type === "income" ? "text-primary" : "text-destructive";
                 const badgeTone =
                   e.source === "planned"
@@ -597,7 +599,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1">
                           <Icon className="h-3 w-3" style={{ color: accent }} />
-                          {e.category}
+                          {categoryLabel}
                         </span>
                       </div>
                     </div>
@@ -667,8 +669,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               .slice()
               .sort((a, b) => a.date - b.date)
               .map((p) => {
-                const accent = CATEGORY_COLORS[p.category] ?? CATEGORY_COLORS.other;
-                const Icon = CATEGORY_ICONS[p.category] ?? CATEGORY_ICONS.other;
+                const { Icon, color: accent, label: categoryLabel } = getCategoryMeta(p.category, p.type);
                 const status = p.status ?? "planned";
                 return (
                   <div
@@ -704,7 +705,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <Icon className="h-3 w-3" style={{ color: accent }} />
-                          {p.category}
+                          {categoryLabel}
                         </span>
                       </div>
                     </div>
@@ -808,6 +809,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           />
         </div>
 
+        <DetectedRecurring recurring={recurring} />
+
         {recurring.length === 0 ? (
           <div className="py-10 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground border border-dashed border-border">
             <span className="text-primary">→ </span>no recurring items.
@@ -815,8 +818,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         ) : (
           <div className="divide-y border-border">
             {recurring.map((r) => {
-              const accent = CATEGORY_COLORS[r.category] ?? CATEGORY_COLORS.other;
-              const Icon = CATEGORY_ICONS[r.category] ?? CATEGORY_ICONS.other;
+              const { Icon, color: accent, label: categoryLabel } = getCategoryMeta(r.category, r.type);
               const next = nextRecurringById[r._id];
               return (
                 <div
@@ -855,7 +857,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                         <Icon className="h-3 w-3" style={{ color: accent }} />
-                        {r.category}
+                        {categoryLabel}
                       </span>
                     </div>
                   </div>

@@ -6,6 +6,11 @@ import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../web/convex/_generated/api.js";
 import { deriveKey, base64ToSalt, decrypt, encrypt, hashToken } from "@devcents/shared";
+import {
+  normalizeCategory,
+  EXPENSE_CATEGORY_VALUES,
+  INCOME_CATEGORY_VALUES,
+} from "@devcents/shared/categories";
 
 // ─── Environment configuration ──────────────────────────────────────────────
 
@@ -116,7 +121,11 @@ function createServer() {
           .describe("Whether it is an income or expense"),
         category: z
           .string()
-          .describe("The category (e.g., 'Food and Dining', 'Shopping')"),
+          .describe(
+            `Category slug. Expense: ${EXPENSE_CATEGORY_VALUES.join(", ")}. ` +
+              `Income: ${INCOME_CATEGORY_VALUES.join(", ")}. ` +
+              "Other names are mapped to the closest slug (or 'other').",
+          ),
         description: z.string().describe("Description for the transaction"),
         currency: z
           .string()
@@ -146,7 +155,7 @@ function createServer() {
           tokenHash,
           amount: encryptedAmount,
           type,
-          category,
+          category: normalizeCategory(category, type, description),
           description: encryptedDescription,
           currency,
           date: txDate,

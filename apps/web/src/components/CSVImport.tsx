@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { formatAmountOnly } from "@/lib/currencyUtils";
+import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import {
   Upload,
   FileText,
@@ -30,10 +30,13 @@ import {
 } from "@/components/ui/select";
 import {
   suggestCategory,
+  normalizeCategory,
   INCOME_CATEGORIES,
   EXPENSE_CATEGORIES,
 } from "@/lib/categoryUtils";
 import { useEncryption } from "@/contexts/EncryptionContext";
+import { useCategoryRules } from "@/hooks/useCategoryRules";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface ParsedRow {
   date: string;
@@ -41,8 +44,11 @@ interface ParsedRow {
   amount: number;
   type: "income" | "expense";
   category: string;
+  currency?: string;
   valid: boolean;
   error?: string;
+  /** User overrode the suggested category */
+  manual?: boolean;
 }
 
 interface ColumnMapping {
@@ -50,9 +56,18 @@ interface ColumnMapping {
   description: number;
   amount: number;
   type: number;
+  /** -1 = suggest from description */
+  category: number;
+  /** -1 = use base currency */
+  currency: number;
 }
 
-const EXPECTED_HEADERS = ["date", "description", "amount", "type"];
+const EXPECTED_HEADERS = ["date", "description", "amount", "type", "category", "currency"];
+const OPTIONAL_LABELS: Record<string, string> = {
+  type: "Auto-detect",
+  category: "Suggest from description",
+  currency: "Base currency",
+};
 
 function detectColumnMapping(headers: string[]): ColumnMapping {
   const lower = headers.map((h) => h.toLowerCase().trim());
@@ -84,6 +99,8 @@ function detectColumnMapping(headers: string[]): ColumnMapping {
     type: lower.findIndex((h) =>
       ["type", "kind", "direction", "credit/debit"].includes(h),
     ),
+    category: lower.findIndex((h) => ["category", "category_slug", "cat"].includes(h)),
+    currency: lower.findIndex((h) => ["currency", "ccy", "currency code"].includes(h)),
   };
 }
 
@@ -115,7 +132,11 @@ function parseCSV(text: string): string[][] {
   });
 }
 
-function parseRow(row: string[], mapping: ColumnMapping): ParsedRow {
+function parseRow(
+  row: string[],
+  mapping: ColumnMapping,
+  suggest: (description: string, type: "income" | "expense") => string = suggestCategory,
+): ParsedRow {
   try {
     const dateStr = row[mapping.date] || "";
     const description = row[mapping.description] || "";
@@ -164,9 +185,16 @@ function parseRow(row: string[], mapping: ColumnMapping): ParsedRow {
       type = "expense";
     }
 
-    const category = suggestCategory(description);
+    // A category column (e.g. from a DevCents export) wins when it maps to a
+    // real category; otherwise suggest from the description.
+    const categoryCell = mapping.category >= 0 ? row[mapping.category] || "" : "";
+    const fromColumn = categoryCell ? normalizeCategory(categoryCell, type) : "other";
+    const category = fromColumn !== "other" ? fromColumn : suggest(description, type);
 
-    return { date: dateStr, description, amount, type, category, valid: true };
+    const currencyCell = mapping.currency >= 0 ? (row[mapping.currency] || "").trim().toUpperCase() : "";
+    const currency = /^[A-Z]{3}$/.test(currencyCell) ? currencyCell : undefined;
+
+    return { date: dateStr, description, amount, type, category, currency, valid: true };
   } catch {
     return {
       date: "",
@@ -189,6 +217,8 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
     description: 1,
     amount: 2,
     type: -1,
+    category: -1,
+    currency: -1,
   });
   const [rawRows, setRawRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
@@ -197,6 +227,8 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
 
   const createMany = useMutation(api.transactions.createMany);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
+  const { suggest: suggestWithRules, learnMany } = useCategoryRules();
+  const { baseCurrency } = useCurrency();
 
   useEffect(() => {
     const handleOpenCSVImport = () => setOpen(true);
@@ -212,9 +244,9 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
   );
 
   const reparse = useCallback((data: string[][], m: ColumnMapping) => {
-    const parsed = data.map((row) => parseRow(row, m));
+    const parsed = data.map((row) => parseRow(row, m, suggestWithRules));
     setRows(parsed);
-  }, []);
+  }, [suggestWithRules]);
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,7 +288,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
 
   const updateRowCategory = useCallback((index: number, category: string) => {
     setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, category } : r)),
+      prev.map((r, i) => (i === index ? { ...r, category, manual: true } : r)),
     );
   }, []);
 
@@ -273,6 +305,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
             : r.amount,
           type: r.type,
           category: r.category,
+          currency: r.currency ?? baseCurrency,
           description: shouldEncrypt
             ? await encryptValue(r.description)
             : r.description,
@@ -286,13 +319,18 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
         await createMany({ transactions: batch });
       }
 
+      void learnMany(
+        validRows
+          .filter((r) => r.manual)
+          .map((r) => ({ description: r.description, category: r.category, type: r.type })),
+      );
       setDone(true);
     } catch (error) {
       console.error("Import failed:", error);
     } finally {
       setImporting(false);
     }
-  }, [rows, createMany, isEnabled, isUnlocked, encryptValue]);
+  }, [rows, createMany, isEnabled, isUnlocked, encryptValue, learnMany, baseCurrency]);
 
   const reset = useCallback(() => {
     setHeaders([]);
@@ -300,7 +338,7 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
     setRawRows([]);
     setFileName("");
     setDone(false);
-    setMapping({ date: 0, description: 1, amount: 2, type: -1 });
+    setMapping({ date: 0, description: 1, amount: 2, type: -1, category: -1, currency: -1 });
   }, []);
 
   return (
@@ -398,9 +436,9 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-none border-2 border-border">
-                        {field === "type" && (
+                        {OPTIONAL_LABELS[field] && (
                           <SelectItem value="-1" className="font-mono text-xs">
-                            Auto-detect
+                            {OPTIONAL_LABELS[field]}
                           </SelectItem>
                         )}
                         {headers.map((h, i) => (
@@ -473,17 +511,17 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                             {row.description}
                           </td>
                           <td className="px-3 py-3 text-right">
-                            ${formatAmountOnly(row.amount, "USD")}
+                            {getCurrencySymbol(row.currency ?? baseCurrency)}{formatAmountOnly(row.amount, row.currency ?? baseCurrency)}
                           </td>
                           <td className="px-3 py-2">
                             <Select
                               value={row.category}
                               onValueChange={(v) => updateRowCategory(i, v)}
                             >
-                              <SelectTrigger className="h-7 text-[10px] w-24 rounded-none border-border bg-transparent px-2 font-mono uppercase">
+                              <SelectTrigger className="h-7 text-[10px] w-36 rounded-none border-border bg-transparent px-2 font-mono uppercase">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="rounded-none border-2 border-border font-mono text-[10px] uppercase">
+                              <SelectContent className="max-h-72 rounded-none border-2 border-border font-mono text-[10px] uppercase">
                                 {(row.type === "income"
                                   ? INCOME_CATEGORIES
                                   : EXPENSE_CATEGORIES

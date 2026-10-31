@@ -1,233 +1,138 @@
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  food: [
-    "grocery",
-    "groceries",
-    "restaurant",
-    "food",
-    "coffee",
-    "lunch",
-    "dinner",
-    "breakfast",
-    "uber eats",
-    "doordash",
-    "grubhub",
-    "mcdonald",
-    "starbucks",
-    "pizza",
-    "burger",
-    "bakery",
-    "cafe",
-    "eat",
-    "meal",
-    "snack",
-    "takeout",
-    "sushi",
-    "deli",
-    "bar",
-    "pub",
-    "kitchen",
-  ],
-  transport: [
-    "uber",
-    "lyft",
-    "gas",
-    "fuel",
-    "parking",
-    "transit",
-    "bus",
-    "train",
-    "flight",
-    "airline",
-    "taxi",
-    "metro",
-    "subway",
-    "toll",
-    "car wash",
-    "auto",
-    "vehicle",
-    "oil change",
-    "mechanic",
-    "rental car",
-  ],
-  utilities: [
-    "electric",
-    "electricity",
-    "water",
-    "internet",
-    "phone",
-    "utility",
-    "bill",
-    "subscription",
-    "cable",
-    "wifi",
-    "broadband",
-    "mobile plan",
-    "cell plan",
-    "heating",
-    "gas bill",
-    "sewer",
-    "trash",
-    "waste",
-  ],
-  entertainment: [
-    "netflix",
-    "spotify",
-    "hulu",
-    "disney",
-    "movie",
-    "game",
-    "gaming",
-    "concert",
-    "ticket",
-    "theater",
-    "theatre",
-    "cinema",
-    "music",
-    "stream",
-    "youtube",
-    "twitch",
-    "apple tv",
-    "hbo",
-    "amazon prime",
-    "book",
-  ],
-  rent: [
-    "rent",
-    "lease",
-    "landlord",
-    "tenant",
-    "housing",
-    "apartment",
-    "mortgage",
-    "property",
-  ],
-  shopping: [
-    "amazon",
-    "walmart",
-    "target",
-    "clothing",
-    "shoes",
-    "electronics",
-    "store",
-    "mall",
-  ],
-  health: [
-    "doctor",
-    "dentist",
-    "pharmacy",
-    "hospital",
-    "clinic",
-    "gym",
-    "fitness",
-    "therapy",
-    "medical",
-    "medicine",
-  ],
-  salary: [
-    "salary",
-    "payroll",
-    "wage",
-    "commission",
-    "freelance",
-    "income",
-    "payment received",
-    "direct deposit",
-    "pay",
-    "earnings",
-    "consulting",
-    "contract",
-  ],
-  bonus: ["bonus", "gift", "reward"],
-  investment: ["dividend", "interest", "investment", "stock", "crypto"],
-  other: [],
-};
-
-/**
- * Suggests a category based on the transaction description.
- * Returns the best matching category or "other" if no match is found.
- */
-export function suggestCategory(description: string): string {
-  const lower = description.toLowerCase().trim();
-  if (!lower) return "other";
-
-  let bestMatch = "other";
-  let bestScore = 0;
-
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (category === "other") continue;
-    for (const keyword of keywords) {
-      if (lower.includes(keyword) && keyword.length > bestScore) {
-        bestMatch = category;
-        bestScore = keyword.length;
-      }
-    }
-  }
-
-  return bestMatch;
-}
-
-export const INCOME_CATEGORIES = [
-  { value: "salary", label: "Salary" },
-  { value: "bonus", label: "Bonus & Gift" },
-  { value: "investment", label: "Investment" },
-  { value: "other", label: "Other Income" },
-] as const;
-
-export const EXPENSE_CATEGORIES = [
-  { value: "food", label: "Food & Dining" },
-  { value: "rent", label: "Rent & Housing" },
-  { value: "transport", label: "Transport" },
-  { value: "utilities", label: "Utilities & Bills" },
-  { value: "entertainment", label: "Entertainment" },
-  { value: "shopping", label: "Shopping" },
-  { value: "health", label: "Health & Fitness" },
-  { value: "other", label: "Other Expense" },
-] as const;
-
-export const CATEGORIES = [
-  ...EXPENSE_CATEGORIES,
-  ...INCOME_CATEGORIES,
-] as const;
-
 import type { LucideIcon } from "lucide-react";
 import {
   UtensilsCrossed,
+  ShoppingCart,
   Home,
-  Car,
+  Sofa,
   Zap,
-  Gamepad2,
+  Tv,
+  Car,
+  Plane,
   ShoppingBag,
+  Shirt,
   HeartPulse,
+  Sparkles,
+  Gamepad2,
+  GraduationCap,
+  Users,
+  PawPrint,
+  HandHeart,
+  ShieldCheck,
+  Landmark,
+  CreditCard,
+  Receipt,
   Banknote,
+  Briefcase,
   Gift,
   TrendingUp,
+  RotateCcw,
+  ArrowLeftRight,
   MoreHorizontal,
 } from "lucide-react";
+import {
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  getCategoryLabel,
+  normalizeCategory,
+  type EntryType,
+} from "@devcents/shared/categories";
+
+export {
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  getCategoryLabel,
+  normalizeCategory,
+  suggestCategory,
+  categoriesFor,
+  isTransferCategory,
+} from "@devcents/shared/categories";
+export type { EntryType, Category } from "@devcents/shared/categories";
+
+/** Expense options first, then income options, without a duplicate "other". */
+export const CATEGORIES = [
+  ...EXPENSE_CATEGORIES,
+  ...INCOME_CATEGORIES.filter((c) => c.value !== "other" && c.value !== "transfer"),
+] as const;
 
 export const CATEGORY_COLORS: Record<string, string> = {
+  groceries: "#84cc16",
   food: "#f59e0b",
   rent: "#0ea5e9",
-  transport: "#6366f1",
+  home: "#a16207",
   utilities: "#a855f7",
-  entertainment: "#ec4899",
+  subscriptions: "#7c3aed",
+  transport: "#6366f1",
+  travel: "#06b6d4",
   shopping: "#f43f5e",
+  clothing: "#d946ef",
   health: "#14b8a6",
+  personal: "#fca5a5",
+  entertainment: "#ec4899",
+  education: "#3b82f6",
+  family: "#f97316",
+  pets: "#10b981",
+  gifts: "#be185d",
+  insurance: "#facc15",
+  loans: "#dc2626",
+  credit_card: "#4ade80",
+  taxes: "#5eead4",
   salary: "#22c55e",
+  freelance: "#0d9488",
   bonus: "#10b981",
   investment: "#34d399",
+  refund: "#a3e635",
+  transfer: "#94a3b8",
   other: "#6b7280",
 };
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  groceries: ShoppingCart,
   food: UtensilsCrossed,
   rent: Home,
-  transport: Car,
+  home: Sofa,
   utilities: Zap,
-  entertainment: Gamepad2,
+  subscriptions: Tv,
+  transport: Car,
+  travel: Plane,
   shopping: ShoppingBag,
+  clothing: Shirt,
   health: HeartPulse,
+  personal: Sparkles,
+  entertainment: Gamepad2,
+  education: GraduationCap,
+  family: Users,
+  pets: PawPrint,
+  gifts: HandHeart,
+  insurance: ShieldCheck,
+  loans: Landmark,
+  credit_card: CreditCard,
+  taxes: Receipt,
   salary: Banknote,
+  freelance: Briefcase,
   bonus: Gift,
   investment: TrendingUp,
+  refund: RotateCcw,
+  transfer: ArrowLeftRight,
   other: MoreHorizontal,
 };
+
+export type CategoryMeta = {
+  key: string;
+  label: string;
+  color: string;
+  Icon: LucideIcon;
+};
+
+/**
+ * Display info for any stored category value. Legacy free-text values
+ * ("Food and Dining", "Utilities & Bills") resolve to their canonical slug.
+ */
+export function getCategoryMeta(raw: string, type?: EntryType): CategoryMeta {
+  const key = normalizeCategory(raw, type);
+  return {
+    key,
+    label: getCategoryLabel(key, type),
+    color: CATEGORY_COLORS[key] ?? CATEGORY_COLORS.other,
+    Icon: CATEGORY_ICONS[key] ?? CATEGORY_ICONS.other,
+  };
+}

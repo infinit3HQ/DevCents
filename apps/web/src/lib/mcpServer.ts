@@ -9,9 +9,33 @@ import {
   importKeyFromBase64,
 } from "@devcents/shared";
 import {
+  normalizeCategory,
+  getCategoryLabel,
+  ALL_CATEGORY_VALUES,
+  EXPENSE_CATEGORY_VALUES,
+  INCOME_CATEGORY_VALUES,
+} from "@devcents/shared/categories";
+import { matchRule, parseRules } from "@devcents/shared/categoryRules";
+import {
   recurringOccurrencesBetween,
   DAY_MS,
 } from "./planningUtils";
+
+const CATEGORY_HELP =
+  `Category slug. Expense: ${EXPENSE_CATEGORY_VALUES.join(", ")}. ` +
+  `Income: ${INCOME_CATEGORY_VALUES.join(", ")}. ` +
+  "Other names are mapped to the closest slug (or 'other').";
+
+const CATEGORY_INPUT_SCHEMA = {
+  type: "string",
+  enum: [...ALL_CATEGORY_VALUES],
+  description: CATEGORY_HELP,
+};
+
+const CATEGORY_FILTER_SCHEMA = {
+  type: "string",
+  description: `Filter by category. ${CATEGORY_HELP}`,
+};
 
 import { getOrigin } from "./oauthServer";
 
@@ -80,10 +104,7 @@ export const TOOLS = [
           enum: ["income", "expense"],
           description: "Filter by income or expense",
         },
-        category: {
-          type: "string",
-          description: "Filter by category name",
-        },
+        category: CATEGORY_FILTER_SCHEMA,
         since: {
           type: "number",
           description: "Filter transactions starting from this Unix timestamp (ms)",
@@ -129,10 +150,7 @@ export const TOOLS = [
           enum: ["income", "expense"],
           description: "Filter by transaction type",
         },
-        category: {
-          type: "string",
-          description: "Filter by exact category name",
-        },
+        category: CATEGORY_FILTER_SCHEMA,
         min_amount: {
           type: "number",
           description: "Minimum transaction amount",
@@ -210,10 +228,7 @@ export const TOOLS = [
           enum: ["income", "expense"],
           description: "Whether it is an income or expense",
         },
-        category: {
-          type: "string",
-          description: "The category (e.g., 'Food and Dining', 'Shopping', 'Salary')",
-        },
+        category: CATEGORY_INPUT_SCHEMA,
         description: {
           type: "string",
           description: "Description for the transaction",
@@ -265,10 +280,7 @@ export const TOOLS = [
           enum: ["income", "expense"],
           description: "Income or expense",
         },
-        category: {
-          type: "string",
-          description: "Category",
-        },
+        category: CATEGORY_INPUT_SCHEMA,
         description: {
           type: "string",
           description: "Description for the planned item",
@@ -317,10 +329,7 @@ export const TOOLS = [
           enum: ["income", "expense"],
           description: "Income or expense",
         },
-        category: {
-          type: "string",
-          description: "Category",
-        },
+        category: CATEGORY_INPUT_SCHEMA,
         description: {
           type: "string",
           description: "Description",
@@ -375,6 +384,46 @@ export const TOOLS = [
         },
       },
       required: ["month", "limit"],
+    },
+  },
+  {
+    name: "get_category_budgets",
+    description:
+      "Per-category monthly budgets with spend so far, remaining amount, days left and status (healthy / warning at 80% / exceeded). Amounts are in the user's base currency. Transfers between the user's own accounts are excluded.",
+    inputSchema: {
+      type: "object",
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: {
+        month: {
+          type: "string",
+          description: "Month in format 'YYYY-MM' (defaults to current month)",
+        },
+      },
+    },
+  },
+  {
+    name: "set_category_budget",
+    description:
+      "Set, update or remove the monthly spending limit for one expense category. The limit applies to every month. Automatically encrypted before saving.",
+    inputSchema: {
+      type: "object",
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: {
+        category: {
+          type: "string",
+          enum: EXPENSE_CATEGORY_VALUES.filter((c) => c !== "transfer"),
+          description: "Expense category slug",
+        },
+        limit: {
+          type: "number",
+          description: "Monthly limit. Use 0 to remove the budget.",
+        },
+        currency: {
+          type: "string",
+          description: "Currency of the limit (defaults to the user's base currency)",
+        },
+      },
+      required: ["category", "limit"],
     },
   },
   {
@@ -446,7 +495,102 @@ async function resolveEncryptionKey(
   };
 }
 
+/** Converts between currencies using a USD-relative rate table. */
+function convertWithRates(amount: number, from: string, to: string, rates: Record<string, number>): number {
+  const f = rates[from.toUpperCase()] ?? (from.toUpperCase() === "USD" ? 1 : null);
+  const t = rates[to.toUpperCase()] ?? (to.toUpperCase() === "USD" ? 1 : null);
+  if (!f || !t) return amount;
+  return (amount / f) * t;
+}
+
+/** Spend vs limit for each category budget in `month` (YYYY-MM), in base currency. */
+async function categoryBudgetStatus(
+  client: ReturnType<typeof getConvexClient>,
+  tokenHash: string,
+  key: CryptoKey,
+  month: string,
+) {
+  const [budgets, rawTxs, settings, ratesRow] = await Promise.all([
+    client.query(api.mcp.mcpGetCategoryBudgets, { tokenHash }),
+    client.query(api.mcp.mcpGetAllTransactions, { tokenHash }),
+    client.query(api.mcp.mcpGetUserSettings, { tokenHash }),
+    client.query(api.mcp.mcpGetExchangeRates, { tokenHash }),
+  ]);
+  const base = settings.currency;
+  const rates: Record<string, number> = ratesRow?.rates || { USD: 1 };
+  const txs = await Promise.all(rawTxs.map((t) => decryptItem(t, key)));
+
+  const spent: Record<string, number> = {};
+  for (const t of txs) {
+    if (t.type !== "expense" || t.category === "transfer") continue;
+    if (new Date(t.date).toISOString().slice(0, 7) !== month) continue;
+    spent[t.category] = (spent[t.category] ?? 0) + convertWithRates(Number(t.amount) || 0, t.currency || "USD", base, rates);
+  }
+
+  const [y, m] = month.split("-").map(Number);
+  const now = new Date();
+  const isCurrent = now.getFullYear() === y && now.getMonth() + 1 === m;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const daysLeft = isCurrent ? daysInMonth - now.getDate() + 1 : 0;
+
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const rows = [];
+  for (const b of budgets) {
+    let rawLimit: number;
+    try {
+      rawLimit = typeof b.limit === "number" ? b.limit : parseFloat(b.encrypted ? await decrypt(b.limit, key) : b.limit);
+    } catch {
+      continue;
+    }
+    if (!Number.isFinite(rawLimit)) continue;
+    const limit = convertWithRates(rawLimit, b.currency, base, rates);
+    const used = spent[b.category] ?? 0;
+    const ratio = limit > 0 ? used / limit : 0;
+    rows.push({
+      category: b.category,
+      label: getCategoryLabel(b.category, "expense"),
+      limit: round(limit),
+      spent: round(used),
+      remaining: round(limit - used),
+      percent_used: Math.round(ratio * 1000) / 10,
+      per_day_left: daysLeft > 0 ? round(Math.max(0, limit - used) / daysLeft) : null,
+      status: ratio >= 1 ? "exceeded" : ratio >= 0.8 ? "warning" : "healthy",
+    });
+  }
+  rows.sort((a, b) => b.percent_used - a.percent_used);
+  return { month, base_currency: base, days_left: daysLeft, budgets: rows };
+}
+
+/**
+ * Picks the category for an MCP write. A rule the user taught by
+ * re-categorizing this merchant wins over the model's guess.
+ */
+async function resolveCategory(
+  client: ReturnType<typeof getConvexClient>,
+  tokenHash: string,
+  key: CryptoKey,
+  category: string,
+  type: "income" | "expense",
+  description: string,
+): Promise<string> {
+  try {
+    const row = await client.query(api.mcp.mcpGetCategoryRules, { tokenHash });
+    if (row) {
+      const json = row.encrypted ? await decrypt(row.data, key) : row.data;
+      const learned = matchRule(parseRules(json), description, type);
+      if (learned) return learned;
+    }
+  } catch {
+    // Rules are a hint; fall through to name/keyword matching.
+  }
+  return normalizeCategory(category, type, description);
+}
+
 async function decryptItem(item: any, key: CryptoKey) {
+  // Legacy rows may hold free-text categories; expose the canonical slug.
+  if (typeof item.category === "string") {
+    item = { ...item, category: normalizeCategory(item.category, item.type) };
+  }
   if (!item.encrypted) return item;
   try {
     const rawAmt =
@@ -642,7 +786,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           }
           if (toolArgs.category) {
             filtered = filtered.filter((t) =>
-              t.category.toLowerCase() === toolArgs.category.toLowerCase()
+              t.category === normalizeCategory(toolArgs.category, t.type)
             );
           }
           if (typeof toolArgs.since === "number") {
@@ -700,18 +844,20 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const minAmt = toolArgs.min_amount;
           const maxAmt = toolArgs.max_amount;
           const targetType = toolArgs.type;
-          const targetCategory = (toolArgs.category || "").toLowerCase().trim();
+          const targetCategory: string | null = toolArgs.category ? String(toolArgs.category) : null;
           const limit = typeof toolArgs.limit === "number" ? toolArgs.limit : 50;
 
           const results = decrypted.filter((t) => {
             if (queryText) {
               const descMatch = (t.description || "").toLowerCase().includes(queryText);
-              const catMatch = (t.category || "").toLowerCase().includes(queryText);
+              const catMatch =
+                (t.category || "").toLowerCase().includes(queryText) ||
+                getCategoryLabel(t.category, t.type).toLowerCase().includes(queryText);
               if (!descMatch && !catMatch) return false;
             }
 
             if (targetType && t.type !== targetType) return false;
-            if (targetCategory && (t.category || "").toLowerCase() !== targetCategory) return false;
+            if (targetCategory && t.category !== normalizeCategory(targetCategory, t.type)) return false;
 
             const amt = Number(t.amount) || 0;
             if (typeof minAmt === "number" && amt < minAmt) return false;
@@ -778,9 +924,15 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const categoryBreakdown: Record<string, number> = {};
           const currencyBreakdown: Record<string, number> = {};
 
+          let transfers = 0;
           for (const t of filtered) {
             const amt = Number(t.amount) || 0;
             const ccy = t.currency || "USD";
+            // Moves between the user's own accounts aren't income or spending.
+            if (t.category === "transfer") {
+              transfers += amt;
+              continue;
+            }
             currencyBreakdown[ccy] = (currencyBreakdown[ccy] || 0) + amt;
 
             if (t.type === "income") {
@@ -807,6 +959,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
                       net_savings: totalIncome - totalExpenses,
                       category_breakdown: categoryBreakdown,
                       currency_breakdown: currencyBreakdown,
+                      transfers_excluded: transfers,
                     },
                     null,
                     2,
@@ -1024,7 +1177,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             tokenHash,
             amount: encryptedAmount,
             type,
-            category,
+            category: await resolveCategory(client, tokenHash, key, category, type, description),
             description: encryptedDescription,
             currency: currency ? currency.toUpperCase() : undefined,
             date: txDate,
@@ -1088,7 +1241,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             tokenHash,
             amount: encryptedAmount,
             type,
-            category,
+            category: await resolveCategory(client, tokenHash, key, category, type, description),
             description: encryptedDescription,
             date,
             currency: currency ? currency.toUpperCase() : undefined,
@@ -1165,7 +1318,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             tokenHash,
             amount: encryptedAmount,
             type,
-            category,
+            category: await resolveCategory(client, tokenHash, key, category, type, description),
             description: encryptedDescription,
             startDate: start_date,
             cadence,
@@ -1201,7 +1354,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
           let actualSpent = 0;
           for (const t of decTxs) {
-            if (t.type === "expense") {
+            if (t.type === "expense" && t.category !== "transfer") {
               const d = new Date(t.date).toISOString().slice(0, 7);
               if (d === targetMonth) {
                 actualSpent += Number(t.amount) || 0;
@@ -1209,6 +1362,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             }
           }
 
+          const categoryStatus = await categoryBudgetStatus(client, tokenHash, key, targetMonth);
           const limit = budget?.limit ?? null;
           const remaining = limit !== null ? limit - actualSpent : null;
           const percentUsed = limit !== null && limit > 0 ? (actualSpent / limit) * 100 : null;
@@ -1235,6 +1389,9 @@ export async function handleMcpPost(request: Request): Promise<Response> {
                             : actualSpent > limit * 0.85
                               ? "warning"
                               : "healthy",
+                      category_alerts: categoryStatus.budgets
+                        .filter((b) => b.status !== "healthy")
+                        .map((b) => `${b.label}: ${b.percent_used}% used (${b.status})`),
                     },
                     null,
                     2,
@@ -1280,6 +1437,60 @@ export async function handleMcpPost(request: Request): Promise<Response> {
         }
 
         // ─── Tool 13: get_exchange_rates ───────────────────────────────
+        if (toolName === "get_category_budgets") {
+          const month =
+            typeof toolArgs.month === "string" && /^\d{4}-\d{2}$/.test(toolArgs.month)
+              ? toolArgs.month
+              : new Date().toISOString().slice(0, 7);
+          const status = await categoryBudgetStatus(client, tokenHash, key, month);
+          return {
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: JSON.stringify(status, null, 2) }] },
+          };
+        }
+
+        if (toolName === "set_category_budget") {
+          const { category, limit, currency } = toolArgs;
+          const slug = typeof category === "string" ? normalizeCategory(category, "expense") : "other";
+          if (typeof limit !== "number" || limit < 0 || !Number.isFinite(limit) || slug === "transfer") {
+            return {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                isError: true,
+                content: [{ type: "text", text: "category (expense slug) and a non-negative limit are required." }],
+              },
+            };
+          }
+          if (limit === 0) {
+            await client.mutation(api.mcp.mcpSetCategoryBudget, { tokenHash, category: slug, remove: true });
+            return {
+              jsonrpc: "2.0",
+              id,
+              result: { content: [{ type: "text", text: `Removed the ${getCategoryLabel(slug, "expense")} budget.` }] },
+            };
+          }
+          const settings = await client.query(api.mcp.mcpGetUserSettings, { tokenHash });
+          const ccy = (typeof currency === "string" && currency ? currency : settings.currency).toUpperCase();
+          await client.mutation(api.mcp.mcpSetCategoryBudget, {
+            tokenHash,
+            category: slug,
+            limit: await encrypt(String(limit), key),
+            currency: ccy,
+            encrypted: true,
+          });
+          return {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [
+                { type: "text", text: `Set the ${getCategoryLabel(slug, "expense")} budget to ${limit} ${ccy} per month.` },
+              ],
+            },
+          };
+        }
+
         if (toolName === "get_exchange_rates") {
           const row = await client.query(api.mcp.mcpGetExchangeRates, {
             tokenHash,

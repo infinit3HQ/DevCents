@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { normalizeCategory } from "@devcents/shared/categories";
 
 export const get = query({
   args: {},
@@ -40,6 +41,7 @@ export const create = mutation({
       userId: identity.subject,
       active: true,
       ...args,
+      category: normalizeCategory(args.category, args.type),
     });
   },
 });
@@ -88,6 +90,8 @@ export const update = mutation({
     if (item.userId !== identity.subject) throw new Error("Unauthorized");
 
     const { id, ...fields } = args;
+    if (fields.category !== undefined)
+      fields.category = normalizeCategory(fields.category, item.type);
     const patch = Object.fromEntries(
       Object.entries(fields).filter(([, v]) => v !== undefined),
     );
@@ -147,7 +151,7 @@ export const postOccurrenceToLedger = mutation({
       currency: item.currency,
       rateToUSD,
       type: item.type,
-      category: item.category,
+      category: normalizeCategory(item.category, item.type),
       description: item.description,
       date: args.date,
       encrypted: item.encrypted,

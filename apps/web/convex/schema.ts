@@ -83,6 +83,25 @@ export default defineSchema({
     limit: v.number(),
   }).index("by_user_month", ["userId", "month"]),
 
+  // Monthly spending limit per expense category. Applies to every month.
+  categoryBudgets: defineTable({
+    userId: v.string(),
+    category: v.string(), // canonical slug, see @devcents/shared/categories
+    limit: v.union(v.number(), v.string()), // number (plaintext) or string (encrypted)
+    currency: v.string(), // currency the limit was entered in
+    encrypted: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_category", ["userId", "category"]),
+
+  // Learned merchant → category rules, stored as one JSON blob. The blob holds
+  // merchant names, so it is encrypted whenever the user has encryption on.
+  categoryRules: defineTable({
+    userId: v.string(),
+    data: v.string(),
+    encrypted: v.optional(v.boolean()),
+  }).index("by_user", ["userId"]),
+
   encryption_settings: defineTable({
     userId: v.string(),
     salt: v.string(), // base64-encoded PBKDF2 salt

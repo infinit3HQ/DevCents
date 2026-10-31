@@ -6,10 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarPlus, Plus, ReceiptText, Repeat } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useCategoryRules } from "@/hooks/useCategoryRules";
 import {
-  suggestCategory,
+  normalizeCategory,
   INCOME_CATEGORIES,
   EXPENSE_CATEGORIES,
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
 } from "@/lib/categoryUtils";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -46,6 +49,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+function CategoryIcon({ value }: { value: string }) {
+  const Icon = CATEGORY_ICONS[value] ?? CATEGORY_ICONS.other;
+  return <Icon className="h-3 w-3 shrink-0" style={{ color: CATEGORY_COLORS[value] ?? CATEGORY_COLORS.other }} />;
+}
+
 type EntryMode = "ledger" | "planned" | "recurring";
 
 export type EditData = {
@@ -61,6 +69,9 @@ export type EditData = {
   startDate?: string;
   cadence?: "weekly" | "biweekly" | "monthly" | "yearly";
 };
+
+/** Same fields as EditData, for creating a new entry with suggested values. */
+export type PrefillData = Omit<EditData, "id">;
 
 const ledgerSchema = z.object({
   amount: z
@@ -92,20 +103,29 @@ function todayInputValue() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function useEntryFormUX(form: UseFormReturn<any>, open: boolean, baseCurrency: string) {
+function useEntryFormUX(
+  form: UseFormReturn<any>,
+  open: boolean,
+  baseCurrency: string,
+  suggest: (description: string, type: "income" | "expense") => string,
+) {
   const description = form.watch("description") as string;
   const type = form.watch("type") as "income" | "expense";
 
   const activeCategories =
     type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
+  // Auto-suggest from the description only while the user is typing it and
+  // hasn't picked a category by hand. setValue without shouldDirty keeps the
+  // category "untouched", so it keeps following the description.
   useEffect(() => {
+    const { dirtyFields } = form.formState as { dirtyFields: Record<string, unknown> };
+    if (!dirtyFields.description || dirtyFields.category) return;
     if (description && description.length > 2) {
-      const suggested = suggestCategory(description);
-      if (suggested !== "other")
-        form.setValue("category", suggested);
+      const suggested = suggest(description, type);
+      if (suggested !== "other") form.setValue("category", suggested);
     }
-  }, [description, form]);
+  }, [description, type, form, suggest]);
 
   useEffect(() => {
     if (open) form.setValue("currency", baseCurrency);
@@ -173,9 +193,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const updateRecurringMut = useMutation(api.recurring.update);
   const fetchRateToUSD = useAction(api.exchangeRates.getRateToUSD);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
+  const { suggest: suggestWithRules, learn } = useCategoryRules();
+  // Remember categories the user picked by hand, keyed by merchant.
+  const rememberChoice = (
+    form: UseFormReturn<any>,
+    values: { description: string; category: string; type: "income" | "expense" },
+  ) => {
+    const dirty = (form.formState.dirtyFields as Record<string, unknown>).category;
+    if (dirty) void learn(values.description, values.category, values.type);
+  };
   const { baseCurrency } = useCurrency();
 
   const isEditing = editData !== null;
+  // Values for a *new* entry (e.g. from a detected recurring payment).
+  const [prefill, setPrefill] = useState<PrefillData | null>(null);
 
   useEffect(() => {
     isAnyInstanceOpen = open;
@@ -186,9 +217,10 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       if (Date.now() - closedAtRef.current < 400) return;
       if (isAnyInstanceOpen) return;
       isAnyInstanceOpen = true;
-      const e = evt as CustomEvent<{ mode?: EntryMode; editData?: EditData }>;
+      const e = evt as CustomEvent<{ mode?: EntryMode; editData?: EditData; prefill?: PrefillData }>;
       if (e.detail?.mode) setMode(e.detail.mode);
       setEditData(e.detail?.editData ?? null);
+      setPrefill(e.detail?.prefill ?? null);
       setOpen(true);
     };
 
@@ -242,16 +274,19 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
     txForm,
     open,
     baseCurrency,
+    suggestWithRules,
   );
   const { activeCategories: plannedCategories } = useEntryFormUX(
     plannedForm,
     open,
     baseCurrency,
+    suggestWithRules,
   );
   const { activeCategories: recurringCategories } = useEntryFormUX(
     recurringForm,
     open,
     baseCurrency,
+    suggestWithRules,
   );
 
   useEffect(() => {
@@ -262,18 +297,21 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       recurringForm.setValue("startDate", todayInputValue());
   }, [open, mode, txForm, plannedForm, recurringForm]);
 
-  // Pre-fill forms when editing
+  // Pre-fill forms when editing, or when opened with suggested values
   useEffect(() => {
-    if (!open || !editData) return;
-    const { amount, currency, description, category, type } = editData;
+    const source = editData ?? prefill;
+    if (!open || !source) return;
+    const { amount, currency, description, type } = source;
+    // Legacy rows may hold free-text categories ("Food and Dining").
+    const category = normalizeCategory(source.category, type);
     if (mode === "ledger") {
-      txForm.reset({ amount, currency, description, category, type, date: editData.date ?? todayInputValue() });
+      txForm.reset({ amount, currency, description, category, type, date: source.date ?? todayInputValue() });
     } else if (mode === "planned") {
-      plannedForm.reset({ amount, currency, description, category, type, date: editData.date ?? todayInputValue() });
+      plannedForm.reset({ amount, currency, description, category, type, date: source.date ?? todayInputValue() });
     } else if (mode === "recurring") {
-      recurringForm.reset({ amount, currency, description, category, type, startDate: editData.startDate ?? todayInputValue(), cadence: editData.cadence ?? "monthly" });
+      recurringForm.reset({ amount, currency, description, category, type, startDate: source.startDate ?? todayInputValue(), cadence: source.cadence ?? "monthly" });
     }
-  }, [open, editData, mode, txForm, plannedForm, recurringForm]);
+  }, [open, editData, prefill, mode, txForm, plannedForm, recurringForm]);
 
   useEffect(() => {
     if (!open) return;
@@ -372,9 +410,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           encrypted: shouldEncrypt || undefined,
         });
       }
+      rememberChoice(txForm, values);
       setOpen(false);
       txForm.reset();
       setEditData(null);
+      setPrefill(null);
     } catch (err) {
       setSubmitError({ mode: "ledger", message: formatSubmitError(err) });
     } finally {
@@ -412,9 +452,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           encrypted: shouldEncrypt || undefined,
         });
       }
+      rememberChoice(plannedForm, values);
       setOpen(false);
       plannedForm.reset();
       setEditData(null);
+      setPrefill(null);
     } catch (err) {
       setSubmitError({ mode: "planned", message: formatSubmitError(err) });
     } finally {
@@ -454,9 +496,11 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           encrypted: shouldEncrypt || undefined,
         });
       }
+      rememberChoice(recurringForm, values);
       setOpen(false);
       recurringForm.reset();
       setEditData(null);
+      setPrefill(null);
     } catch (err) {
       setSubmitError({ mode: "recurring", message: formatSubmitError(err) });
     } finally {
@@ -465,7 +509,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Drawer open={open} onOpenChange={(v) => { if (!v) { closedAtRef.current = Date.now(); setEditData(null); } setOpen(v); }}>
+    <Drawer open={open} onOpenChange={(v) => { if (!v) { closedAtRef.current = Date.now(); setEditData(null); setPrefill(null); } setOpen(v); }}>
       <DrawerTrigger asChild>
         {trigger || (
           <motion.div
@@ -723,17 +767,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                               </FormLabel>
                               <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
+                                <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
                                   {txCategories.map((c) => (
                                     <SelectItem key={c.value} value={c.value}>
-                                      {c.label}
+                                      <span className="flex items-center gap-2">
+                                        <CategoryIcon value={c.value} />
+                                        {c.label}
+                                      </span>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -948,17 +995,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                               </FormLabel>
                               <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
+                                <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
                                   {plannedCategories.map((c) => (
                                     <SelectItem key={c.value} value={c.value}>
-                                      {c.label}
+                                      <span className="flex items-center gap-2">
+                                        <CategoryIcon value={c.value} />
+                                        {c.label}
+                                      </span>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1218,17 +1268,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                               </FormLabel>
                               <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
+                                <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
                                   {recurringCategories.map((c) => (
                                     <SelectItem key={c.value} value={c.value}>
-                                      {c.label}
+                                      <span className="flex items-center gap-2">
+                                        <CategoryIcon value={c.value} />
+                                        {c.label}
+                                      </span>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

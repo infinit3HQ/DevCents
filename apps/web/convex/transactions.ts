@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { normalizeCategory } from "@devcents/shared/categories";
 
 export const get = query({
   args: {},
@@ -33,6 +34,7 @@ export const create = mutation({
     await ctx.db.insert("transactions", {
       userId: identity.subject,
       ...args,
+      category: normalizeCategory(args.category, args.type),
     });
   },
 });
@@ -64,6 +66,7 @@ export const createMany = mutation({
       await ctx.db.insert("transactions", {
         userId: identity.subject,
         ...tx,
+        category: normalizeCategory(tx.category, tx.type),
       });
     }
   },
@@ -90,6 +93,8 @@ export const update = mutation({
       throw new Error("Unauthorized");
 
     const { id, ...fields } = args;
+    if (fields.category !== undefined)
+      fields.category = normalizeCategory(fields.category, transaction.type);
     const patch = Object.fromEntries(
       Object.entries(fields).filter(([, v]) => v !== undefined),
     );
@@ -111,5 +116,29 @@ export const remove = mutation({
       throw new Error("Unauthorized");
 
     await ctx.db.delete(args.id);
+  },
+});
+
+/** Re-categorizes several of the caller's transactions at once. */
+export const setCategoryMany = mutation({
+  args: {
+    ids: v.array(v.id("transactions")),
+    category: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    if (args.ids.length > 500) throw new Error("Maximum 500 transactions per batch");
+
+    let updated = 0;
+    for (const id of args.ids) {
+      const tx = await ctx.db.get(id);
+      if (!tx || tx.userId !== identity.subject) continue;
+      const category = normalizeCategory(args.category, tx.type);
+      if (tx.category === category) continue;
+      await ctx.db.patch(id, { category });
+      updated++;
+    }
+    return updated;
   },
 });

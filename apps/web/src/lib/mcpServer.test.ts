@@ -45,9 +45,11 @@ describe("MCP Tools Suite Definitions", () => {
     expect(toolNames).toContain("get_recurring_transactions");
     expect(toolNames).toContain("add_recurring_transaction");
     expect(toolNames).toContain("get_budget");
+    expect(toolNames).toContain("get_category_budgets");
+    expect(toolNames).toContain("set_category_budget");
     expect(toolNames).toContain("set_budget");
     expect(toolNames).toContain("get_exchange_rates");
-    expect(TOOLS.length).toBe(13);
+    expect(TOOLS.length).toBe(15);
   });
 });
 
@@ -112,7 +114,7 @@ describe("MCP HTTP Handlers", () => {
 
     const json = await res.json();
     expect(json.service).toBe("DevCents Remote Web MCP Server");
-    expect(json.tools.length).toBe(13);
+    expect(json.tools.length).toBe(15);
   });
 
   it("handles JSON-RPC initialize", async () => {
@@ -152,7 +154,7 @@ describe("MCP HTTP Handlers", () => {
     const res = await handleMcpPost(req);
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.result.tools.length).toBe(13);
+    expect(json.result.tools.length).toBe(15);
   });
 
   it("returns auth error when tools/call is attempted without credentials", async () => {
