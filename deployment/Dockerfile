@@ -46,7 +46,11 @@ FROM deps AS functions
 COPY deployment/deploy-functions.sh /usr/local/bin/deploy-functions
 # The job only runs the project's own convex CLI; drop the global package
 # managers so their bundled dependencies don't ship (or show up in scans).
-RUN chmod 0755 /usr/local/bin/deploy-functions \
+# Apply Debian security updates published after the base image was built.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* \
+ && chmod 0755 /usr/local/bin/deploy-functions \
  && chown -R node:node /app/apps/web \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
            /usr/local/lib/node_modules/pnpm /root/.npm /opt/yarn-* \
@@ -77,8 +81,10 @@ WORKDIR /app
 COPY --from=builder --chown=root:root /app/apps/web/.output /app/.output
 COPY deployment/start.sh /app/
 # Only `node` is needed at runtime. The npm/npx/corepack bundled with the
-# base image carry their own dependency CVEs, so remove them.
-RUN chmod 0755 /app/start.sh \
+# base image carry their own dependency CVEs, so remove them. Alpine security
+# updates published after the base image was built are applied too.
+RUN apk upgrade --no-cache \
+ && chmod 0755 /app/start.sh \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
           /usr/local/bin/yarn /usr/local/bin/yarnpkg
