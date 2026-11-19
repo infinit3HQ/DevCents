@@ -1,0 +1,35 @@
+# Dependabot reads pnpm-lock.yaml (ecosystem "npm" covers pnpm workspaces).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Matches pnpm's minimumReleaseAge (24h) so update PRs install cleanly.
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 10
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Pinned on purpose; upgrade together with the router packages.
+      - dependency-name: "@tanstack/react-start"
+        versions: [">=1.169.0"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /deployment
+    schedule:
+      interval: weekly
