@@ -13,6 +13,9 @@
 # makes Rollup's native parser fail with "Code is nested too deeply" on
 # react-dom 19.3. The runtime image below stays on Alpine: the Nitro output
 # has no native modules.
+#
+# `deps` installs for the image's target architecture (the functions image
+# ships these node_modules, which include native binaries).
 FROM node:26-slim AS deps
 
 WORKDIR /app
@@ -30,7 +33,23 @@ RUN rm -f .env .env.* apps/web/.env apps/web/.env.* && rm -rf apps/web/.output
 # -------------------------
 # Build
 # -------------------------
-FROM deps AS builder
+# The web app is built once, on the build machine's own architecture, and the
+# architecture-independent .output is copied into every image. Building under
+# QEMU emulation (arm64 on an amd64 runner) corrupts the output of Nitro's
+# native parser and fails the build.
+FROM --platform=$BUILDPLATFORM node:26-slim AS builder
+
+WORKDIR /app
+RUN npm install -g pnpm@11
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/mcp/package.json ./apps/mcp/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+RUN rm -f .env .env.* apps/web/.env apps/web/.env.* && rm -rf apps/web/.output
 
 # No deployment values are baked in: the server reads them from the
 # environment at runtime and embeds them in each page (src/lib/env.ts).

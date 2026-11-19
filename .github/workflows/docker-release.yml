@@ -133,8 +133,8 @@ jobs:
           exit-code: "1"
           format: table
 
+      # On pull requests: build every architecture, push nothing.
       - name: Build and push web image
-        if: github.event_name != 'pull_request'
         id: web-push
         uses: docker/build-push-action@v6
         with:
@@ -142,7 +142,7 @@ jobs:
           file: deployment/Dockerfile
           target: web
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           provenance: mode=max
           sbom: true
           tags: ${{ steps.web-meta.outputs.tags }}
@@ -150,8 +150,8 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
+      # On pull requests: build every architecture, push nothing.
       - name: Build and push functions image
-        if: github.event_name != 'pull_request'
         id: fn-push
         uses: docker/build-push-action@v6
         with:
@@ -159,7 +159,7 @@ jobs:
           file: deployment/Dockerfile
           target: functions
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           provenance: mode=max
           sbom: true
           tags: ${{ steps.fn-meta.outputs.tags }}
