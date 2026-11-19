@@ -228,7 +228,7 @@ To run directly from this repository workspace:
 │   └── shared/             # Crypto utilities shared across apps
 ├── deployment/
 │   ├── Dockerfile          # web + functions images
-│   ├── start.sh            # Runtime config injection
+│   ├── start.sh            # Checks required settings, starts the server
 │   └── deploy-functions.sh # Convex deploy job
 ├── scripts/
 │   └── dev.sh              # Local dev orchestrator
