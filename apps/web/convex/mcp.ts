@@ -1,4 +1,5 @@
-import { internalMutation, mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { action, internalMutation, mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import { sha256Hex } from "@devcents/shared/oauth";
 import { EXPENSE_CATEGORY_VALUES, normalizeCategory } from "@devcents/shared/categories";
@@ -135,6 +136,12 @@ async function authenticateMCP(ctx: QueryCtx | MutationCtx, rawToken: string): P
   }
 
   throw new ConvexError({ code: "UNAUTHENTICATED" });
+}
+
+function assertRate(rate: number | undefined) {
+  if (rate !== undefined && (!Number.isFinite(rate) || rate <= 0)) {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", message: "rateToUSD must be a positive number" });
+  }
 }
 
 function assertTextFields(...values: unknown[]) {
@@ -276,6 +283,7 @@ export const mcpAddTransaction = mutation({
     token: v.string(),
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
+    rateToUSD: v.optional(v.number()),
     type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     description: v.string(),
@@ -285,6 +293,7 @@ export const mcpAddTransaction = mutation({
   handler: async (ctx, args) => {
     const { userId } = await authenticateMCP(ctx, args.token);
     assertTextFields(args.amount, args.description, args.category, args.currency);
+    assertRate(args.rateToUSD);
 
     const { token, ...transactionData } = args;
 
@@ -333,6 +342,7 @@ export const mcpAddPlanned = mutation({
   handler: async (ctx, args) => {
     const { userId } = await authenticateMCP(ctx, args.token);
     assertTextFields(args.amount, args.description, args.category, args.currency);
+    assertRate(args.rateToUSD);
     const { token, ...data } = args;
 
     return await ctx.db.insert("planned", {
@@ -384,6 +394,7 @@ export const mcpAddRecurring = mutation({
   handler: async (ctx, args) => {
     const { userId } = await authenticateMCP(ctx, args.token);
     assertTextFields(args.amount, args.description, args.category, args.currency);
+    assertRate(args.rateToUSD);
     const { token, ...data } = args;
 
     return await ctx.db.insert("recurring", {
@@ -473,6 +484,12 @@ export const mcpSetBudget = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await authenticateMCP(ctx, args.token);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(args.month)) {
+      throw new ConvexError({ code: "INVALID_ARGUMENT", message: "month must be YYYY-MM" });
+    }
+    if (!Number.isFinite(args.limit) || args.limit <= 0 || args.limit >= 1e12) {
+      throw new ConvexError({ code: "INVALID_ARGUMENT", message: "limit must be a positive number" });
+    }
     const existing = await ctx.db
       .query("budgets")
       .withIndex("by_user_month", (q) => q.eq("userId", userId).eq("month", args.month))
@@ -527,3 +544,32 @@ export const mcpGetExchangeRates = query({
   },
 });
 
+
+/** Dates of recurring occurrences already posted to the ledger. */
+export const mcpGetPostedOccurrences = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = await authenticateMCP(ctx, args.token);
+    const rows = await ctx.db
+      .query("postedRecurringOccurrences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return rows.map((r) => ({ recurringId: r.recurringId, date: r.date }));
+  },
+});
+
+/**
+ * Rate from `currency` to USD on `date` ("YYYY-MM-DD"), from the same
+ * historical source the web app uses when it saves an entry.
+ */
+export const mcpRateToUSD = action({
+  args: { token: v.string(), date: v.string(), currency: v.string() },
+  handler: async (ctx, args): Promise<number> => {
+    // Authenticates the token; throws UNAUTHENTICATED otherwise.
+    await ctx.runQuery(api.mcp.mcpGetUserSettings, { token: args.token });
+    return await ctx.runAction(internal.exchangeRates.rateToUSD, {
+      date: args.date,
+      currency: args.currency,
+    });
+  },
+});
