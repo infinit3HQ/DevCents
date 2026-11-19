@@ -2,7 +2,7 @@ import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { dark } from "@clerk/themes";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import React from "react";
-import { getEnv } from "@/lib/env";
+import { getEnv, publicEnvScript } from "@/lib/env";
 
 const Devtools = import.meta.env.PROD 
   ? () => null 
@@ -134,6 +134,10 @@ export const Route = createRootRoute({
         href: "/manifest.json",
       },
     ],
+    // Runtime settings for the browser; rendered in <head> so it runs before
+    // the app's module scripts. On the client this re-renders identically
+    // from window.__DEVCENTS_ENV__, so hydration matches.
+    scripts: [{ children: publicEnvScript() }],
   }),
 
   shellComponent: RootDocument,

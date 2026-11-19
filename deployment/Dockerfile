@@ -32,14 +32,11 @@ RUN rm -f .env .env.* apps/web/.env apps/web/.env.* && rm -rf apps/web/.output
 # -------------------------
 FROM deps AS builder
 
-# Public settings are baked in as placeholders and replaced when the container
-# starts (deployment/start.sh). Passing real values here still works for
-# private single-purpose builds.
-ARG VITE_CONVEX_URL=__VITE_CONVEX_URL__
-ARG VITE_CLERK_PUBLISHABLE_KEY=__VITE_CLERK_PUBLISHABLE_KEY__
-RUN printf 'VITE_CONVEX_URL=%s\nVITE_CLERK_PUBLISHABLE_KEY=%s\n' \
-      "$VITE_CONVEX_URL" "$VITE_CLERK_PUBLISHABLE_KEY" > apps/web/.env.production \
- && pnpm --filter devcents build
+# No deployment values are baked in: the server reads them from the
+# environment at runtime and embeds them in each page (src/lib/env.ts).
+# Built files are never modified afterwards, because Nitro serves them with
+# build-time Content-Length/ETag headers.
+RUN pnpm --filter devcents build
 
 # -------------------------
 # Convex functions deployer
@@ -76,15 +73,12 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # Nitro's .output is self-contained (server dependencies are bundled), so no
-# node_modules are shipped. The pristine build is kept read-only as a template;
-# start.sh copies it and fills in the runtime settings.
-COPY --from=builder --chown=root:root /app/apps/web/.output /app/.output-template
-COPY deployment/start.sh deployment/inject_env.js /app/
+# node_modules are shipped. It is owned by root and never modified.
+COPY --from=builder --chown=root:root /app/apps/web/.output /app/.output
+COPY deployment/start.sh /app/
 # Only `node` is needed at runtime. The npm/npx/corepack bundled with the
 # base image carry their own dependency CVEs, so remove them.
 RUN chmod 0755 /app/start.sh \
- && mkdir -p /app/.output \
- && chown node:node /app/.output \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
           /usr/local/bin/yarn /usr/local/bin/yarnpkg
