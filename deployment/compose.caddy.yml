@@ -1,0 +1,27 @@
+# Optional HTTPS front end. Caddy gets certificates automatically.
+#   docker compose -f docker-compose.yml -f deployment/compose.caddy.yml up -d
+# Requires APP_DOMAIN and CONVEX_DOMAIN in .env, both pointing at this host,
+# and ports 80/443 open. Set PUBLIC_URL=https://$APP_DOMAIN and
+# VITE_CONVEX_URL=https://$CONVEX_DOMAIN.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
+      CONVEX_DOMAIN: ${CONVEX_DOMAIN:?CONVEX_DOMAIN is required}
+    volumes:
+      - ./deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - convex
+
+volumes:
+  caddy-data:
+  caddy-config:

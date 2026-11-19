@@ -12,12 +12,22 @@ import {
   exportKeyToBase64,
   hashToken,
   loadKey,
+  generateSecretToken,
+  wrapKeyForToken,
 } from "@devcents/shared";
 import {
   isBiometricAvailable,
   verifyBiometric,
   getCredentialId,
 } from "@/lib/webauthn";
+import {
+  type AuthorizeParams,
+  buildRedirect,
+  describeRedirect,
+  fatalAuthorizeProblem,
+  readAuthorizeParams,
+  redirectableAuthorizeProblem,
+} from "@/lib/oauthConsent";
 
 
 export const Route = createFileRoute("/oauth/authorize")({
@@ -37,27 +47,30 @@ function OAuthAuthorizePage() {
   );
 }
 
+function ErrorCard({ message }: { message: string }) {
+  return (
+    <div className="flex-1 min-h-screen flex items-center justify-center p-6 bg-background">
+      <div className="max-w-md w-full border border-destructive/40 bg-card p-6 font-mono text-center space-y-4">
+        <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
+        <h1 className="text-base text-foreground font-semibold">Invalid Authorization Request</h1>
+        <p className="text-xs text-muted-foreground">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function ConsentScreen() {
   const { user } = useUser();
-  const [params, setParams] = useState<Record<string, string>>({});
+  const [params, setParams] = useState<AuthorizeParams | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const search = new URLSearchParams(window.location.search);
-      setParams({
-        client_id: search.get("client_id") || "",
-        redirect_uri: search.get("redirect_uri") || "",
-        response_type: search.get("response_type") || "code",
-        state: search.get("state") || "",
-        code_challenge: search.get("code_challenge") || "",
-        code_challenge_method: search.get("code_challenge_method") || "S256",
-        scope: search.get("scope") || "mcp",
-      });
+      setParams(readAuthorizeParams(new URLSearchParams(window.location.search)));
     }
   }, []);
 
-  const clientId = params.client_id;
-  const redirectUri = params.redirect_uri;
+  const clientId = params?.client_id ?? "";
+  const redirectUri = params?.redirect_uri ?? "";
   const clientInfo = useQuery(api.oauth.getClient, clientId ? { clientId } : "skip");
   const encSettings = useQuery(api.encryptionSettings.get);
   const createAuthCode = useMutation(api.oauth.createAuthCode);
@@ -89,7 +102,9 @@ function ConsentScreen() {
       const ok = await verifyBiometric(user.id);
       if (ok) {
         const storedKey = await loadKey(user.id);
-        if (storedKey) {
+        const current =
+          storedKey && encSettings && (await verifyPassphrase(storedKey, encSettings.verificationHash));
+        if (storedKey && current) {
           try {
             const b64 = await exportKeyToBase64(storedKey);
             setUnlockedKeyB64(b64);
@@ -98,7 +113,7 @@ function ConsentScreen() {
             setPassphraseError("Biometric verified, but stored key cannot be exported. Please enter your passphrase.");
           }
         } else {
-          setPassphraseError("No stored session key found on this device. Please enter your passphrase.");
+          setPassphraseError("No current key is stored on this device. Please enter your passphrase.");
         }
       }
     } catch {
@@ -106,14 +121,25 @@ function ConsentScreen() {
     } finally {
       setBioLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, encSettings]);
+
+  if (!params) return null;
+  // Wait for encryption settings too: deciding too early would hide the
+  // passphrase box and create a grant with no key.
+  if (encSettings === undefined) return null;
+
+  const fatal = fatalAuthorizeProblem(params, clientInfo);
+  if (fatal) return <ErrorCard message={fatal} />;
+  if (clientInfo === undefined) return null; // loading
+  // From here the redirect URI is verified against the registered client.
+
+  const redirectError = redirectableAuthorizeProblem(params);
+  if (redirectError) {
+    window.location.replace(buildRedirect(redirectUri, { error: redirectError, state: params.state }));
+    return null;
+  }
 
   const handleAuthorize = async () => {
-    if (!clientId || !redirectUri) {
-      setError("Missing client_id or redirect_uri");
-      return;
-    }
-
     setLoading(true);
     setError("");
     setPassphraseError("");
@@ -126,7 +152,7 @@ function ConsentScreen() {
           keyB64 = unlockedKeyB64;
         } else {
           if (!passphrase.trim()) {
-            setPassphraseError("Passphrase required to grant zero-knowledge vault access");
+            setPassphraseError("Passphrase required so the MCP server can decrypt your data");
             setLoading(false);
             return;
           }
@@ -145,61 +171,32 @@ function ConsentScreen() {
         }
       }
 
-
-      // Generate random auth code
-      const code = `dco_code_${crypto.randomUUID().replace(/-/g, "")}`;
+      // The vault key is wrapped with the one-time code, so the stored code
+      // row is useless without the code itself.
+      const code = generateSecretToken("dco_code_");
       const codeHash = await hashToken(code);
+      const wrappedKey = keyB64 ? await wrapKeyForToken(keyB64, code) : undefined;
 
       await createAuthCode({
         clientId,
         redirectUri,
         codeHash,
-        codeChallenge: params.code_challenge || "",
-        codeChallengeMethod: params.code_challenge_method || "S256",
-        scope: params.scope || "mcp",
-        keyB64,
+        codeChallenge: params.code_challenge,
+        codeChallengeMethod: params.code_challenge_method,
+        scope: params.scope,
+        wrappedKey,
       });
 
-      // Redirect back to client redirect_uri
-      const returnUrl = new URL(redirectUri);
-      returnUrl.searchParams.set("code", code);
-      if (params.state) {
-        returnUrl.searchParams.set("state", params.state);
-      }
-
-      window.location.href = returnUrl.toString();
-    } catch (err: any) {
-      setError(err.message || "Authorization failed");
+      window.location.assign(buildRedirect(redirectUri, { code, state: params.state }));
+    } catch {
+      setError("Authorization failed. Please try again.");
       setLoading(false);
     }
   };
 
   const handleDeny = () => {
-    if (redirectUri) {
-      const returnUrl = new URL(redirectUri);
-      returnUrl.searchParams.set("error", "access_denied");
-      if (params.state) {
-        returnUrl.searchParams.set("state", params.state);
-      }
-      window.location.href = returnUrl.toString();
-    } else {
-      window.close();
-    }
+    window.location.assign(buildRedirect(redirectUri, { error: "access_denied", state: params.state }));
   };
-
-  if (!clientId || !redirectUri) {
-    return (
-      <div className="flex-1 min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="max-w-md w-full border border-destructive/40 bg-card p-6 font-mono text-center space-y-4">
-          <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
-          <h1 className="text-base text-foreground font-semibold">Invalid Authorization Request</h1>
-          <p className="text-xs text-muted-foreground">
-            Missing required <code className="text-destructive">client_id</code> or <code className="text-destructive">redirect_uri</code> query parameters.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const clientName = clientInfo?.clientName || "AI Assistant / MCP Client";
 
@@ -225,6 +222,18 @@ function ConsentScreen() {
           <p className="font-mono text-[11px] text-muted-foreground mt-1">
             Authorize this client to interact with your DevCents ledger via the Model Context Protocol.
           </p>
+          <div className="mt-3 border border-border bg-background p-2.5 space-y-1">
+            <p className="font-mono text-[10px] text-muted-foreground">
+              Access will be sent to:
+            </p>
+            <p className="font-mono text-[12px] text-foreground break-all font-medium">
+              {describeRedirect(redirectUri)}
+            </p>
+            <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
+              The name above is chosen by the application and is not verified. Only continue
+              if you started this connection and recognise this address.
+            </p>
+          </div>
         </div>
 
         {/* Permissions list */}
@@ -252,22 +261,22 @@ function ConsentScreen() {
           </div>
         </div>
 
-        {/* Vault Decryption Section (Zero-Knowledge Unlock) */}
+        {/* Vault key sharing for remote MCP */}
         {isEncrypted && (
           <div className="p-6 border-b border-border bg-card space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-primary" />
                 <span className="font-mono text-[11px] text-foreground font-medium">
-                  Zero-Knowledge Vault Unlock
+                  Share Vault Key
                 </span>
               </div>
               <span className="font-mono text-[9px] uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5">
-                E2EE Active
+                Encrypted
               </span>
             </div>
             <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
-              Your data is encrypted end-to-end. Provide your passphrase so the MCP server can decrypt and encrypt entries on your behalf. Your raw passphrase is never transmitted or stored.
+              Your data is encrypted with your passphrase. To let this client read and add entries, the DevCents server needs your decryption key while it handles the client's requests. The key is stored only in a form that needs the client's token to unlock; your passphrase itself is never sent.
             </p>
 
             <div className="space-y-2 pt-1">

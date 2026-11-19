@@ -117,7 +117,13 @@ export default defineSchema({
     userId: v.string(),
     tokenHash: v.string(),
     name: v.string(),
-    keyB64: v.optional(v.string()), // Base64 raw AES-GCM key for server-side MCP decryption
+    // Vault key wrapped with a key derived from the raw token (see
+    // @devcents/shared/tokens). Unusable without the token itself.
+    wrappedKey: v.optional(v.string()),
+    // LEGACY: plaintext base64 key from older versions. Upgraded to
+    // `wrappedKey` on first use and removed by mcp:purgeLegacyPlaintextKeys.
+    keyB64: v.optional(v.string()),
+    expiresAt: v.optional(v.number()), // unset = never expires (legacy tokens)
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -126,14 +132,16 @@ export default defineSchema({
   // ─── OAuth 2.1 Tables for MCP ─────────────────────────────────────────
   oauth_clients: defineTable({
     clientId: v.string(),
-    clientSecret: v.optional(v.string()),
+    clientSecret: v.optional(v.string()), // LEGACY: no longer issued (public clients only)
     clientName: v.string(),
     redirectUris: v.array(v.string()),
     grantTypes: v.array(v.string()),
     responseTypes: v.array(v.string()),
     scope: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_client_id", ["clientId"]),
+  })
+    .index("by_client_id", ["clientId"])
+    .index("by_created", ["createdAt"]),
 
   oauth_codes: defineTable({
     codeHash: v.string(),
@@ -141,11 +149,15 @@ export default defineSchema({
     userId: v.string(),
     redirectUri: v.string(),
     codeChallenge: v.string(),
-    codeChallengeMethod: v.string(), // "S256" | "plain"
+    codeChallengeMethod: v.string(), // always "S256"
     scope: v.string(),
-    keyB64: v.optional(v.string()),
+    wrappedKey: v.optional(v.string()), // vault key wrapped with the raw auth code
+    keyB64: v.optional(v.string()), // LEGACY: never written any more
     expiresAt: v.number(),
-  }).index("by_hash", ["codeHash"]),
+  })
+    .index("by_hash", ["codeHash"])
+    .index("by_expires", ["expiresAt"])
+    .index("by_user", ["userId"]),
 
   oauth_tokens: defineTable({
     tokenHash: v.string(),
@@ -153,8 +165,12 @@ export default defineSchema({
     clientId: v.string(),
     userId: v.string(),
     scope: v.string(),
-    keyB64: v.optional(v.string()),
-    expiresAt: v.number(),
+    wrappedKey: v.optional(v.string()), // wrapped with the raw access token
+    refreshWrappedKey: v.optional(v.string()), // wrapped with the raw refresh token
+    keyB64: v.optional(v.string()), // LEGACY plaintext key, removed on refresh
+    expiresAt: v.number(), // access token expiry
+    refreshExpiresAt: v.optional(v.number()),
+    grantedAt: v.optional(v.number()), // consent time; caps total grant lifetime
     createdAt: v.number(),
   })
     .index("by_hash", ["tokenHash"])

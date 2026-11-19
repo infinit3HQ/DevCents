@@ -1,0 +1,9 @@
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+{$CONVEX_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy convex:3210
+}

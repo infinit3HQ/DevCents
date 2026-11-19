@@ -20,6 +20,6 @@
     "dev:mcp": "npm run dev --workspace=apps/mcp"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.5"
   }
 }

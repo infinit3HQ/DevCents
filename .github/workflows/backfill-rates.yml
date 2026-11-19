@@ -27,11 +27,13 @@ on:
           - run
 
 env:
-  VITE_CONVEX_URL: https://devcents-convex.012140.xyz
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   backfill:
+    environment: production
+    env:
+      VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
     runs-on:
       - serverone
       - self-hosted

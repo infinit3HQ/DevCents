@@ -12,7 +12,7 @@ import {
   encrypt,
   decrypt,
 } from "@devcents/shared";
-import { saveKey, loadKey } from "@devcents/shared";
+import { saveKey, loadKey, clearKey } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -75,17 +75,26 @@ export function EncryptionProvider({
     if (!user?.id || !settings) return;
 
     // If locked by inactivity, don't restore — require manual unlock
-    if (sessionStorage.getItem(LOCK_KEY) === "true") {
+    if (localStorage.getItem(LOCK_KEY) === "true") {
       setShowUnlock(true);
       return;
     }
 
+    // Re-runs whenever the settings change (e.g. the passphrase was changed on
+    // another device). A stored key that no longer matches is discarded, so
+    // this tab can't keep writing data under the old passphrase.
     let cancelled = false;
-    loadKey(user.id)
-      .then((key) => {
-        if (!cancelled && key) {
+    const userId = user.id;
+    loadKey(userId)
+      .then(async (key) => {
+        if (cancelled || !key) return;
+        if (await verifyPassphrase(key, settings.verificationHash)) {
           setCryptoKey(key);
           setShowUnlock(false);
+        } else {
+          await clearKey(userId);
+          setCryptoKey(null);
+          setShowUnlock(true);
         }
       })
       .catch(() => {});
@@ -115,7 +124,7 @@ export function EncryptionProvider({
 
     let timer: ReturnType<typeof setTimeout>;
     const lock = async () => {
-      sessionStorage.setItem(LOCK_KEY, "true");
+      localStorage.setItem(LOCK_KEY, "true");
       setCryptoKey(null);
       setShowUnlock(true);
     };
@@ -185,7 +194,7 @@ export function EncryptionProvider({
       const key = await deriveKey(passphrase, salt);
       const valid = await verifyPassphrase(key, settings.verificationHash);
       if (valid) {
-        sessionStorage.removeItem(LOCK_KEY);
+        localStorage.removeItem(LOCK_KEY);
         setCryptoKey(key);
         await saveKey(user.id, key);
         setShowUnlock(false);
@@ -201,15 +210,15 @@ export function EncryptionProvider({
     const ok = await verifyBiometric(user.id);
     if (ok) {
       const key = await loadKey(user.id);
-      if (key) {
-        sessionStorage.removeItem(LOCK_KEY);
+      if (key && settings && (await verifyPassphrase(key, settings.verificationHash))) {
+        localStorage.removeItem(LOCK_KEY);
         setCryptoKey(key);
         setShowUnlock(false);
         return true;
       }
     }
     return false;
-  }, [user?.id]);
+  }, [user?.id, settings]);
 
   const handleLockBiometric = useCallback(() => {
     if (user?.id) clearCredentialId(user.id);
