@@ -9,8 +9,11 @@
 # -------------------------
 # Dependencies + source
 # -------------------------
-# node:26-alpine tracks the newest Node 26 patch, including security releases.
-FROM node:26-alpine AS deps
+# Build on glibc (Debian slim). On Alpine/musl the small default thread stack
+# makes Rollup's native parser fail with "Code is nested too deeply" on
+# react-dom 19.3. The runtime image below stays on Alpine: the Nitro output
+# has no native modules.
+FROM node:26-slim AS deps
 
 WORKDIR /app
 RUN npm install -g pnpm@11

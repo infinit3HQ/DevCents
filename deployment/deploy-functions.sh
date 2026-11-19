@@ -14,7 +14,7 @@ export CONVEX_SELF_HOSTED_URL CONVEX_SELF_HOSTED_ADMIN_KEY
 
 echo "Waiting for Convex at $CONVEX_SELF_HOSTED_URL ..."
 i=0
-until wget -q -O /dev/null "$CONVEX_SELF_HOSTED_URL/version"; do
+until node -e 'fetch(process.argv[1]).then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))' "$CONVEX_SELF_HOSTED_URL/version"; do
   i=$((i + 1))
   if [ "$i" -ge 60 ]; then
     echo "Convex backend did not become reachable" >&2
