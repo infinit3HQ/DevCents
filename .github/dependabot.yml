@@ -8,7 +8,9 @@ updates:
     # Matches pnpm's minimumReleaseAge (24h) so update PRs install cleanly.
     cooldown:
       default-days: 1
-    open-pull-requests-limit: 10
+    # At most 4 npm PRs a week: safe updates and breaking (major) updates,
+    # each split into production and development dependencies.
+    open-pull-requests-limit: 4
     groups:
       production:
         dependency-type: production
@@ -16,6 +18,12 @@ updates:
       development:
         dependency-type: development
         update-types: [minor, patch]
+      production-major:
+        dependency-type: production
+        update-types: [major]
+      development-major:
+        dependency-type: development
+        update-types: [major]
     ignore:
       # Pinned on purpose; upgrade together with the router packages.
       - dependency-name: "@tanstack/react-start"
