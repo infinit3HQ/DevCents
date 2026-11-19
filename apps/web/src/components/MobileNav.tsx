@@ -2,7 +2,6 @@ import type { ElementType } from "react";
 import { Home, ReceiptText, BarChart3, Plus, CalendarClock } from "lucide-react";
 import { AddTransaction } from "./AddTransaction";
 import { motion } from "framer-motion";
-import { UserButton } from "@clerk/tanstack-react-start";
 import { cn } from "@/lib/utils";
 
 type MobileTab = "overview" | "transactions" | "planning" | "analytics";
@@ -77,18 +76,8 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
           />
         </div>
 
-        {/* Right tabs + user */}
-        <div className="flex flex-1 items-center">
-          {rightTabs.map(tabBtn)}
-          <div className="flex flex-col items-center gap-1 flex-1 py-2 text-muted-foreground">
-            <div className="h-[18px] w-[18px] flex items-center justify-center">
-              <UserButton />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest">
-              account
-            </span>
-          </div>
-        </div>
+        {/* Right tabs (the account avatar lives in the header) */}
+        <div className="flex flex-1 items-center">{rightTabs.map(tabBtn)}</div>
       </div>
     </motion.div>
   );
