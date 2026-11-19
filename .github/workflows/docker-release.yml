@@ -107,6 +107,26 @@ jobs:
           exit-code: "1"
           format: table
 
+      - name: Build functions image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/Dockerfile
+          target: functions
+          load: true
+          tags: devcents-functions:scan
+          cache-from: type=gha,scope=functions
+          cache-to: type=gha,mode=max,scope=functions
+
+      - name: Scan functions image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: devcents-functions:scan
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
       - name: Build and push web image
         id: web-push
         uses: docker/build-push-action@v6
