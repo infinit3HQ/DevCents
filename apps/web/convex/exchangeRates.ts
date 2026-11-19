@@ -7,14 +7,14 @@
 //
 // Public surface:
 //   getCachedRates(date)        - query, returns the cached snapshot or null.
-//   fetchAndCacheRates(date)    - action, fetches from fxratesapi if missing
+//   fetchAndCacheRates(date)    - internal action, fetches from fxratesapi if missing
 //                                  and caches; throws on failure.
-//   getRateToUSD(date, ccy)     - action, returns a single number for the
+//   getRateToUSD(date, ccy)     - action (signed-in users), returns a single number for the
 //                                  rate from ccy -> USD on `date`. Used by
 //                                  AddTransaction to lock a rate at save time.
 
 import { v } from "convex/values";
-import { action, internalMutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 type RatesMap = Record<string, number>;
@@ -34,6 +34,7 @@ function normaliseRates(raw: unknown): RatesMap {
 export const getCachedRates = query({
   args: { date: v.string() },
   handler: async (ctx, { date }) => {
+    if (date.length > 10) return null;
     const row = await ctx.db
       .query("exchangeRates")
       .withIndex("by_date", (q) => q.eq("date", date))
@@ -87,9 +88,22 @@ async function fetchFromApi(date: string): Promise<RatesMap> {
   return rates;
 }
 
-export const fetchAndCacheRates = action({
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CURRENCY = /^[A-Z]{3}$/;
+const EARLIEST_DATE = "1999-01-01";
+
+/** Rejects junk dates so callers can't fill the cache with arbitrary rows. */
+function assertRateDate(date: string): void {
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  if (!ISO_DATE.test(date) || Number.isNaN(Date.parse(date)) || date < EARLIEST_DATE || date > tomorrow) {
+    throw new Error(`Invalid rate date: ${date.slice(0, 20)}`);
+  }
+}
+
+export const fetchAndCacheRates = internalAction({
   args: { date: v.string() },
   handler: async (ctx, { date }): Promise<RatesMap> => {
+    assertRateDate(date);
     // Fast path: already cached.
     const cached = await ctx.runQuery(api.exchangeRates.getCachedRates, { date });
     if (cached) return cached.rates;
@@ -104,14 +118,13 @@ export const fetchAndCacheRates = action({
   },
 });
 
-export const getRateToUSD = action({
+/** Rate from `currency` to USD on `date`. Used by the app and the backfill. */
+export const rateToUSD = internalAction({
   args: { date: v.string(), currency: v.string() },
   handler: async (ctx, { date, currency }): Promise<number> => {
+    if (!CURRENCY.test(currency)) throw new Error("Invalid currency code");
     if (currency === "USD") return 1;
-    const rates: RatesMap = await ctx.runAction(
-      api.exchangeRates.fetchAndCacheRates,
-      { date },
-    );
+    const rates: RatesMap = await ctx.runAction(internal.exchangeRates.fetchAndCacheRates, { date });
     const rate = rates[currency];
     if (typeof rate !== "number" || !isFinite(rate) || rate <= 0) {
       throw new Error(`No rate for ${currency} on ${date}`);
@@ -119,5 +132,15 @@ export const getRateToUSD = action({
     // rate is X per USD (i.e. 1 USD = `rate` units of X).
     // We want X -> USD, which is 1/rate.
     return 1 / rate;
+  },
+});
+
+/** Signed-in users only, so anonymous callers can't drive outbound fetches. */
+export const getRateToUSD = action({
+  args: { date: v.string(), currency: v.string() },
+  handler: async (ctx, args): Promise<number> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    return await ctx.runAction(internal.exchangeRates.rateToUSD, args);
   },
 });

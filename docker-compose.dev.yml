@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (set it in .env.local)}
       POSTGRES_DB: ${INSTANCE_NAME:-devcents}
     volumes:
       - postgres-data-dev:/var/lib/postgresql/data
@@ -26,7 +26,7 @@ services:
       CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
       INSTANCE_SECRET: ${INSTANCE_SECRET:?INSTANCE_SECRET is required}
       INSTANCE_NAME: ${INSTANCE_NAME:-devcents}
-      POSTGRES_URL: postgres://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432
+      POSTGRES_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432
       DO_NOT_REQUIRE_SSL: true
       PGSSLMODE: disable
       CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:3210}

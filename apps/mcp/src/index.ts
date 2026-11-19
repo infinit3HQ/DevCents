@@ -5,7 +5,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../web/convex/_generated/api.js";
-import { deriveKey, base64ToSalt, decrypt, encrypt, hashToken } from "@devcents/shared";
+import { deriveKey, base64ToSalt, decrypt, encrypt, verifyPassphrase } from "@devcents/shared";
 import {
   normalizeCategory,
   EXPENSE_CATEGORY_VALUES,
@@ -37,13 +37,16 @@ const client = new ConvexHttpClient(CONVEX_URL);
 
 // ─── Key derivation helper ──────────────────────────────────────────────────
 
-async function getEncryptionKey(tokenHash: string) {
+/** Derives the key and checks it, so a wrong passphrase never writes data. */
+async function getEncryptionKey(token: string) {
   if (!PASSPHRASE) throw new Error("No passphrase provided");
-  const saltB64 = await client.query(api.mcp.mcpGetEncryptionSalt, {
-    tokenHash,
-  });
-  const salt = base64ToSalt(saltB64);
-  return await deriveKey(PASSPHRASE, salt);
+  const check = await client.query(api.mcp.mcpGetEncryptionCheck, { token });
+  if (!check) throw new Error("Encryption is not set up for this account");
+  const key = await deriveKey(PASSPHRASE, base64ToSalt(check.salt));
+  if (!(await verifyPassphrase(key, check.verificationHash))) {
+    throw new Error("DEVCENTS_PASSPHRASE is incorrect for this account");
+  }
+  return key;
 }
 
 // ─── MCP Server Factory ─────────────────────────────────────────────────────
@@ -69,11 +72,11 @@ function createServer() {
     },
     async ({ limit }) => {
       try {
-        const tokenHash = await hashToken(API_KEY as string);
-        const key = await getEncryptionKey(tokenHash);
+        const token = API_KEY as string;
+        const key = await getEncryptionKey(token);
 
         const transactions = await client.query(api.mcp.mcpGetTransactions, {
-          tokenHash,
+          token,
           limit,
         });
 
@@ -143,8 +146,8 @@ function createServer() {
     },
     async ({ amount, type, category, description, currency, date }) => {
       try {
-        const tokenHash = await hashToken(API_KEY as string);
-        const key = await getEncryptionKey(tokenHash);
+        const token = API_KEY as string;
+        const key = await getEncryptionKey(token);
 
         const encryptedAmount = await encrypt(amount.toString(), key);
         const encryptedDescription = await encrypt(description, key);
@@ -152,7 +155,7 @@ function createServer() {
         const txDate = date || Date.now();
 
         await client.mutation(api.mcp.mcpAddTransaction, {
-          tokenHash,
+          token,
           amount: encryptedAmount,
           type,
           category: normalizeCategory(category, type, description),

@@ -4,14 +4,23 @@ on:
     branches:
       - main
 
-env:
-  WEB_IMAGE: ghcr.io/infinit3hq/devcents:latest
-  TRAEFIK_WEB_HOST: devcents.012140.xyz
-  VITE_CONVEX_URL: https://devcents-convex.012140.xyz
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+concurrency:
+  group: deploy-server-one
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Environment secrets (e.g. DEVCENTS_SERVER_SECRET) are only released to
+    # this job, and the environment only accepts deployments from main.
+    environment:
+      name: production
+      url: https://${{ vars.TRAEFIK_WEB_HOST }}
+    # Settings come from the `production` environment's variables; they only
+    # resolve inside a job that uses the environment.
+    env:
+      WEB_IMAGE: devcents-web:local
+      TRAEFIK_WEB_HOST: ${{ vars.TRAEFIK_WEB_HOST }}
+      VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
     runs-on:
       - serverone
       - self-hosted
@@ -21,17 +30,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Create required environment files
+      - name: Create required environment file
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          DEVCENTS_SERVER_SECRET: ${{ secrets.DEVCENTS_SERVER_SECRET }}
+          DEVCENTS_PASSPHRASE: ${{ secrets.DEVCENTS_PASSPHRASE }}
         run: |
+          umask 077
           {
-            printf 'CLERK_ISSUER_URL=%s\n' '${{ secrets.CLERK_ISSUER_URL }}'
-            printf 'CLERK_SECRET_KEY=%s\n' '${{ secrets.CLERK_SECRET_KEY }}'
-            printf 'WEB_IMAGE=%s\n' '${{ env.WEB_IMAGE }}'
-            printf 'VITE_CLERK_PUBLISHABLE_KEY=%s\n' '${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}'
-            printf 'VITE_CONVEX_URL=%s\n' '${{ env.VITE_CONVEX_URL }}'
-            printf 'TRAEFIK_WEB_HOST=%s\n' '${{ env.TRAEFIK_WEB_HOST }}'
-            printf 'DEVCENTS_PASSPHRASE=%s\n' '${{ secrets.DEVCENTS_PASSPHRASE }}'
-          } > .env
+            printf 'CLERK_SECRET_KEY=%s\n' "$CLERK_SECRET_KEY"
+            printf 'WEB_IMAGE=%s\n' "$WEB_IMAGE"
+            printf 'VITE_CLERK_PUBLISHABLE_KEY=%s\n' "$VITE_CLERK_PUBLISHABLE_KEY"
+            printf 'VITE_CONVEX_URL=%s\n' "$VITE_CONVEX_URL"
+            printf 'TRAEFIK_WEB_HOST=%s\n' "$TRAEFIK_WEB_HOST"
+            printf 'DEVCENTS_SERVER_SECRET=%s\n' "$DEVCENTS_SERVER_SECRET"
+            printf 'DEVCENTS_PASSPHRASE=%s\n' "$DEVCENTS_PASSPHRASE"
+          } > deployment/.env
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,21 +61,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Deploy Convex Functions
+      # Build first so the old container keeps serving until the new image is
+      # ready; the Convex deploy and container swap then happen back to back.
+      - name: Build web image
+        working-directory: deployment
+        run: docker compose -f compose.traefik.yml build --pull --no-cache
+
+      - name: Deploy Convex env and functions
         env:
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+          CONVEX_SELF_HOSTED_URL: ${{ env.VITE_CONVEX_URL }}
+          CONVEX_SELF_HOSTED_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+          CLERK_ISSUER_URL: ${{ secrets.CLERK_ISSUER_URL }}
+          DEVCENTS_SERVER_SECRET: ${{ secrets.DEVCENTS_SERVER_SECRET }}
         run: |
           # Strip any accidental newlines or spaces from the secret
-          CLEAN_KEY=$(echo -n "$CONVEX_DEPLOY_KEY" | tr -d '\n\r ')
-          pnpm --filter devcents exec convex deploy --url ${{ env.VITE_CONVEX_URL }} --admin-key "$CLEAN_KEY"
+          CONVEX_SELF_HOSTED_ADMIN_KEY=$(printf '%s' "$CONVEX_SELF_HOSTED_ADMIN_KEY" | tr -d '\n\r ')
+          export CONVEX_SELF_HOSTED_ADMIN_KEY
+          : "${DEVCENTS_SERVER_SECRET:?Add the DEVCENTS_SERVER_SECRET repository secret}"
+          pnpm --filter devcents exec convex env set CLERK_ISSUER_URL "$CLERK_ISSUER_URL" >/dev/null
+          pnpm --filter devcents exec convex env set DEVCENTS_SERVER_SECRET "$DEVCENTS_SERVER_SECRET" >/dev/null
+          pnpm --filter devcents exec convex deploy --yes
         working-directory: apps/web
 
-      - name: Build and start Docker services
-        env:
-          VITE_CONVEX_URL: ${{ env.VITE_CONVEX_URL }}
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+      - name: Start web
+        working-directory: deployment
         run: |
-          docker compose build --pull --no-cache
-          docker compose up -d --force-recreate --remove-orphans
-          docker compose ps
+          # Remove any devcents-web container from another compose project
+          # (e.g. one started by an older version of this workflow), so two
+          # containers never share the Traefik router.
+          for c in $(docker ps -aq --filter "label=traefik.http.routers.devcents-web.entrypoints"); do
+            project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$c")
+            if [ "$project" != "devcents" ]; then
+              echo "Removing stale container $c from project $project"
+              docker rm -f "$c"
+            fi
+          done
+          docker compose -f compose.traefik.yml up -d --force-recreate --remove-orphans
+          docker compose -f compose.traefik.yml ps
           docker image prune -f

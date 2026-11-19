@@ -1,30 +1,26 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api.js";
-import { hashToken } from "@devcents/shared";
+import {
+  generateSecretToken,
+  hashToken,
+  redirectUrisProblem,
+  unwrapKeyForToken,
+  wrapKeyForToken,
+} from "@devcents/shared";
+import { getOrigin, getServerConvexUrl, getServerSecret } from "./serverConfig";
 
-function getConvexUrl(): string {
-  const url =
-    (typeof process !== "undefined" && process.env && process.env.CONVEX_URL) ||
-    (typeof process !== "undefined" && process.env && process.env.VITE_CONVEX_URL) ||
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_CONVEX_URL) ||
-    "http://127.0.0.1:3210";
-  return url;
-}
+export { getOrigin } from "./serverConfig";
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 function getConvexClient() {
-  return new ConvexHttpClient(getConvexUrl());
+  return new ConvexHttpClient(getServerConvexUrl());
 }
 
-export function getOrigin(request: Request): string {
-  const url = new URL(request.url);
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  if (forwardedProto && forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-  return url.origin;
-}
-
+/**
+ * Bearer-token endpoints never use cookies, so a wildcard origin is safe:
+ * a cross-site page can't make the browser attach credentials.
+ */
 export function getCorsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -33,96 +29,62 @@ export function getCorsHeaders(): Record<string, string> {
   };
 }
 
-// ─── PKCE Verification (RFC 7636) ────────────────────────────────────────
+const NO_STORE = { "Cache-Control": "no-store", Pragma: "no-cache" };
 
-function base64UrlEncode(buffer: ArrayBuffer): string {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(buffer).toString("base64url");
-  }
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+function oauthError(error: string, description: string, status = 400): Response {
+  return Response.json(
+    { error, error_description: description },
+    { status, headers: { ...getCorsHeaders(), ...NO_STORE } },
+  );
 }
 
-
-export async function verifyPkce(
-  verifier: string,
-  challenge: string,
-  method: string,
-): Promise<boolean> {
-  if (method === "plain") {
-    return verifier === challenge;
-  }
-  if (method === "S256") {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    const computedChallenge = base64UrlEncode(hash);
-    return computedChallenge === challenge;
-  }
-  return false;
+/** Reads a request body, refusing anything over `maxBytes`. */
+export async function readLimitedText(request: Request, maxBytes = MAX_BODY_BYTES): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > maxBytes) return null;
+  const text = await request.text();
+  return new TextEncoder().encode(text).length > maxBytes ? null : text;
 }
 
 // ─── RFC 9728: Protected Resource Metadata ───────────────────────────────
 
-export async function handleWellKnownProtectedResource(
-  request: Request,
-): Promise<Response> {
+export async function handleWellKnownProtectedResource(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: getCorsHeaders() });
   }
-
   const origin = getOrigin(request);
-  const metadata = {
-    resource: `${origin}/mcp`,
-    authorization_servers: [origin],
-    scopes_supported: ["mcp"],
-  };
-
-  return Response.json(metadata, {
-    headers: {
-      ...getCorsHeaders(),
-      "Content-Type": "application/json",
-      "Cache-Control": "max-age=3600",
+  return Response.json(
+    {
+      resource: `${origin}/mcp`,
+      authorization_servers: [origin],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
     },
-  });
+    { headers: { ...getCorsHeaders(), "Cache-Control": "public, max-age=300" } },
+  );
 }
 
 // ─── RFC 8414: Authorization Server Metadata ─────────────────────────────
 
-export async function handleWellKnownAuthServer(
-  request: Request,
-): Promise<Response> {
+export async function handleWellKnownAuthServer(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: getCorsHeaders() });
   }
-
   const origin = getOrigin(request);
-  const metadata = {
-    issuer: origin,
-    authorization_endpoint: `${origin}/oauth/authorize`,
-    token_endpoint: `${origin}/oauth/token`,
-    registration_endpoint: `${origin}/oauth/register`,
-    response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code", "refresh_token"],
-    code_challenge_methods_supported: ["S256", "plain"],
-    scopes_supported: ["mcp"],
-    token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
-  };
-
-  return Response.json(metadata, {
-    headers: {
-      ...getCorsHeaders(),
-      "Content-Type": "application/json",
-      "Cache-Control": "max-age=3600",
+  return Response.json(
+    {
+      issuer: origin,
+      authorization_endpoint: `${origin}/oauth/authorize`,
+      token_endpoint: `${origin}/oauth/token`,
+      registration_endpoint: `${origin}/oauth/register`,
+      response_types_supported: ["code"],
+      grant_types_supported: ["authorization_code", "refresh_token"],
+      code_challenge_methods_supported: ["S256"],
+      scopes_supported: ["mcp"],
+      token_endpoint_auth_methods_supported: ["none"],
     },
-  });
+    { headers: { ...getCorsHeaders(), "Cache-Control": "public, max-age=300" } },
+  );
 }
 
 // ─── RFC 7591: Dynamic Client Registration ───────────────────────────────
@@ -131,259 +93,187 @@ export async function handleOAuthRegister(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: getCorsHeaders() });
   }
-
   if (request.method !== "POST") {
-    return new Response("Method Not Allowed", {
-      status: 405,
-      headers: getCorsHeaders(),
-    });
+    return new Response("Method Not Allowed", { status: 405, headers: getCorsHeaders() });
   }
 
-  let body: any;
+  const text = await readLimitedText(request);
+  if (text === null) return oauthError("invalid_request", "Request body too large", 413);
+
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+    body = parsed;
   } catch {
-    return Response.json(
-      { error: "invalid_request", error_description: "Malformed JSON body" },
-      { status: 400, headers: getCorsHeaders() },
-    );
+    return oauthError("invalid_request", "Malformed JSON body");
   }
 
-  const clientName = body.client_name || "MCP Client";
-  const redirectUris = body.redirect_uris;
+  const problem = redirectUrisProblem(body.redirect_uris);
+  if (problem) return oauthError("invalid_redirect_uri", problem);
 
-  if (!Array.isArray(redirectUris) || redirectUris.length === 0) {
-    return Response.json(
-      {
-        error: "invalid_redirect_uri",
-        error_description: "redirect_uris array is required",
-      },
-      { status: 400, headers: getCorsHeaders() },
-    );
+  const clientName = typeof body.client_name === "string" ? body.client_name.slice(0, 100) : "MCP Client";
+  const authMethod = body.token_endpoint_auth_method;
+  if (authMethod !== undefined && authMethod !== "none") {
+    return oauthError("invalid_client_metadata", "Only public clients (token_endpoint_auth_method=none) are supported");
   }
 
   try {
-    const client = getConvexClient();
-    const registered = await client.mutation(api.oauth.registerClient, {
+    const registered = await getConvexClient().mutation(api.oauth.registerClient, {
+      serverSecret: getServerSecret(),
       client_name: clientName,
-      redirect_uris: redirectUris,
-      grant_types: body.grant_types,
-      response_types: body.response_types,
-      scope: body.scope,
+      redirect_uris: body.redirect_uris as string[],
     });
-
-    return Response.json(registered, {
-      status: 201,
-      headers: {
-        ...getCorsHeaders(),
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (err: any) {
-    return Response.json(
-      { error: "server_error", error_description: err.message },
-      { status: 500, headers: getCorsHeaders() },
-    );
+    return Response.json(registered, { status: 201, headers: { ...getCorsHeaders(), ...NO_STORE } });
+  } catch (err) {
+    console.error("[oauth] client registration failed:", err);
+    return oauthError("server_error", "Client registration failed", 500);
   }
 }
 
 // ─── RFC 6749: Token Endpoint ────────────────────────────────────────────
 
+function parseTokenParams(text: string, contentType: string): URLSearchParams | null {
+  if (contentType.includes("application/json")) {
+    try {
+      const json = JSON.parse(text);
+      if (!json || typeof json !== "object") return null;
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(json)) {
+        if (typeof v === "string") params.set(k, v);
+      }
+      return params;
+    } catch {
+      return null;
+    }
+  }
+  return new URLSearchParams(text);
+}
+
+function tokenResponse(accessToken: string, refreshToken: string, expiresIn: number, scope: string): Response {
+  return Response.json(
+    {
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: expiresIn,
+      refresh_token: refreshToken,
+      scope,
+    },
+    { headers: { ...getCorsHeaders(), ...NO_STORE } },
+  );
+}
+
+async function issueTokenPair(keyB64: string | null) {
+  const accessToken = generateSecretToken("dco_acc_");
+  const refreshToken = generateSecretToken("dco_ref_");
+  return {
+    accessToken,
+    refreshToken,
+    tokenHash: await hashToken(accessToken),
+    refreshTokenHash: await hashToken(refreshToken),
+    wrappedKey: keyB64 ? await wrapKeyForToken(keyB64, accessToken) : undefined,
+    refreshWrappedKey: keyB64 ? await wrapKeyForToken(keyB64, refreshToken) : undefined,
+  };
+}
+
+async function handleAuthorizationCodeGrant(params: URLSearchParams): Promise<Response> {
+  const code = params.get("code") ?? "";
+  const redirectUri = params.get("redirect_uri") ?? "";
+  const codeVerifier = params.get("code_verifier") ?? "";
+  const clientId = params.get("client_id") ?? "";
+  if (!code || !redirectUri || !codeVerifier || !clientId) {
+    return oauthError("invalid_request", "Missing code, redirect_uri, code_verifier or client_id");
+  }
+
+  const client = getConvexClient();
+  const serverSecret = getServerSecret();
+  const codeHash = await hashToken(code);
+
+  const peek = await client.query(api.oauth.peekAuthCodeKey, { serverSecret, codeHash });
+  if (!peek) return oauthError("invalid_grant", "Invalid or expired authorization code");
+
+  let keyB64: string | null = null;
+  if (peek.wrappedKey) {
+    try {
+      keyB64 = await unwrapKeyForToken(peek.wrappedKey, code);
+    } catch {
+      return oauthError("invalid_grant", "Invalid authorization code");
+    }
+  }
+
+  const pair = await issueTokenPair(keyB64);
+  const result = await client.mutation(api.oauth.exchangeAuthCode, {
+    serverSecret,
+    codeHash,
+    codeVerifier,
+    clientId,
+    redirectUri,
+    tokenHash: pair.tokenHash,
+    refreshTokenHash: pair.refreshTokenHash,
+    wrappedKey: pair.wrappedKey,
+    refreshWrappedKey: pair.refreshWrappedKey,
+  });
+  if (!result.ok) return oauthError("invalid_grant", result.error);
+  return tokenResponse(pair.accessToken, pair.refreshToken, result.expiresIn, result.scope);
+}
+
+async function handleRefreshGrant(params: URLSearchParams): Promise<Response> {
+  const refreshToken = params.get("refresh_token") ?? "";
+  const clientId = params.get("client_id") ?? "";
+  if (!refreshToken || !clientId) {
+    return oauthError("invalid_request", "Missing refresh_token or client_id");
+  }
+
+  const client = getConvexClient();
+  const serverSecret = getServerSecret();
+  const refreshTokenHash = await hashToken(refreshToken);
+
+  const peek = await client.query(api.oauth.peekRefreshKey, { serverSecret, refreshTokenHash });
+  if (!peek) return oauthError("invalid_grant", "Invalid or expired refresh token");
+
+  let keyB64: string | null = peek.legacyKeyB64;
+  if (peek.refreshWrappedKey) {
+    try {
+      keyB64 = await unwrapKeyForToken(peek.refreshWrappedKey, refreshToken);
+    } catch {
+      return oauthError("invalid_grant", "Invalid refresh token");
+    }
+  }
+
+  const pair = await issueTokenPair(keyB64);
+  const result = await client.mutation(api.oauth.refreshOAuthToken, {
+    serverSecret,
+    refreshTokenHash,
+    clientId,
+    newTokenHash: pair.tokenHash,
+    newRefreshTokenHash: pair.refreshTokenHash,
+    wrappedKey: pair.wrappedKey,
+    refreshWrappedKey: pair.refreshWrappedKey,
+  });
+  if (!result.ok) return oauthError("invalid_grant", result.error);
+  return tokenResponse(pair.accessToken, pair.refreshToken, result.expiresIn, result.scope);
+}
+
 export async function handleOAuthToken(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: getCorsHeaders() });
   }
-
   if (request.method !== "POST") {
-    return new Response("Method Not Allowed", {
-      status: 405,
-      headers: getCorsHeaders(),
-    });
+    return new Response("Method Not Allowed", { status: 405, headers: getCorsHeaders() });
   }
 
-  let params: URLSearchParams;
-  const contentType = request.headers.get("content-type") || "";
-
-  if (contentType.includes("application/x-www-form-urlencoded")) {
-    const text = await request.text();
-    params = new URLSearchParams(text);
-  } else if (contentType.includes("application/json")) {
-    try {
-      const json = await request.json();
-      params = new URLSearchParams();
-      for (const [k, v] of Object.entries(json)) {
-        params.set(k, String(v));
-      }
-    } catch {
-      return Response.json(
-        { error: "invalid_request", error_description: "Malformed JSON" },
-        { status: 400, headers: getCorsHeaders() },
-      );
-    }
-  } else {
-    // Default to query params or text
-    const text = await request.text();
-    params = new URLSearchParams(text);
-  }
+  const text = await readLimitedText(request);
+  if (text === null) return oauthError("invalid_request", "Request body too large", 413);
+  const params = parseTokenParams(text, request.headers.get("content-type") ?? "");
+  if (!params) return oauthError("invalid_request", "Malformed request body");
 
   const grantType = params.get("grant_type");
-  const clientId = params.get("client_id") || "";
-  const client = getConvexClient();
-
-  // 1. Authorization Code Grant
-  if (grantType === "authorization_code") {
-    const code = params.get("code") || "";
-    const redirectUri = params.get("redirect_uri") || "";
-    const codeVerifier = params.get("code_verifier") || "";
-
-    if (!code || !redirectUri || !codeVerifier) {
-      return Response.json(
-        {
-          error: "invalid_request",
-          error_description: "Missing code, redirect_uri, or code_verifier",
-        },
-        { status: 400, headers: getCorsHeaders() },
-      );
-    }
-
-    try {
-      const codeHash = await hashToken(code);
-      const authCodeRecord = await client.query(api.oauth.getAuthCodeForExchange, {
-        codeHash,
-      });
-
-      if (!authCodeRecord) {
-        return Response.json(
-          {
-            error: "invalid_grant",
-            error_description: "Invalid or expired authorization code",
-          },
-          { status: 400, headers: getCorsHeaders() },
-        );
-      }
-
-      // Verify PKCE
-      const isPkceValid = await verifyPkce(
-        codeVerifier,
-        authCodeRecord.codeChallenge,
-        authCodeRecord.codeChallengeMethod,
-      );
-
-      if (!isPkceValid) {
-        return Response.json(
-          {
-            error: "invalid_grant",
-            error_description: "PKCE verification failed: invalid code_verifier",
-          },
-          { status: 400, headers: getCorsHeaders() },
-        );
-      }
-
-      // Generate Access Token & Refresh Token
-      const accessToken = `dco_acc_${crypto.randomUUID().replace(/-/g, "")}`;
-      const refreshToken = `dco_ref_${crypto.randomUUID().replace(/-/g, "")}`;
-
-      const tokenHash = await hashToken(accessToken);
-      const refreshTokenHash = await hashToken(refreshToken);
-
-      const exchangeResult = await client.mutation(api.oauth.exchangeAuthCode, {
-        codeHash,
-        tokenHash,
-        refreshTokenHash,
-        clientId: clientId || authCodeRecord.clientId,
-        redirectUri,
-        codeChallengeVerified: true,
-      });
-
-      return Response.json(
-        {
-          access_token: accessToken,
-          token_type: "Bearer",
-          expires_in: exchangeResult.expiresIn,
-          refresh_token: refreshToken,
-          scope: exchangeResult.scope,
-        },
-        {
-          headers: {
-            ...getCorsHeaders(),
-            "Content-Type": "application/json",
-            "Cache-Control": "no-store",
-            Pragma: "no-cache",
-          },
-        },
-      );
-    } catch (err: any) {
-      return Response.json(
-        {
-          error: "invalid_grant",
-          error_description: err.message || "Code exchange failed",
-        },
-        { status: 400, headers: getCorsHeaders() },
-      );
-    }
+  try {
+    if (grantType === "authorization_code") return await handleAuthorizationCodeGrant(params);
+    if (grantType === "refresh_token") return await handleRefreshGrant(params);
+  } catch (err) {
+    console.error("[oauth] token request failed:", err);
+    return oauthError("server_error", "Token request failed", 500);
   }
-
-  // 2. Refresh Token Grant
-  if (grantType === "refresh_token") {
-    const refreshToken = params.get("refresh_token") || "";
-    if (!refreshToken) {
-      return Response.json(
-        {
-          error: "invalid_request",
-          error_description: "Missing refresh_token",
-        },
-        { status: 400, headers: getCorsHeaders() },
-      );
-    }
-
-    try {
-      const refreshTokenHash = await hashToken(refreshToken);
-      const newAccessToken = `dco_acc_${crypto.randomUUID().replace(/-/g, "")}`;
-      const newRefreshToken = `dco_ref_${crypto.randomUUID().replace(/-/g, "")}`;
-
-      const newTokenHash = await hashToken(newAccessToken);
-      const newRefreshTokenHash = await hashToken(newRefreshToken);
-
-      const result = await client.mutation(api.oauth.refreshOAuthToken, {
-        refreshTokenHash,
-        newTokenHash,
-        newRefreshTokenHash,
-        clientId,
-      });
-
-      return Response.json(
-        {
-          access_token: newAccessToken,
-          token_type: "Bearer",
-          expires_in: result.expiresIn,
-          refresh_token: newRefreshToken,
-          scope: result.scope,
-        },
-        {
-          headers: {
-            ...getCorsHeaders(),
-            "Content-Type": "application/json",
-            "Cache-Control": "no-store",
-            Pragma: "no-cache",
-          },
-        },
-      );
-    } catch (err: any) {
-      return Response.json(
-        {
-          error: "invalid_grant",
-          error_description: err.message || "Token refresh failed",
-        },
-        { status: 400, headers: getCorsHeaders() },
-      );
-    }
-  }
-
-  return Response.json(
-    {
-      error: "unsupported_grant_type",
-      error_description: `Unsupported grant_type: ${grantType}`,
-    },
-    { status: 400, headers: getCorsHeaders() },
-  );
+  return oauthError("unsupported_grant_type", "grant_type must be authorization_code or refresh_token");
 }

@@ -367,7 +367,7 @@ export function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Zero-Knowledge */}
+            {/* Client-side encryption */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -381,10 +381,10 @@ export function LandingPage() {
               <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
                 <ShieldCheck className="w-7 h-7 text-emerald-500" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Zero-Knowledge</h3>
+              <h3 className="text-2xl font-bold mb-3">Client-side Encryption</h3>
               <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-                AES-256-GCM encryption ensures your data is locked client-side.
-                We literally cannot read your transactions.
+                Amounts and descriptions are encrypted with AES-256-GCM in your
+                browser. The server stores only ciphertext.
               </p>
             </motion.div>
 

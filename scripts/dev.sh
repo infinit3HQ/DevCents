@@ -92,6 +92,25 @@ fi
 export CONVEX_SELF_HOSTED_ADMIN_KEY="$GENERATED_KEY"
 ok "Admin key ready"
 
+# ─── 1c. Convex deployment env (auth issuer + web-server secret) ────────────
+if [ -z "${CLERK_ISSUER_URL:-}" ]; then
+  err "CLERK_ISSUER_URL is not set. Add it to .env.local (see .env.example)."
+  exit 1
+fi
+if [ -z "${DEVCENTS_SERVER_SECRET:-}" ]; then
+  # Stable per machine so restarts don't invalidate anything.
+  DEVCENTS_SERVER_SECRET="$(printf '%s' "${INSTANCE_SECRET}:server-secret" | shasum -a 256 | awk '{print $1}')"
+fi
+export DEVCENTS_SERVER_SECRET
+log "Syncing Convex environment variables..."
+# The Convex CLI reads CONVEX_SELF_HOSTED_URL / CONVEX_SELF_HOSTED_ADMIN_KEY.
+(
+  cd apps/web
+  npx convex env set CLERK_ISSUER_URL "$CLERK_ISSUER_URL" >/dev/null
+  npx convex env set DEVCENTS_SERVER_SECRET "$DEVCENTS_SERVER_SECRET" >/dev/null
+)
+ok "Convex environment ready"
+
 # ─── 2. Start Convex sync + Vite dev server (parallel) ──────────────────────
 log "Starting Convex sync + Vite dev server..."
 echo ""

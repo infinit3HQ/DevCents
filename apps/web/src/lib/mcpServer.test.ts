@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
+import { ConvexError } from "convex/values";
 import {
   negotiateProtocolVersion,
   DEFAULT_PROTOCOL_VERSION,
-  SUPPORTED_PROTOCOL_VERSIONS,
   TOOLS,
   handleMcpGet,
   handleMcpOptions,
   handleMcpPost,
+  publicToolError,
 } from "./mcpServer";
+import { verifyPkceS256 } from "@devcents/shared/oauth";
 import {
-  verifyPkce,
   handleWellKnownProtectedResource,
   handleWellKnownAuthServer,
 } from "./oauthServer";
@@ -78,13 +79,16 @@ describe("OAuth 2.1 RFC Metadata Handlers", () => {
     expect(json.response_types_supported).toContain("code");
     expect(json.grant_types_supported).toContain("authorization_code");
     expect(json.code_challenge_methods_supported).toContain("S256");
-    expect(json.code_challenge_methods_supported).toContain("plain");
+    expect(json.code_challenge_methods_supported).not.toContain("plain");
+    expect(json.token_endpoint_auth_methods_supported).toEqual(["none"]);
   });
 
-  it("verifies PKCE with plain method", async () => {
-    const verifier = "secret_verifier_code_123456789";
-    expect(await verifyPkce(verifier, verifier, "plain")).toBe(true);
-    expect(await verifyPkce(verifier, "different_challenge", "plain")).toBe(false);
+  it("ignores spoofed forwarded headers unless TRUST_PROXY is set", async () => {
+    const req = new Request("https://devcents.example/.well-known/oauth-authorization-server", {
+      headers: { "x-forwarded-proto": "https", "x-forwarded-host": "evil.example" },
+    });
+    const json = await (await handleWellKnownAuthServer(req)).json();
+    expect(json.issuer).toBe("https://devcents.example");
   });
 
   it("verifies PKCE with S256 method", async () => {
@@ -93,8 +97,9 @@ describe("OAuth 2.1 RFC Metadata Handlers", () => {
     // challenge: E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
     const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
     const expectedChallenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
-    expect(await verifyPkce(verifier, expectedChallenge, "S256")).toBe(true);
-    expect(await verifyPkce("invalid_verifier", expectedChallenge, "S256")).toBe(false);
+    expect(await verifyPkceS256(verifier, expectedChallenge)).toBe(true);
+    expect(await verifyPkceS256("invalid_verifier", expectedChallenge)).toBe(false);
+    expect(await verifyPkceS256(expectedChallenge, expectedChallenge)).toBe(false);
   });
 
 });
@@ -177,5 +182,47 @@ describe("MCP HTTP Handlers", () => {
     const json = await res.json();
     expect(json.result.isError).toBe(true);
     expect(json.result.content[0].text).toContain("Authentication error");
+  });
+});
+
+describe("MCP request limits and error hygiene", () => {
+  const post = (body: unknown) =>
+    handleMcpPost(
+      new Request("https://devcents.example/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it("rejects oversized batches", async () => {
+    const batch = Array.from({ length: 11 }, (_, i) => ({ jsonrpc: "2.0", id: i, method: "ping" }));
+    const res = await post(batch);
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts small batches", async () => {
+    const res = await post([{ jsonrpc: "2.0", id: 1, method: "ping" }]);
+    expect(res.status).toBe(200);
+  });
+
+  it("no longer accepts a token passed as a tool argument", async () => {
+    const res = await post({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "get_transactions", arguments: { api_key: "dct_live_abc" } },
+    });
+    const json = await res.json();
+    expect(json.result.content[0].text).toContain("Missing token");
+  });
+
+  it("hides internal error details from MCP clients", () => {
+    expect(publicToolError(new Error("connect ECONNREFUSED 10.0.0.5:3210"))).not.toContain("10.0.0.5");
+    expect(publicToolError(new Error("Uncaught Error: secret internals"))).not.toContain("secret");
+    expect(
+      publicToolError(new ConvexError({ code: "INVALID_ARGUMENT", message: "Unknown expense category: foo" })),
+    ).toBe("Error: Unknown expense category: foo");
+    expect(publicToolError(new ConvexError({ code: "UNAUTHENTICATED" }))).toContain("invalid or expired token");
   });
 });

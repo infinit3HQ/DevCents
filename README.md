@@ -91,15 +91,15 @@ Your money data stays on your server, encrypted by your passphrase, visible only
 
 ## Features
 
-- **🔒 Client-side encryption** — AES-GCM encryption with a passphrase only you know. The server stores ciphertext.
+- **🔒 Client-side encryption** — Amounts and descriptions are encrypted with AES-256-GCM using a passphrase only you know. The server stores ciphertext. See [SECURITY.md](SECURITY.md) for exactly what is and isn't encrypted.
 - **🤳 Biometric unlock** — Face ID / fingerprint via WebAuthn. No password prompts on your own device.
 - **🌍 Multi-currency** — Log transactions in any currency, auto-converted to your base.
 - **📊 Spending analytics** — Category breakdowns with time filters (today, week, month, custom range).
 - **📅 Planning & forecasting** — Schedule one-time and recurring transactions, visualize projected balance.
 - **🚫 No Plaid, no scraping** — You enter what you spend. Nothing connects to your bank.
-- **🤖 Claude MCP integration** — Ask Claude about your finances. Transactions are decrypted locally before being sent.
+- **🤖 Claude MCP integration** — Ask Claude about your finances over OAuth 2.1 or a scoped, expiring API token.
 - **📱 100% mobile optimized** — Feels native on iOS and Android browsers.
-- **🏠 Fully self-hosted** — One `docker compose up` and it's yours, on your server.
+- **🏠 Self-hosted** — Published Docker images and one compose file. Your data stays on your server; sign-in uses Clerk.
 
 ---
 
@@ -133,13 +133,13 @@ DevCents ships an [MCP server](apps/mcp/) built on the **Model Context Protocol 
 
 ### Option A: Remote Web MCP (HTTP Endpoint)
 
-If you are running DevCents remotely (e.g., `https://devcents.012140.xyz`), you can connect Claude Desktop, Cursor, or remote agents directly over HTTPS without running local scripts or keeping local passphrases:
+If you are running DevCents remotely (e.g., `https://money.example.com`), you can connect Claude Desktop, Cursor, or remote agents directly over HTTPS without running local scripts or keeping local passphrases:
 
 ```json
 {
   "mcpServers": {
     "devcents": {
-      "url": "https://devcents.012140.xyz/mcp",
+      "url": "https://money.example.com/mcp",
       "headers": {
         "Authorization": "Bearer dct_live_your_token_here"
       }
@@ -147,7 +147,7 @@ If you are running DevCents remotely (e.g., `https://devcents.012140.xyz`), you 
   }
 }
 ```
-*(When generating the token in **Settings → API & AI Access**, choose "Remote / Web MCP Token" so the decryption key is securely bound to the token, or set `DEVCENTS_PASSPHRASE` in your server environment.)*
+*(Clients that support OAuth, such as Claude, only need the URL: they open DevCents in your browser to approve access. For a static token, choose **generate remote token** in **Settings → API & AI Access**: your key is wrapped with the token, so the database alone can't decrypt it.)*
 
 ### Option B: Local Stdio MCP (Node/NPX)
 
@@ -227,11 +227,13 @@ To run directly from this repository workspace:
 ├── packages/
 │   └── shared/             # Crypto utilities shared across apps
 ├── deployment/
-│   ├── Dockerfile          # Production image
-│   └── start.sh            # Runtime env injection
+│   ├── Dockerfile          # web + functions images
+│   ├── start.sh            # Runtime config injection
+│   └── deploy-functions.sh # Convex deploy job
 ├── scripts/
 │   └── dev.sh              # Local dev orchestrator
-├── docker-compose.yml      # Production self-hosted stack
+├── docker-compose.yml      # Self-hosted stack
+├── docs/self-hosting.md    # Self-hosting guide
 └── docker-compose.dev.yml  # Local development stack
 ```
 
@@ -239,16 +241,22 @@ To run directly from this repository workspace:
 
 ## Deployment
 
-DevCents is designed to run on your own server with a single compose file.
-
 ```bash
-# Pull and start the production stack
+cp .env.example .env        # fill in Clerk keys and generated secrets
+docker compose up -d postgres convex
+docker compose exec convex ./generate_admin_key.sh   # add to .env
 docker compose up -d
 ```
 
-- `docker-compose.yml` — production stack (web app + Convex backend)
-- `.github/workflows/docker-release.yml` — publishes image to GHCR on release
-- `.github/workflows/deploy.yml` — pulls the new image to your server after release
+The full walkthrough, including HTTPS (bundled Caddy overlay or your own
+proxy), upgrades and backups, is in **[docs/self-hosting.md](docs/self-hosting.md)**.
+
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` | Full stack: Postgres, Convex, functions deployer, web |
+| `deployment/compose.caddy.yml` | Optional automatic-HTTPS front end |
+| `deployment/compose.traefik.yml` | Web-only deployment behind an existing Traefik |
+| `.github/workflows/docker-release.yml` | Tests, scans and publishes multi-arch images to GHCR |
 
 ---
 
