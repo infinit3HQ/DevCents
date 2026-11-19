@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 /** Opens the shared new-entry sheet (listened to by AddTransaction). */
 export function openAddEntry() {
@@ -24,14 +25,10 @@ export function EmptyState({
       <p className="font-mono text-xs uppercase tracking-widest text-foreground">{title}</p>
       {hint && <p className="mt-2 font-sans text-sm text-muted-foreground">{hint}</p>}
       {actionLabel && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="mt-5 inline-flex h-10 items-center gap-2 bg-primary px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
+        <Button onClick={onAction} className="mt-5">
+          <Plus />
           {actionLabel}
-        </button>
+        </Button>
       )}
     </div>
   );

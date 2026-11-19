@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import {
@@ -37,6 +37,7 @@ import {
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCategoryRules } from "@/hooks/useCategoryRules";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { lockRatesForRows, parseImportDateToLocalNoon } from "@/lib/importDates";
 
 interface ParsedRow {
   date: string;
@@ -159,8 +160,7 @@ function parseRow(
       };
     }
 
-    const parsedDate = new Date(dateStr);
-    if (isNaN(parsedDate.getTime())) {
+    if (parseImportDateToLocalNoon(dateStr) === null) {
       return {
         date: dateStr,
         description,
@@ -222,10 +222,12 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
   });
   const [rawRows, setRawRows] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [fileName, setFileName] = useState("");
 
   const createMany = useMutation(api.transactions.createMany);
+  const fetchRateToUSD = useAction(api.exchangeRates.getRateToUSD);
   const { isEnabled, isUnlocked, encryptValue } = useEncryption();
   const { suggest: suggestWithRules, learnMany } = useCategoryRules();
   const { baseCurrency } = useCurrency();
@@ -294,22 +296,31 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
 
   const handleImport = useCallback(async () => {
     setImporting(true);
+    setImportError(null);
     try {
       const validRows = rows.filter((r) => r.valid);
       const shouldEncrypt = isEnabled && isUnlocked;
+      const dated = validRows.map((r) => ({
+        date: parseImportDateToLocalNoon(r.date) as number,
+        currency: r.currency ?? baseCurrency,
+      }));
+      // Lock each row's rate for its own day, so imported history doesn't
+      // drift with today's exchange rates.
+      const rates = await lockRatesForRows(dated, fetchRateToUSD);
 
       const transactions = await Promise.all(
-        validRows.map(async (r) => ({
+        validRows.map(async (r, i) => ({
           amount: shouldEncrypt
             ? await encryptValue(String(r.amount))
             : r.amount,
           type: r.type,
           category: r.category,
-          currency: r.currency ?? baseCurrency,
+          currency: dated[i].currency,
+          rateToUSD: rates[i],
           description: shouldEncrypt
             ? await encryptValue(r.description)
             : r.description,
-          date: new Date(r.date).getTime(),
+          date: dated[i].date,
           encrypted: shouldEncrypt || undefined,
         })),
       );
@@ -327,10 +338,13 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
       setDone(true);
     } catch (error) {
       console.error("Import failed:", error);
+      setImportError(
+        error instanceof Error ? error.message : "Import failed. Nothing was saved from the failed batch.",
+      );
     } finally {
       setImporting(false);
     }
-  }, [rows, createMany, isEnabled, isUnlocked, encryptValue, learnMany, baseCurrency]);
+  }, [rows, createMany, fetchRateToUSD, isEnabled, isUnlocked, encryptValue, learnMany, baseCurrency]);
 
   const reset = useCallback(() => {
     setHeaders([]);
@@ -354,9 +368,9 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 rounded-none border-2 border-border font-mono uppercase tracking-widest text-xs hover:bg-foreground hover:text-background transition-none"
+            
           >
-            <Upload className="h-4 w-4" />
+            <Upload />
             Import CSV
           </Button>
         )}
@@ -555,11 +569,12 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
               <Button
                 onClick={handleImport}
                 disabled={importing || validCount === 0}
-                className="w-full gap-3 h-14 rounded-none border-2 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background font-mono uppercase tracking-widest font-bold shadow-[4px_4px_0_0_var(--color-foreground)] hover:translate-y-1 hover:shadow-none transition-all"
+                size="lg"
+                className="w-full"
               >
                 {importing ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Processing...
                   </>
                 ) : (
@@ -569,6 +584,11 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                   </>
                 )}
               </Button>
+              {importError && (
+                <p role="alert" className="border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-destructive">
+                  {importError}
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -599,13 +619,13 @@ export function CSVImport({ trigger }: { trigger?: React.ReactNode }) {
                 <Button
                   variant="outline"
                   onClick={reset}
-                  className="rounded-none border-2 border-border font-mono uppercase tracking-widest text-xs px-6"
+                  
                 >
                   New Batch
                 </Button>
                 <Button
                   onClick={() => setOpen(false)}
-                  className="rounded-none bg-foreground text-background hover:bg-foreground/90 font-mono uppercase tracking-widest text-xs px-6"
+                  
                 >
                   Close
                 </Button>

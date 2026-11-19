@@ -71,16 +71,14 @@ export function Hero() {
 
           <div className="mt-9 flex flex-col sm:flex-row gap-3">
             <SignUpButton mode="modal">
-              <Button size="lg" className="h-11 rounded-none px-6 font-mono uppercase tracking-widest text-xs group">
+              <Button size="lg" className="group">
                 Get started
                 <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
               </Button>
             </SignUpButton>
             <SignInButton mode="modal">
               <Button
-                size="lg"
-                variant="outline"
-                className="h-11 rounded-none px-6 font-mono uppercase tracking-widest text-xs bg-transparent hover:bg-primary/5 hover:text-primary hover:border-primary/40"
+                size="lg" variant="outline"
               >
                 Sign in
               </Button>

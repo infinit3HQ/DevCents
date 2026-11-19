@@ -12,6 +12,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { CurrencyCombobox } from "@/components/ui/CurrencyCombobox";
@@ -94,15 +95,13 @@ function Row({
         )}
       </div>
       {action && onClick && (
-        <button
+        <Button variant="link" size="inline"
           onClick={onClick}
-          className={cn(
-            "flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+          className={cn("",
             danger ? "text-destructive" : "text-primary",
-          )}
-        >
+          )}>
           {action} <ChevronRight className="h-3 w-3" />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -254,13 +253,12 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
               <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 new passphrase
               </label>
-              <button
+              <Button variant="link" size="inline"
                 type="button"
                 onClick={handleGenerate}
-                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-primary"
-              >
+                className="text-primary">
                 <RefreshCw className="h-2.5 w-2.5" /> generate
-              </button>
+              </Button>
             </div>
             <div className="relative">
               <input
@@ -349,25 +347,23 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="flex gap-3 pt-1">
-            <button
+            <Button variant="outline" size="default"
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 font-mono text-[11px] uppercase tracking-widest border border-border text-muted-foreground bg-transparent"
-            >
+              className="flex-1">
               cancel
-            </button>
-            <button
+            </Button>
+            <Button variant="default" size="default"
               type="submit"
               disabled={loading || !current || !next || !confirm}
-              className="flex-1 h-9 font-mono text-[11px] uppercase tracking-widest flex items-center justify-center gap-1.5 disabled:opacity-40 bg-primary text-primary-foreground border-none"
-            >
+              className="flex-1">
               {loading ? (
                 <span className="animate-spin">◌</span>
               ) : (
                 <Lock className="h-3.5 w-3.5" />
               )}
               update
-            </button>
+            </Button>
           </div>
         </form>
       </motion.div>
@@ -493,34 +489,31 @@ function ApiAccessSection() {
             <code className="flex-1 font-mono text-[10px] bg-background border border-border p-2 break-all">
               {newToken}
             </code>
-            <button
+            <Button variant="outline" size="icon"
               onClick={handleCopy}
-              className="p-2 border border-border hover:bg-muted transition-colors text-primary shrink-0"
-              title="Copy Token"
-            >
+              className="text-primary shrink-0"
+              title="Copy Token">
               <Copy className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="pt-2 border-t border-border space-y-2">
             <p className="font-mono text-[10px] text-muted-foreground">
               Remote MCP Endpoint: <span className="text-foreground">{mcpUrl}</span>
             </p>
-            <button
+            <Button variant="link" size="inline"
               onClick={handleCopyConfig}
-              className="font-mono text-[10px] uppercase tracking-widest text-primary hover:opacity-80 transition-opacity flex items-center gap-1.5"
-            >
+              className="text-primary">
               <Copy className="h-3.5 w-3.5" />
               {copiedConfig ? "Config Copied to Clipboard!" : "Copy Claude / Cursor MCP Config"}
-            </button>
+            </Button>
           </div>
 
-          <button
+          <Button variant="ghost" size="sm"
             onClick={clearNewToken}
-            className="w-full font-mono text-[10px] uppercase tracking-widest text-muted-foreground pt-2 border-t border-border mt-2"
-          >
+            className="w-full text-muted-foreground mt-2">
             done
-          </button>
+          </Button>
         </div>
       ) : showPassphraseInput ? (
         <div className="border border-border p-4 bg-card space-y-3">
@@ -544,23 +537,21 @@ function ApiAccessSection() {
             <p className="font-mono text-[10px] text-destructive">{passphraseError}</p>
           )}
           <div className="flex gap-2 pt-1">
-            <button
+            <Button variant="default" size="default"
               onClick={handleCreateToken}
               disabled={loading}
-              className="flex-1 font-mono text-[10px] uppercase tracking-widest bg-primary text-primary-foreground p-2 hover:opacity-90 transition-opacity"
-            >
+              className="flex-1">
               {loading ? "generating..." : "confirm & generate"}
-            </button>
-            <button
+            </Button>
+            <Button variant="outline" size="default"
               onClick={() => {
                 setShowPassphraseInput(false);
                 setPassphrase("");
                 setPassphraseError("");
               }}
-              className="font-mono text-[10px] uppercase tracking-widest border border-border px-3 text-muted-foreground hover:bg-muted"
-            >
+              className="text-muted-foreground">
               cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -613,12 +604,11 @@ function ApiAccessSection() {
                   <TokenExpiryLabel expiresAt={t.expiresAt} />
                 </p>
               </div>
-              <button
+              <Button variant="link" size="inline"
                 onClick={() => revokeTokenMutation({ id: t._id })}
-                className="font-mono text-[10px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity"
-              >
+                className="text-destructive">
                 revoke
-              </button>
+              </Button>
             </div>
           ))}
         </div>

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarPlus, Plus, ReceiptText, Repeat } from "lucide-react";
+import { CalendarPlus, Plus, ReceiptText, Repeat, type LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCategoryRules } from "@/hooks/useCategoryRules";
 import {
@@ -23,6 +23,7 @@ import { parseLocalDateInputToNoonMs } from "@/lib/planningUtils";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import {
   Drawer,
   DrawerClose,
@@ -144,7 +145,7 @@ function useEntryFormUX(
 const ENTRY_MODES: Array<{
   id: EntryMode;
   label: string;
-  icon: ElementType;
+  icon: LucideIcon;
   title: string;
   description: string;
 }> = [
@@ -384,15 +385,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       const amount = shouldEncrypt ? await encryptValue(String(values.amount)) : values.amount;
       const description = shouldEncrypt ? await encryptValue(values.description) : values.description;
       const dateMs = parseLocalDateInputToNoonMs(values.date);
-      const rateToUSD = isEditing
-        ? undefined
-        : await resolveRateToUSD(values.currency, dateMs);
+      // Re-lock the rate on edit too: a changed currency or date must not keep
+      // the old row's rate (e.g. $100 edited to €100 would still count as $100).
+      const rateToUSD = await resolveRateToUSD(values.currency, dateMs);
 
       if (isEditing) {
         await updateTransactionMut({
           id: editData.id as any,
           amount,
           currency: values.currency,
+          rateToUSD,
+          type: values.type,
           description,
           category: values.category,
           date: dateMs,
@@ -436,6 +439,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           id: editData.id as any,
           amount,
           currency: values.currency,
+          type: values.type,
           description,
           category: values.category,
           date: dateMs,
@@ -478,6 +482,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
           id: editData.id as any,
           amount,
           currency: values.currency,
+          type: values.type,
           description,
           category: values.category,
           startDate: startDateMs,
@@ -517,12 +522,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
             whileTap={{ scale: 0.95 }}
             className="fixed bottom-8 right-8 z-50 hidden md:block"
           >
-            <Button
-              size="icon"
-              className="h-14 w-14 rounded-full border border-primary/30 transition-all duration-300 shadow-[0_0_30px_color-mix(in oklch, var(--color-primary), transparent 85%)] hover:shadow-[0_0_40px_color-mix(in oklch, var(--color-primary), transparent 75%)] bg-primary/10 text-primary"
-            >
-              <Plus className="h-6 w-6" />
-              <span className="sr-only">New Record</span>
+            <Button size="lg" className="w-12 px-0" aria-label="New transaction">
+              <Plus />
             </Button>
           </motion.div>
         )}
@@ -532,12 +533,8 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
       {!trigger && (
         <DrawerTrigger asChild>
           <motion.div whileTap={{ scale: 0.95 }} className="md:hidden">
-            <Button
-              size="icon"
-              className="h-12 w-12 -mt-6 rounded-full border border-primary/30 shadow-[0_0_20px_color-mix(in oklch, var(--color-primary), transparent 85%)] transition-all bg-primary/10 text-primary"
-            >
-              <Plus className="h-5 w-5" />
-              <span className="sr-only">New Record</span>
+            <Button size="lg" className="w-12 px-0" aria-label="New transaction">
+              <Plus />
             </Button>
           </motion.div>
         </DrawerTrigger>
@@ -570,34 +567,20 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
 
           <div className="p-6 md:p-8">
             {/* Mode switch */}
-            <div className="mb-6 flex items-center border border-border bg-background/40">
-              {ENTRY_MODES.map((m) => {
-                const Icon = m.icon;
-                const active = mode === m.id;
-                const disabled = isEditing && mode !== m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => !disabled && setMode(m.id)}
-                    disabled={disabled}
-                    className={[
-                      "flex-1 h-10 px-3 border-r last:border-r-0 border-border",
-                      "font-mono text-[10px] uppercase tracking-widest transition-colors",
-                      "flex items-center justify-center gap-2",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : disabled
-                          ? "text-muted-foreground/30 cursor-not-allowed"
-                          : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                    ].join(" ")}
-                    type="button"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
+            <Segmented
+              className="mb-6"
+              fill
+              size="default"
+              label="Entry type"
+              value={mode}
+              onValueChange={setMode}
+              options={ENTRY_MODES.map((m) => ({
+                value: m.id,
+                label: m.label,
+                icon: m.icon,
+                disabled: isEditing && mode !== m.id,
+              }))}
+            />
 
             <AnimatePresence mode="wait">
               {mode === "ledger" && (
@@ -787,21 +770,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                        className="pt-4 grid grid-cols-2 gap-3"
                       >
                         <DrawerClose asChild>
-                          <Button
-                            variant="outline"
-                            type="button"
-                            className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
-                          >
+                          <Button variant="outline" size="lg">
                             Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "ledger"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
+                          size="lg"
                         >
                           {savingMode === "ledger"
                             ? "Saving..."
@@ -1009,21 +988,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                        className="pt-4 grid grid-cols-2 gap-3"
                       >
                         <DrawerClose asChild>
-                          <Button
-                            variant="outline"
-                            type="button"
-                            className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
-                          >
+                          <Button variant="outline" size="lg">
                             Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "planned"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
+                          size="lg"
                         >
                           {savingMode === "planned"
                             ? "Scheduling..."
@@ -1275,21 +1250,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
+                        className="pt-4 grid grid-cols-2 gap-3"
                       >
                         <DrawerClose asChild>
-                          <Button
-                            variant="outline"
-                            type="button"
-                            className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
-                          >
+                          <Button variant="outline" size="lg">
                             Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "recurring"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
+                          size="lg"
                         >
                           {savingMode === "recurring"
                             ? "Saving..."

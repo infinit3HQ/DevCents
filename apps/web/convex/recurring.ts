@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeCategory } from "@devcents/shared/categories";
 
+const HALF_DAY_MS = 12 * 60 * 60 * 1000;
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -65,6 +67,7 @@ export const remove = mutation({
 export const update = mutation({
   args: {
     id: v.id("recurring"),
+    type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
     amount: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
     rateToUSD: v.optional(v.number()),
@@ -90,8 +93,9 @@ export const update = mutation({
     if (item.userId !== identity.subject) throw new Error("Unauthorized");
 
     const { id, ...fields } = args;
-    if (fields.category !== undefined)
-      fields.category = normalizeCategory(fields.category, item.type);
+    const nextType = fields.type ?? item.type;
+    if (fields.category !== undefined || fields.type !== undefined)
+      fields.category = normalizeCategory(fields.category ?? item.category, nextType);
     const patch = Object.fromEntries(
       Object.entries(fields).filter(([, v]) => v !== undefined),
     );
@@ -133,8 +137,14 @@ export const postOccurrenceToLedger = mutation({
     // Check if this occurrence was already posted to prevent duplicates.
     const existing = await ctx.db
       .query("postedRecurringOccurrences")
+      // Same occurrence = same day. Noon-pinned dates shift by hours when the
+      // user changes time zone; occurrences are >= 7 days apart, so a ±12h
+      // window can't collide with a neighbouring one.
       .withIndex("by_recurring_date", (q) =>
-        q.eq("recurringId", args.id).eq("date", args.date),
+        q
+          .eq("recurringId", args.id)
+          .gte("date", args.date - HALF_DAY_MS)
+          .lt("date", args.date + HALF_DAY_MS),
       )
       .first();
     if (existing) return;

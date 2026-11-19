@@ -13,6 +13,9 @@ interface DashboardSummaryProps {
   baseCurrency: string;
   month: PeriodStats | null;
   monthLabel: string;
+  /** Entries left out of the totals because their amount couldn't be read. */
+  hiddenCount?: number;
+  vaultLocked?: boolean;
 }
 
 const fmt = (n: number, code: string) => formatAmountOnly(Math.abs(n), code);
@@ -103,7 +106,39 @@ function Stat({
 }
 
 /** Net worth plus this month's income, spending and savings. */
-export function DashboardSummary({ userName, wallets, totalBase, baseCurrency, month, monthLabel }: DashboardSummaryProps) {
+function HiddenEntriesNotice({ count, locked }: { count: number; locked: boolean }) {
+  if (count === 0) return null;
+  const noun = count === 1 ? "entry" : "entries";
+  return (
+    <div role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border border-amber-500/30 bg-amber-500/5 px-3 py-2 font-mono text-[11px] text-amber-400">
+      <span>
+        {locked
+          ? `${count} encrypted ${noun} locked and not counted in these totals.`
+          : `${count} ${noun} couldn't be decrypted and aren't counted in these totals.`}
+      </span>
+      {locked && (
+        <button
+          type="button"
+          onClick={() => document.dispatchEvent(new CustomEvent("open-unlock"))}
+          className="underline underline-offset-2 hover:text-amber-300"
+        >
+          Unlock
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function DashboardSummary({
+  userName,
+  wallets,
+  totalBase,
+  baseCurrency,
+  month,
+  monthLabel,
+  hiddenCount = 0,
+  vaultLocked = false,
+}: DashboardSummaryProps) {
   const savingsRate =
     month && month.income > 0 ? Math.round((month.net / month.income) * 100) : null;
 
@@ -125,6 +160,7 @@ export function DashboardSummary({ userName, wallets, totalBase, baseCurrency, m
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">net worth</p>
           <NetWorth wallets={wallets} totalBase={totalBase} baseCurrency={baseCurrency} />
+          <HiddenEntriesNotice count={hiddenCount} locked={vaultLocked} />
         </motion.div>
       </section>
 

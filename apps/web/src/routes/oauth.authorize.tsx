@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 import { Show, RedirectToSignIn, useUser } from "@clerk/tanstack-react-start";
 import { useQuery, useMutation } from "convex/react";
@@ -299,15 +300,14 @@ function ConsentScreen() {
               )}
 
               {bioAvailable && (
-                <button
+                <Button variant="outline" size="sm"
                   type="button"
                   onClick={handleBiometricUnlock}
                   disabled={bioLoading}
-                  className="w-full mt-1 flex items-center justify-center gap-1.5 font-mono text-[10px] uppercase tracking-widest border border-border bg-background p-2 text-primary hover:bg-muted transition-colors"
-                >
+                  className="w-full mt-1 text-primary">
                   <Key className="h-3.5 w-3.5" />
                   {bioLoading ? "Verifying biometric..." : "Use Biometric / Touch ID"}
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -322,23 +322,21 @@ function ConsentScreen() {
 
         {/* Actions */}
         <div className="p-6 flex items-center gap-3">
-          <button
+          <Button variant="outline" size="default"
             type="button"
             onClick={handleDeny}
             disabled={loading}
-            className="flex-1 font-mono text-[11px] uppercase tracking-widest border border-border p-2.5 text-muted-foreground hover:bg-muted transition-colors text-center"
-          >
+            className="flex-1">
             Deny
-          </button>
-          <button
+          </Button>
+          <Button variant="default" size="default"
             type="button"
             onClick={handleAuthorize}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-1 font-mono text-[11px] uppercase tracking-widest bg-primary text-primary-foreground p-2.5 hover:opacity-90 transition-opacity font-medium"
-          >
+            className="flex-1">
             {loading ? "Authorizing..." : "Authorize"}
             <ChevronRight className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
 
         {/* Footer */}

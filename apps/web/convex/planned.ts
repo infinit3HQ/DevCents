@@ -44,6 +44,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("planned"),
+    type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
     amount: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
     rateToUSD: v.optional(v.number()),
@@ -61,8 +62,9 @@ export const update = mutation({
     if (item.userId !== identity.subject) throw new Error("Unauthorized");
 
     const { id, ...fields } = args;
-    if (fields.category !== undefined)
-      fields.category = normalizeCategory(fields.category, item.type);
+    const nextType = fields.type ?? item.type;
+    if (fields.category !== undefined || fields.type !== undefined)
+      fields.category = normalizeCategory(fields.category ?? item.category, nextType);
     const patch = Object.fromEntries(
       Object.entries(fields).filter(([, v]) => v !== undefined),
     );

@@ -23,6 +23,12 @@ export interface DecryptedTransaction {
   encrypted?: boolean;
   currency?: string;
   rateToUSD?: number;
+  /**
+   * The amount is ciphertext we couldn't read (vault locked, or decryption
+   * failed). `amount` is 0 so sums don't break; callers must exclude the row
+   * from totals and tell the user rather than show a silently low number.
+   */
+  undecryptable?: boolean;
 }
 
 const NOT_PROVIDED = Symbol("not-provided");
@@ -38,6 +44,7 @@ function plain(t: RawTx): DecryptedTransaction {
     _id: t._id as string,
     amount: typeof t.amount === "number" ? t.amount : 0,
     type: t.type as "income" | "expense",
+    ...(typeof t.amount === "number" ? {} : { undecryptable: true }),
   };
 }
 
@@ -88,7 +95,8 @@ export function DecryptedTransactionsProvider({ children }: { children: ReactNod
               ...t,
               _id: t._id as string,
               description,
-              amount: parseFloat(amountText) || 0,
+              amount: Number.isFinite(parseFloat(amountText)) ? parseFloat(amountText) : 0,
+              ...(Number.isFinite(parseFloat(amountText)) ? {} : { undecryptable: true }),
               type: t.type as "income" | "expense",
             };
             cache.set(cacheKey, row);

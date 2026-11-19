@@ -6,10 +6,12 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryLabel, isTransferCategory, normalizeCategory } from "@/lib/categoryUtils";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
+import { Button } from "@/components/ui/button";
 import { EmptyState, PanelSkeleton } from "@/components/ui/EmptyState";
 import { useLedgerFilter } from "@/contexts/LedgerFilterContext";
 import { CategoryBudgets } from "@/components/CategoryBudgets";
-import { DAY_MS } from "@/lib/planningUtils";
+import { parseLocalDateInputToNoonMs } from "@/lib/planningUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import type { LucideIcon } from "lucide-react";
@@ -205,8 +207,12 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       return { start, end: Infinity, prevStart, prevEnd, label: "this month", prevLabel: "last month" };
     }
     if (timePeriod === "custom") {
-      const start = getStartOfDay(new Date(customStart));
-      const end = getStartOfDay(new Date(customEnd)) + DAY_MS - 1;
+      // Date inputs are local calendar days; `new Date("YYYY-MM-DD")` would be
+      // UTC midnight (the previous day west of UTC). End = next local midnight
+      // minus 1ms, so DST days (23h/25h) are covered exactly.
+      const start = getStartOfDay(new Date(parseLocalDateInputToNoonMs(customStart)));
+      const endDay = new Date(parseLocalDateInputToNoonMs(customEnd));
+      const end = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate() + 1).getTime() - 1;
       const length = end - start + 1;
       return { start, end, prevStart: start - length, prevEnd: start - 1, label: "selected range", prevLabel: "previous range" };
     }
@@ -355,37 +361,26 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       {/* Time Period Filter */}
       {showCategory && (
         <div className="flex items-center gap-2">
-          <div className="flex items-center flex-1 border border-border bg-background/40">
-            {TIME_PERIODS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setTimePeriod(p.id)}
-                className={[
-                  "flex-1 h-9 px-3 border-r last:border-r-0 border-border",
-                  "font-mono text-[10px] uppercase tracking-widest transition-colors",
-                  timePeriod === p.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                ].join(" ")}
-                type="button"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            className="flex-1"
+            fill
+            label="Time period"
+            value={timePeriod}
+            onValueChange={setTimePeriod}
+            options={TIME_PERIODS.map((p) => ({ value: p.id, label: p.label }))}
+          />
 
           <Popover>
             <PopoverTrigger asChild>
-              <button
-                className={[
-                  "h-9 w-9 border border-border flex items-center justify-center transition-colors",
-                  timePeriod === "custom"
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                ].join(" ")}
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Custom date range"
+                aria-pressed={timePeriod === "custom"}
+                className={timePeriod === "custom" ? "border-primary/30 bg-primary/10 text-primary" : "text-muted-foreground"}
               >
-                <CalendarRange className="h-3.5 w-3.5" />
-              </button>
+                <CalendarRange />
+              </Button>
             </PopoverTrigger>
             <PopoverContent
               align="end"

@@ -78,6 +78,7 @@ export const update = mutation({
     amount: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
     rateToUSD: v.optional(v.number()),
+    type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
     category: v.optional(v.string()),
     description: v.optional(v.string()),
     date: v.optional(v.number()),
@@ -93,8 +94,11 @@ export const update = mutation({
       throw new Error("Unauthorized");
 
     const { id, ...fields } = args;
-    if (fields.category !== undefined)
-      fields.category = normalizeCategory(fields.category, transaction.type);
+    const nextType = fields.type ?? transaction.type;
+    // A category is only valid for its type ("salary" isn't an expense), so
+    // re-check it whenever either one changes.
+    if (fields.category !== undefined || fields.type !== undefined)
+      fields.category = normalizeCategory(fields.category ?? transaction.category, nextType);
     const patch = Object.fromEntries(
       Object.entries(fields).filter(([, v]) => v !== undefined),
     );

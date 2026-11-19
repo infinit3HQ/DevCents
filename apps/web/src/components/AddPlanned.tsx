@@ -23,9 +23,8 @@ export function AddPlanned({ trigger }: { trigger?: ReactNode }) {
       variant="outline"
       size="sm"
       onClick={open}
-      className="h-8 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border text-muted-foreground bg-transparent hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors"
     >
-      <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
+      <CalendarPlus />
       plan
     </Button>
   );

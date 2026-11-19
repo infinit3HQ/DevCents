@@ -26,6 +26,8 @@ import {
 } from "recharts";
 
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
+import { Button } from "@/components/ui/button";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -54,6 +56,8 @@ type CashflowEvent = {
   currency: string;
   category: string;
   description: string;
+  /** Planned item dated before today and still unposted: still owed. */
+  overdue?: boolean;
 };
 
 const TOOLTIP_STYLE = {
@@ -163,10 +167,18 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
     return d.getTime();
   });
   const endMs = anchorMs + horizon * DAY_MS;
+  const startOfTodayMs = useMemo(() => {
+    const d = new Date(anchorMs);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, [anchorMs]);
 
   const postedOccurrenceKeys = useMemo(() => {
     if (!postedOccurrences) return new Set<string>();
-    return new Set(postedOccurrences.map((o) => `${o.recurringId}:${o.date}`));
+    // Match by calendar day, not exact ms: an occurrence pinned to local noon
+    // gets a different timestamp after a time-zone change (travel), and would
+    // otherwise reappear as unposted.
+    return new Set(postedOccurrences.map((o) => `${o.recurringId}:${dayKey(o.date)}`));
   }, [postedOccurrences]);
 
   const events = useMemo(() => {
@@ -177,8 +189,11 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
     for (const p of planned) {
       const status = p.status ?? "planned";
       if (status !== "planned") continue;
-      if (p.date < anchorMs || p.date > endMs) continue;
+      // Unposted items from before today are still owed: keep them in the
+      // forecast (applied today) instead of silently dropping them.
+      if (p.date > endMs) continue;
       evts.push({
+        overdue: p.date < startOfTodayMs,
         key: `planned:${p._id}`,
         source: "planned",
         sourceId: p._id,
@@ -201,7 +216,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
       );
       for (const d of dates) {
         if (!sameDayOrAfter(d, r.startDate)) continue;
-        if (postedOccurrenceKeys.has(`${r._id}:${d}`)) continue;
+        if (postedOccurrenceKeys.has(`${r._id}:${dayKey(d)}`)) continue;
         evts.push({
           key: `recurring:${r._id}:${d}`,
           source: "recurring",
@@ -218,7 +233,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
     evts.sort((a, b) => a.date - b.date);
     return evts;
-  }, [planned, recurring, baseCurrency, anchorMs, endMs, postedOccurrenceKeys]);
+  }, [planned, recurring, baseCurrency, anchorMs, endMs, startOfTodayMs, postedOccurrenceKeys]);
 
   const summary = useMemo(() => {
     if (!events) return undefined as
@@ -253,7 +268,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
     const deltaByDay: Record<string, number> = {};
     for (const e of events) {
       if (isTransferCategory(e.category, e.type)) continue;
-      const k = dayKey(e.date);
+      // Overdue items land on day 0 of the curve.
+      const k = dayKey(Math.max(e.date, anchorMs));
       const converted = convertAmount(e.amount, e.currency || "USD");
       const signed = e.type === "income" ? converted : -converted;
       deltaByDay[k] = (deltaByDay[k] ?? 0) + signed;
@@ -340,38 +356,28 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center border border-border bg-card">
-            {[30, 60, 90, 180, 365].map((d) => {
-              const active = horizon === d;
-              return (
-                <button
-                  key={d}
-                  onClick={() => setHorizon(d as HorizonDays)}
-                  className={cn(
-                    "h-8 px-3 font-mono text-[10px] uppercase tracking-widest transition-colors border-r border-border last:border-r-0",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                  )}
-                >
-                  {d}d
-                </button>
-              );
-            })}
-          </div>
+          <Segmented
+            label="Forecast horizon"
+            value={String(horizon)}
+            onValueChange={(v) => setHorizon(Number(v) as HorizonDays)}
+            options={[30, 60, 90, 180, 365].map((d) => ({ value: String(d), label: `${d}d` }))}
+          />
 
           <Popover>
             <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  "h-10 w-10 md:h-8 md:w-8 border border-border flex items-center justify-center transition-colors",
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Custom forecast range"
+                aria-pressed={![30, 60, 90, 180, 365].includes(horizon)}
+                className={
                   ![30, 60, 90, 180, 365].includes(horizon)
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                )}
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "text-muted-foreground"
+                }
               >
-                <CalendarRange className="h-3.5 w-3.5" />
-              </button>
+                <CalendarRange />
+              </Button>
             </PopoverTrigger>
             <PopoverContent
               align="end"
@@ -386,7 +392,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     from
                   </p>
                   <DatePickerField
-                    value={new Date(anchorMs).toISOString().slice(0, 10)}
+                    value={dayKey(anchorMs)}
                     onChange={() => {}}
                     label="Start date"
                     disabled
@@ -398,7 +404,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     to
                   </p>
                   <DatePickerField
-                    value={new Date(endMs).toISOString().slice(0, 10)}
+                    value={dayKey(endMs)}
                     onChange={(v) => {
                       const picked = new Date(v + "T12:00:00");
                       const days = Math.round((picked.getTime() - anchorMs) / DAY_MS);
@@ -547,8 +553,9 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               {events.map((e, i) => {
                 const { Icon, color: accent, label: categoryLabel } = getCategoryMeta(e.category, e.type);
                 const tone = e.type === "income" ? "text-primary" : "text-destructive";
-                const badgeTone =
-                  e.source === "planned"
+                const badgeTone = e.overdue
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : e.source === "planned"
                     ? "border-primary/25 bg-primary/10 text-primary"
                     : "border-border bg-transparent text-muted-foreground";
 
@@ -590,7 +597,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                             badgeTone,
                           )}
                         >
-                          {e.source === "planned" ? "planned" : "recurring"}
+                          {e.overdue ? "overdue" : e.source === "planned" ? "planned" : "recurring"}
                         </span>
                       </div>
                       <p className="font-mono text-[12px] truncate text-foreground/90 mt-1">
@@ -611,7 +618,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       </span>
 
                       <Tip label="Post to ledger">
-                        <button
+                        <Button variant="outline" size="icon"
                           onClick={() => {
                             if (e.source === "planned") {
                               postPlannedWithRate(
@@ -627,10 +634,9 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               e.currency,
                             );
                           }}
-                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </button>
+                          className="hover:text-primary">
+                          <Send />
+                        </Button>
                       </Tip>
                     </div>
                   </motion.div>
@@ -652,9 +658,9 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           </div>
           <AddPlanned
             trigger={
-              <button className="h-8 px-3 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors font-mono text-[10px] uppercase tracking-widest">
+              <Button variant="outline" size="sm" className="hover:text-primary">
                 + plan
-              </button>
+              </Button>
             }
           />
         </div>
@@ -723,7 +729,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
                       {status === "planned" && (
                         <Tip label="Edit">
-                          <button
+                          <Button variant="outline" size="icon"
                             onClick={() => openEdit("planned", {
                               id: p._id,
                               amount: p.amount,
@@ -732,17 +738,15 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               category: p.category,
                               type: p.type,
                               date: toDateInput(p.date),
-                            })}
-                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
+                            })}>
+                            <Pencil />
+                          </Button>
                         </Tip>
                       )}
 
                       {status === "planned" && (
                         <Tip label="Post to ledger">
-                          <button
+                          <Button variant="outline" size="icon"
                             onClick={() =>
                               postPlannedWithRate(
                                 p._id as Id<"planned">,
@@ -750,38 +754,35 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                                 p.currency,
                               )
                             }
-                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                          >
-                            <Send className="h-3.5 w-3.5" />
-                          </button>
+                            className="hover:text-primary">
+                            <Send />
+                          </Button>
                         </Tip>
                       )}
 
                       {status === "planned" && (
                         <Tip label="Skip">
-                          <button
+                          <Button variant="outline" size="icon"
                             onClick={() =>
                               setPlannedStatus({
                                 id: p._id as Id<"planned">,
                                 status: "skipped",
                               })
                             }
-                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                          >
+                            className="hover:text-destructive">
                             <PauseCircle className="h-3.5 w-3.5" />
-                          </button>
+                          </Button>
                         </Tip>
                       )}
 
                       <Tip label="Delete">
-                        <button
+                        <Button variant="outline" size="icon"
                           onClick={() =>
                             removePlanned({ id: p._id as Id<"planned"> })
                           }
-                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          className="hover:text-destructive">
+                          <Trash2 />
+                        </Button>
                       </Tip>
                     </div>
                   </div>
@@ -802,9 +803,9 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           </div>
           <AddRecurring
             trigger={
-              <button className="h-8 px-3 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors font-mono text-[10px] uppercase tracking-widest">
+              <Button variant="outline" size="sm" className="hover:text-primary">
                 + recur
-              </button>
+              </Button>
             }
           />
         </div>
@@ -874,7 +875,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     </span>
 
                     <Tip label="Edit">
-                      <button
+                      <Button variant="outline" size="icon"
                         onClick={() => openEdit("recurring", {
                           id: r._id,
                           amount: r.amount,
@@ -884,34 +885,30 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                           type: r.type,
                           startDate: toDateInput(r.startDate),
                           cadence: r.cadence,
-                        })}
-                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                        })}>
+                        <Pencil />
+                      </Button>
                     </Tip>
 
                     <Tip label={r.active === false ? "Resume" : "Pause"}>
-                      <button
+                      <Button variant="outline" size="icon"
                         onClick={() =>
                           toggleRecurring({
                             id: r._id as Id<"recurring">,
                             active: !(r.active !== false),
                           })
-                        }
-                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
-                      >
+                        }>
                         {r.active === false ? (
                           <PlayCircle className="h-3.5 w-3.5" />
                         ) : (
                           <PauseCircle className="h-3.5 w-3.5" />
                         )}
-                      </button>
+                      </Button>
                     </Tip>
 
                     {next && r.active !== false && (
                       <Tip label="Post next occurrence">
-                        <button
+                        <Button variant="outline" size="icon"
                           onClick={() =>
                             postRecurringWithRate(
                               r._id as Id<"recurring">,
@@ -919,22 +916,20 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               r.currency,
                             )
                           }
-                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </button>
+                          className="hover:text-primary">
+                          <Send />
+                        </Button>
                       </Tip>
                     )}
 
                     <Tip label="Delete">
-                      <button
+                      <Button variant="outline" size="icon"
                         onClick={() =>
                           removeRecurring({ id: r._id as Id<"recurring"> })
                         }
-                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                        className="hover:text-destructive">
+                        <Trash2 />
+                      </Button>
                     </Tip>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Sparkles, X } from "lucide-react";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import type { DecryptedRecurringItem } from "@/hooks/useDecryptedRecurring";
@@ -82,22 +83,20 @@ export function DetectedRecurring({ recurring }: { recurring: DecryptedRecurring
                   {new Date(s.nextDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </p>
               </div>
-              <button
+              <Button variant="soft" size="sm"
                 type="button"
                 onClick={() => add(s)}
-                className="h-7 px-2.5 shrink-0 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-widest hover:bg-primary/20"
-              >
+                className="shrink-0 text-primary">
                 + add
-              </button>
-              <button
+              </Button>
+              <Button variant="outline" size="icon-sm"
                 type="button"
                 onClick={() => dismiss(s.key)}
-                className="h-10 w-10 md:h-7 md:w-7 shrink-0 flex items-center justify-center border border-border text-muted-foreground hover:text-foreground"
+                className="shrink-0 text-muted-foreground"
                 aria-label={`Dismiss suggestion for ${s.description}`}
-                title="Dismiss"
-              >
+                title="Dismiss">
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             </div>
           );
         })}

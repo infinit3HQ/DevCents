@@ -3,14 +3,15 @@ import { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReceiptText, BarChart3 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { TransactionList } from "@/components/TransactionList";
 import { SpendingCharts } from "@/components/SpendingCharts";
 import { DashboardSummary } from "@/components/DashboardSummary";
+import { Segmented } from "@/components/ui/segmented";
 import { MobileNav } from "@/components/MobileNav";
 import { Planning } from "@/components/Planning";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useEncryption } from "@/contexts/EncryptionContext";
 import { isTransferCategory } from "@/lib/categoryUtils";
 import { LedgerFilterContext, type LedgerFilter } from "@/contexts/LedgerFilterContext";
 
@@ -25,6 +26,7 @@ export function Dashboard() {
   const [desktopLeftPane, setDesktopLeftPane] =
     useState<DesktopLeftPane>("analytics_category");
   const { baseCurrency, computeBalances, convertLocked, rates, ratesLoaded } = useCurrency();
+  const { isEnabled: isEncryptionOn, isUnlocked: isVaultUnlocked } = useEncryption();
   const [ledgerFilter, setLedgerFilterState] = useState<LedgerFilter | null>(null);
   // Selecting a category in the chart filters the ledger. On mobile the
   // ledger is a separate tab, so jump to it.
@@ -42,10 +44,18 @@ export function Dashboard() {
   // Per-wallet native balances via the greedy-spillover walk. Stable —
   // doesn't drift when fxratesapi rates move because wallet amounts are
   // in their own currencies.
+  // Rows whose amount we couldn't decrypt are left out of every total and
+  // reported instead, so a locked vault never shows a silently low number.
+  const readable = useMemo(
+    () => transactions?.filter((t) => !t.undecryptable),
+    [transactions],
+  );
+  const hiddenCount = (transactions?.length ?? 0) - (readable?.length ?? 0);
+
   const wallets = useMemo(() => {
-    if (!transactions) return null;
-    return computeBalances(transactions);
-  }, [transactions, computeBalances]);
+    if (!readable) return null;
+    return computeBalances(readable);
+  }, [readable, computeBalances]);
 
   // Approximate consolidated total in the user's base currency, using
   // today's rates. This is the only number on the page that can drift,
@@ -61,28 +71,22 @@ export function Dashboard() {
     return totalUSD * baseFx;
   }, [wallets, rates, ratesLoaded, baseCurrency]);
 
-  // Totals use the rate locked on each row (today's rate as fallback), the
-  // same conversion the charts use, so every number on the page agrees.
-  const { stats, monthStats } = useMemo(() => {
-    const empty = { income: 0, expenses: 0, net: 0 };
-    if (!transactions || !ratesLoaded) return { stats: empty, monthStats: empty };
+  // This month's totals use the rate locked on each row (today's rate as
+  // fallback), the same conversion the charts use, so the numbers agree.
+  const monthStats = useMemo(() => {
+    const totals = { income: 0, expenses: 0, net: 0 };
+    if (!readable || !ratesLoaded) return totals;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const all = { ...empty };
-    const month = { ...empty };
-    for (const t of transactions) {
+    for (const t of readable) {
       // Own-money moves (bank → cash) aren't income or spending.
-      if (isTransferCategory(t.category, t.type)) continue;
+      if (t.date < monthStart || isTransferCategory(t.category, t.type)) continue;
       const value = convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
-      const key = t.type === "income" ? "income" : "expenses";
-      all[key] += value;
-      if (t.date >= monthStart) month[key] += value;
+      if (t.type === "income") totals.income += value;
+      else totals.expenses += value;
     }
-    return {
-      stats: { ...all, net: all.income - all.expenses },
-      monthStats: { ...month, net: month.income - month.expenses },
-    };
-  }, [transactions, ratesLoaded, convertLocked]);
+    return { ...totals, net: totals.income - totals.expenses };
+  }, [readable, ratesLoaded, convertLocked]);
 
   const monthLabel = new Date().toLocaleString("default", { month: "short" }).toLowerCase();
 
@@ -97,6 +101,8 @@ export function Dashboard() {
           baseCurrency={baseCurrency}
           month={ratesLoaded && transactions ? monthStats : null}
           monthLabel={monthLabel}
+          hiddenCount={hiddenCount}
+          vaultLocked={isEncryptionOn && !isVaultUnlocked}
         />
 
         {/* ── MOBILE CONTENT ──────────────────────────────────────────── */}
@@ -149,7 +155,7 @@ export function Dashboard() {
                 transition={{ duration: 0.15 }}
                 className="p-5"
               >
-                <Planning currentBalance={stats.net} />
+                <Planning currentBalance={totalApproxBase} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -173,25 +179,16 @@ export function Dashboard() {
                       : "spending"}
                   </span>
                 </div>
-                <div className="flex items-center border border-border bg-card">
-                  {(["analytics_category", "analytics_monthly", "planning"] as const).map((k) => {
-                    const active = desktopLeftPane === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => setDesktopLeftPane(k)}
-                        className={cn(
-                          "h-7 px-3 font-mono text-[10px] uppercase tracking-widest transition-colors border-r border-border last:border-r-0",
-                          active
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
-                        )}
-                      >
-                        {k === "analytics_category" ? "categories" : k === "analytics_monthly" ? "monthly" : "plan"}
-                      </button>
-                    );
-                  })}
-                </div>
+                <Segmented
+                  label="Left panel"
+                  value={desktopLeftPane}
+                  onValueChange={setDesktopLeftPane}
+                  options={[
+                    { value: "analytics_category", label: "categories" },
+                    { value: "analytics_monthly", label: "monthly" },
+                    { value: "planning", label: "plan" },
+                  ]}
+                />
               </div>
               <div className="p-6 lg:p-8 grow overflow-y-auto">
                 {desktopLeftPane === "analytics_category" ? (
@@ -199,7 +196,7 @@ export function Dashboard() {
                 ) : desktopLeftPane === "analytics_monthly" ? (
                   <SpendingCharts mode="monthly" />
                 ) : (
-                  <Planning currentBalance={stats.net} />
+                  <Planning currentBalance={totalApproxBase} />
                 )}
               </div>
             </div>

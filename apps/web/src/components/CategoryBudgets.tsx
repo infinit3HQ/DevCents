@@ -13,8 +13,10 @@ import {
   EXPENSE_CATEGORIES,
   getCategoryLabel,
   normalizeCategory,
+  isTransferCategory,
 } from "@/lib/categoryUtils";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -49,7 +51,7 @@ export function CategoryBudgets() {
   const setBudget = useMutation(api.categoryBudgets.set);
   const removeBudget = useMutation(api.categoryBudgets.remove);
   const transactions = useDecryptedTransactions();
-  const { baseCurrency, convertAmount } = useCurrency();
+  const { baseCurrency, convertAmount, convertLocked } = useCurrency();
   const { isEnabled, isUnlocked, encryptValue, decryptValue } = useEncryption();
   const symbol = getCurrencySymbol(baseCurrency);
   const fmt = (n: number) => `${symbol}${formatAmountOnly(n, baseCurrency)}`;
@@ -109,11 +111,14 @@ export function CategoryBudgets() {
     const out: Record<string, number> = {};
     for (const t of transactions ?? []) {
       if (t.type !== "expense" || t.date < monthStart || t.date >= nextMonthStart) continue;
+      // Moving money between own accounts isn't spending; unreadable rows
+      // have no real amount.
+      if (t.undecryptable || isTransferCategory(t.category, t.type)) continue;
       const key = normalizeCategory(t.category, "expense");
-      out[key] = (out[key] ?? 0) + convertAmount(t.amount, t.currency || "USD");
+      out[key] = (out[key] ?? 0) + convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
     }
     return out;
-  }, [transactions, monthStart, nextMonthStart, convertAmount]);
+  }, [transactions, monthStart, nextMonthStart, convertLocked]);
 
   const sorted = useMemo(
     () =>
@@ -216,36 +221,34 @@ export function CategoryBudgets() {
                         onKeyDown={(e) => e.key === "Escape" && setEditing(null)}
                         className={INPUT_CLASS}
                       />
-                      <button type="submit" className="h-10 w-10 md:h-8 md:w-8 flex items-center justify-center border border-border text-primary hover:bg-primary/10" aria-label="Save">
-                        <Check className="h-3 w-3" />
-                      </button>
-                      <button
+                      <Button variant="outline" size="icon" type="submit" className="text-primary" aria-label="Save">
+                        <Check />
+                      </Button>
+                      <Button variant="outline" size="icon"
                         type="button"
                         onClick={() => removeBudget({ category: r.category }).then(() => setEditing(null))}
-                        className="h-10 w-10 md:h-8 md:w-8 flex items-center justify-center border border-border text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive"
                         aria-label="Remove budget"
-                        title="Remove budget"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                        title="Remove budget">
+                        <X />
+                      </Button>
                     </form>
                   ) : (
                     <>
                       <span className="ml-auto tabular-nums text-foreground/80 shrink-0">
                         {fmt(r.spent)} <span className="text-muted-foreground">/ {fmt(r.limit)}</span>
                       </span>
-                      <button
+                      <Button variant="ghost" size="icon-sm"
                         type="button"
                         onClick={() => {
                           setEditing(r.category);
                           setEditText(String(r.rawCurrency === baseCurrency ? r.rawLimit : Math.round(r.limit)));
                           setError(null);
                         }}
-                        className="h-10 w-10 md:h-6 md:w-6 flex items-center justify-center text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-foreground"
-                        aria-label={`Edit ${getCategoryLabel(r.category, "expense")} budget`}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
+                        className="text-muted-foreground opacity-60 group-hover:opacity-100"
+                        aria-label={`Edit ${getCategoryLabel(r.category, "expense")} budget`}>
+                        <Pencil />
+                      </Button>
                     </>
                   )}
                 </div>
@@ -313,32 +316,29 @@ export function CategoryBudgets() {
                 onChange={(e) => setNewText(e.target.value)}
                 className={INPUT_CLASS}
               />
-              <button type="submit" className="h-8 px-3 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-widest">
+              <Button variant="soft" size="sm" type="submit" className="text-primary">
                 save
-              </button>
-              <button
+              </Button>
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => {
                   setAdding(false);
                   setError(null);
-                }}
-                className="h-8 px-3 border border-border text-muted-foreground font-mono text-[10px] uppercase tracking-widest"
-              >
+                }}>
                 cancel
-              </button>
+              </Button>
             </form>
           ) : (
             unbudgeted.length > 0 && (
-              <button
+              <Button variant="link" size="inline"
                 type="button"
                 onClick={() => {
                   setAdding(true);
                   setError(null);
                 }}
-                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary"
-              >
-                <Plus className="h-3 w-3" /> set a budget
-              </button>
+                className="text-muted-foreground hover:text-primary">
+                <Plus /> set a budget
+              </Button>
             )
           )}
 

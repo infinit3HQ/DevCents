@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -65,6 +66,14 @@ export function EncryptionProvider({
   const [cryptoKey, setCryptoKey] = useState<CryptoKey | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
+
+  // Lets other UI (e.g. the "entries are locked" notice) reopen the unlock
+  // dialog after the user skipped it.
+  useEffect(() => {
+    const open = () => setShowUnlock(true);
+    document.addEventListener("open-unlock", open);
+    return () => document.removeEventListener("open-unlock", open);
+  }, []);
 
   const isEnabled = !!settings;
   const isUnlocked = !!cryptoKey;
@@ -319,6 +328,7 @@ function TermInput({
   );
 }
 
+/** Dialog action: the shared Button, full-width in its row. */
 function TermBtn({
   children,
   onClick,
@@ -334,27 +344,17 @@ function TermBtn({
   variant?: "primary" | "ghost" | "danger";
   className?: string;
 }) {
-  const styles: Record<string, string> = {
-    primary: "bg-primary text-primary-foreground border-none hover:opacity-80",
-    ghost:
-      "bg-transparent text-muted-foreground border border-border hover:text-foreground",
-    danger:
-      "bg-transparent text-destructive border border-destructive/30 hover:bg-destructive/10",
-  };
+  const mapped = { primary: "default", ghost: "outline", danger: "outline-destructive" } as const;
   return (
-    <button
+    <Button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={cn(
-        "flex-1 h-9 font-mono text-[11px] uppercase tracking-widest transition-opacity",
-        "disabled:opacity-40 flex items-center justify-center gap-1.5",
-        styles[variant],
-        className,
-      )}
+      variant={mapped[variant]}
+      className={cn("flex-1", className)}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -480,13 +480,12 @@ function SetupDialog({
             <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               passphrase
             </label>
-            <button
+            <Button variant="link" size="inline"
               type="button"
               onClick={handleGenerate}
-              className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest transition-colors text-primary hover:text-primary/80"
-            >
+              className="text-primary">
               <RefreshCw className="h-2.5 w-2.5" /> generate
-            </button>
+            </Button>
           </div>
           <TermInput
             type={show ? "text" : "password"}
@@ -674,19 +673,18 @@ function UnlockDialog({
       <div className="p-6 space-y-4">
         {/* Biometric button */}
         {hasBiometric && (
-          <button
+          <Button variant="soft" size="lg"
             type="button"
             onClick={handleBiometric}
             disabled={bioLoading}
-            className="w-full h-11 flex items-center justify-center gap-3 rounded-md font-mono text-[10px] uppercase tracking-widest transition-all border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 disabled:opacity-50"
-          >
+            className="w-full text-primary">
             {bioLoading ? (
               <span className="animate-spin">◌</span>
             ) : (
               <Fingerprint className="h-4 w-4" />
             )}
             {bioLoading ? "verifying…" : "unlock with face id / touch id"}
-          </button>
+          </Button>
         )}
 
         {/* Passphrase form */}
@@ -749,15 +747,14 @@ function UnlockDialog({
 
         {/* Remove biometric */}
         {hasBiometric && showPass && (
-          <button
+          <Button variant="ghost" size="sm"
             type="button"
             onClick={() => {
               onLockBiometric();
             }}
-            className="w-full font-mono text-[10px] uppercase tracking-widest transition-colors text-muted-foreground hover:text-destructive mt-4"
-          >
+            className="w-full text-muted-foreground hover:text-destructive mt-4">
             remove biometric registration
-          </button>
+          </Button>
         )}
       </div>
     </Overlay>

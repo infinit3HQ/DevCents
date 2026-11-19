@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Trash2, ArrowUpRight, ArrowDownRight, LayoutList, CalendarDays, CalendarRange, CalendarSync, ChevronDown, ChevronRight, Pencil, Filter, X, Search, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDecryptedTransactions, type DecryptedTransaction } from "@/hooks/useDecryptedTransactions";
@@ -40,7 +41,7 @@ export function TransactionList({
   const removeTransaction = useMutation(api.transactions.remove);
   const updateTransactionMut = useMutation(api.transactions.update);
   const setCategoryMany = useMutation(api.transactions.setCategoryMany);
-  const { baseCurrency, convertAmount } = useCurrency();
+  const { baseCurrency, convertLocked } = useCurrency();
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const { filter: ledgerFilter, setFilter: setLedgerFilter } = useLedgerFilter();
@@ -185,7 +186,7 @@ export function TransactionList({
       }
       groups[key].transactions.push(t);
       if (isTransferCategory(t.category, t.type)) return;
-      const amountInBase = convertAmount(t.amount, t.currency || "USD");
+      const amountInBase = convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
       if (t.type === "income") {
         groups[key].income += amountInBase;
       } else {
@@ -194,7 +195,7 @@ export function TransactionList({
     });
 
     return Object.entries(groups).sort((a, b) => b[1].date - a[1].date);
-  }, [transactions, groupBy, convertAmount]);
+  }, [transactions, groupBy, convertLocked]);
 
   if (!transactions)
     return (
@@ -244,32 +245,17 @@ export function TransactionList({
       <div className="flex items-center gap-1.5 pr-3 mr-1.5 border-r border-border/50">
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">view:</span>
       </div>
-      <div className="flex items-center gap-1">
-        {[
-          { id: "none", label: "Flat", icon: LayoutList },
-          { id: "day", label: "Daily", icon: CalendarDays },
-          { id: "week", label: "Weekly", icon: CalendarRange },
-          { id: "month", label: "Monthly", icon: CalendarSync },
-        ].map((m) => {
-          const Icon = m.icon;
-          const active = groupBy === m.id;
-          return (
-            <button
-              key={m.id}
-              onClick={() => setGroupBy(m.id as GroupBy)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-none font-mono text-[10px] uppercase tracking-widest transition-all border",
-                active
-                  ? "bg-primary/10 text-primary border-primary/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                  : "text-muted-foreground hover:text-foreground border-transparent hover:bg-white/5",
-              )}
-            >
-              <Icon className="h-3 w-3" />
-              {m.label}
-            </button>
-          );
-        })}
-      </div>
+      <Segmented
+        label="Group transactions"
+        value={groupBy}
+        onValueChange={setGroupBy}
+        options={[
+          { value: "none", label: "Flat", icon: LayoutList },
+          { value: "day", label: "Daily", icon: CalendarDays },
+          { value: "week", label: "Weekly", icon: CalendarRange },
+          { value: "month", label: "Monthly", icon: CalendarSync },
+        ]}
+      />
     </div>
   );
 
@@ -339,13 +325,12 @@ export function TransactionList({
               ? `Deleted “${pendingDeletes[0].description}”`
               : `Deleted ${pendingDeletes.length} entries`}
           </span>
-          <button
+          <Button variant="outline" size="sm"
             type="button"
             onClick={() => pendingDeletes.forEach((p) => undoDelete(p.id))}
-            className="ml-auto flex items-center gap-1 h-6 px-2 border border-border text-foreground uppercase tracking-widest hover:bg-white/5 shrink-0"
-          >
-            <Undo2 className="h-3 w-3" /> undo
-          </button>
+            className="ml-auto shrink-0">
+            <Undo2 /> undo
+          </Button>
         </div>
       )}
       {activeFilter && (
@@ -357,14 +342,13 @@ export function TransactionList({
           })()}
           <span className="text-foreground truncate">{getCategoryLabel(activeFilter.category, activeFilter.type)}</span>
           <span className="text-muted-foreground whitespace-nowrap">· {activeFilter.periodLabel} · {transactions?.length ?? 0}</span>
-          <button
+          <Button variant="ghost" size="inline"
             type="button"
             onClick={() => setLedgerFilter(null)}
-            className="ml-auto flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0"
-            aria-label="Clear category filter"
-          >
-            <X className="h-3 w-3" /> clear
-          </button>
+            className="ml-auto text-muted-foreground shrink-0"
+            aria-label="Clear category filter">
+            <X /> clear
+          </Button>
         </div>
       )}
       {similarPrompt && (
@@ -374,7 +358,7 @@ export function TransactionList({
             <span className="text-foreground">{getCategoryLabel(similarPrompt.category, similarPrompt.type)}</span> too?
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <button
+            <Button variant="soft" size="sm"
               type="button"
               onClick={async () => {
                 const prompt = similarPrompt;
@@ -383,17 +367,15 @@ export function TransactionList({
                   await setCategoryMany({ ids: prompt.ids.slice(i, i + 500), category: prompt.category });
                 }
               }}
-              className="h-6 px-2 border border-primary/40 bg-primary/10 text-primary uppercase tracking-widest"
-            >
+              className="text-primary">
               apply
-            </button>
-            <button
+            </Button>
+            <Button variant="outline" size="sm"
               type="button"
               onClick={() => setSimilarPrompt(null)}
-              className="h-6 px-2 border border-border text-muted-foreground uppercase tracking-widest"
-            >
+              className="text-muted-foreground">
               dismiss
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -614,7 +596,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
         {!compact && (
           <>
             <Tip label="Edit">
-              <button
+              <Button variant="outline" size="icon-sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   document.dispatchEvent(new CustomEvent("open-add-entry", {
@@ -631,22 +613,20 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
                       } satisfies EditData,
                     },
                   }));
-                }}
-                className="h-10 w-10 md:h-7 md:w-7 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
+                }}>
+                <Pencil />
+              </Button>
             </Tip>
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 md:h-7 md:w-7 rounded-none transition-colors text-muted-foreground hover:text-destructive"
+              variant="outline"
+              size="icon-sm"
+              className="hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 deleteTransaction({ id: t._id as Id<"transactions"> });
               }}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 />
               <span className="sr-only">Delete</span>
             </Button>
           </>
@@ -750,8 +730,8 @@ function TransactionDesktopRow({ t, index, deleteTransaction, updateTransaction 
         <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-6 w-6 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+            size="icon-sm"
+            className="md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               document.dispatchEvent(new CustomEvent("open-add-entry", {
@@ -770,19 +750,19 @@ function TransactionDesktopRow({ t, index, deleteTransaction, updateTransaction 
               }));
             }}
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil />
             <span className="sr-only">Edit</span>
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+            variant="ghost-destructive"
+            size="icon-sm"
+            className="md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               deleteTransaction({ id: t._id as Id<"transactions"> });
             }}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 />
             <span className="sr-only">Delete</span>
           </Button>
         </div>

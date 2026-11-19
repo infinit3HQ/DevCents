@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export const TOKEN_EXPIRY_OPTIONS = [
   { days: 30, label: "30 days" },
@@ -44,12 +45,11 @@ export function OAuthGrantsList() {
                 {g.hasKey ? " · can decrypt" : ""}
               </p>
             </div>
-            <button
+            <Button variant="link" size="inline"
               onClick={() => revoke({ id: g._id })}
-              className="font-mono text-[10px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity shrink-0"
-            >
+              className="text-destructive shrink-0">
               disconnect
-            </button>
+            </Button>
           </div>
         ))}
       </div>

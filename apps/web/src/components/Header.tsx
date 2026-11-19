@@ -11,6 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 import { CSVImport } from "./CSVImport";
 import { AddTransaction } from "./AddTransaction";
 import { useEncryption } from "@/contexts/EncryptionContext";
@@ -22,15 +23,15 @@ function EncryptionBadge() {
   if (!isEnabled) {
     return (
       <Tip label="Click to enable AES-256-GCM encryption" side="bottom">
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={setupEncryption}
-          className="hidden md:flex items-center gap-1.5 px-2.5 h-7 transition-all border border-border bg-transparent text-muted-foreground"
+          className="hidden md:inline-flex text-muted-foreground"
         >
-          <ShieldOff className="h-3 w-3" />
-          <span className="font-mono text-[10px] uppercase tracking-widest">
-            enc::off
-          </span>
-        </button>
+          <ShieldOff />
+          enc::off
+        </Button>
       </Tip>
     );
   }
@@ -39,7 +40,7 @@ function EncryptionBadge() {
     return (
       <Tip label="Encryption enabled but locked" side="bottom">
         <div
-          className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-amber-500/25 bg-amber-500/5 text-amber-500"
+          className="hidden md:flex items-center gap-1.5 px-3 h-8 border border-amber-500/25 bg-amber-500/5 text-amber-500"
         >
           <ShieldAlert className="h-3 w-3" />
           <span className="font-mono text-[10px] uppercase tracking-widest">
@@ -54,7 +55,7 @@ function EncryptionBadge() {
   return (
     <Tip label="AES-256-GCM client-side encryption active" side="bottom">
       <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-primary/20 bg-primary/5 text-primary"
+        className="hidden md:flex items-center gap-1.5 px-3 h-8 border border-primary/20 bg-primary/5 text-primary"
       >
         <ShieldCheck className="h-3 w-3" />
         <span className="font-mono text-[10px] uppercase tracking-widest">
@@ -103,14 +104,8 @@ export default function Header() {
           {/* Import */}
           <CSVImport
             trigger={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden sm:flex h-7 px-3 rounded-none font-mono text-[10px] uppercase tracking-widest
-                         text-muted-foreground border border-border hover:border-primary/40
-                         hover:text-primary hover:bg-primary/5 transition-all duration-150"
-              >
-                <Upload className="mr-1.5 h-3 w-3" />
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                <Upload />
                 import
               </Button>
             }
@@ -119,29 +114,26 @@ export default function Header() {
           {/* Add */}
           <AddTransaction
             trigger={
-              <Button
-                size="sm"
-                className="h-7 px-3 rounded-none font-mono text-[10px] uppercase tracking-widest
-                         bg-primary text-primary-foreground border border-primary
-                         hover:bg-primary/85 hover:shadow-[0_0_12px_hsl(142_60%_52%/0.25)]
-                         transition-all duration-150 hidden sm:flex"
-              >
-                <Plus className="mr-1.5 h-3 w-3" />
+              <Button size="sm" className="hidden sm:inline-flex">
+                <Plus />
                 new
               </Button>
             }
           />
 
           {/* Settings */}
-          <button
+          <Button
+            variant="outline"
+            size="icon-compact"
             onClick={toggleSettings}
-            className={`hidden sm:flex h-7 w-7 items-center justify-center transition-colors border border-border text-muted-foreground ${isSettings ? "border-primary/40 text-primary" : ""}`}
-            title={isSettings ? "Close settings" : "Settings"}
+            aria-label={isSettings ? "Close settings" : "Settings"}
+            aria-pressed={isSettings}
+            className={cn("hidden sm:inline-flex", isSettings ? "border-primary/40 text-primary" : "text-muted-foreground")}
           >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
+            <Settings />
+          </Button>
 
-          <div className="h-7 w-7 flex items-center justify-center">
+          <div className="h-8 w-8 flex items-center justify-center">
             <UserButton />
           </div>
         </Show>

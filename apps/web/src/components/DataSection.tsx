@@ -7,6 +7,7 @@ import { useEncryption } from "@/contexts/EncryptionContext";
 import { normalizeCategory } from "@/lib/categoryUtils";
 import { parseRules, serializeRules } from "@devcents/shared/categoryRules";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const BACKUP_FORMAT = "devcents-backup";
 const BACKUP_VERSION = 1;
@@ -75,14 +76,13 @@ function ActionRow({
           <p className="font-mono text-[10px] mt-0.5 text-muted-foreground">{detail}</p>
         </div>
       </div>
-      <button
+      <Button variant="link" size="inline"
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-primary disabled:text-muted-foreground disabled:cursor-not-allowed"
-      >
+        className="shrink-0 text-primary">
         {action}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -301,20 +301,18 @@ export function DataSection() {
                 </span>
               </div>
               <div className="flex gap-2 justify-end">
-                <button
+                <Button variant="outline" size="sm"
                   type="button"
                   onClick={() => setPending(null)}
-                  className="h-7 px-3 border border-border text-muted-foreground uppercase tracking-widest"
-                >
+                  className="text-muted-foreground">
                   cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="soft" size="sm"
                   type="button"
                   onClick={() => void restore(pending)}
-                  className="h-7 px-3 border border-primary/40 bg-primary/10 text-primary uppercase tracking-widest"
-                >
+                  className="text-primary">
                   restore
-                </button>
+                </Button>
               </div>
             </div>
           )}

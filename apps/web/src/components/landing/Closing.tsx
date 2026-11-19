@@ -21,16 +21,14 @@ export function FinalCta() {
         </p>
         <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
           <SignUpButton mode="modal">
-            <Button size="lg" className="h-11 rounded-none px-6 font-mono uppercase tracking-widest text-xs group">
+            <Button size="lg" className="group">
               Create account
               <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
             </Button>
           </SignUpButton>
           <Button
             asChild
-            size="lg"
-            variant="outline"
-            className="h-11 rounded-none px-6 font-mono uppercase tracking-widest text-xs bg-transparent hover:bg-primary/5 hover:text-primary hover:border-primary/40"
+            size="lg" variant="outline"
           >
             <a href={SELF_HOST_URL} target="_blank" rel="noopener noreferrer">
               Self-hosting guide
