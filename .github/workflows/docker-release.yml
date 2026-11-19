@@ -99,7 +99,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=web
 
       - name: Scan web image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: devcents-web:scan
           severity: CRITICAL,HIGH
