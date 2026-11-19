@@ -47,8 +47,14 @@ RUN printf 'VITE_CONVEX_URL=%s\nVITE_CLERK_PUBLISHABLE_KEY=%s\n' \
 FROM deps AS functions
 
 COPY deployment/deploy-functions.sh /usr/local/bin/deploy-functions
+# The job only runs the project's own convex CLI; drop the global package
+# managers so their bundled dependencies don't ship (or show up in scans).
 RUN chmod 0755 /usr/local/bin/deploy-functions \
- && chown -R node:node /app/apps/web
+ && chown -R node:node /app/apps/web \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/lib/node_modules/pnpm /root/.npm /opt/yarn-* \
+ && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+          /usr/local/bin/pnpm /usr/local/bin/pnpx
 USER node
 WORKDIR /app/apps/web
 ENTRYPOINT ["/usr/local/bin/deploy-functions"]
@@ -74,9 +80,14 @@ WORKDIR /app
 # start.sh copies it and fills in the runtime settings.
 COPY --from=builder --chown=root:root /app/apps/web/.output /app/.output-template
 COPY deployment/start.sh deployment/inject_env.js /app/
+# Only `node` is needed at runtime. The npm/npx/corepack bundled with the
+# base image carry their own dependency CVEs, so remove them.
 RUN chmod 0755 /app/start.sh \
  && mkdir -p /app/.output \
- && chown node:node /app/.output
+ && chown node:node /app/.output \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+ && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+          /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 USER node
 EXPOSE 3000

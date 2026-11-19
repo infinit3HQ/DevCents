@@ -14,3 +14,8 @@ count.txt
 todos.json
 .agent
 !.env.example
+
+# pnpm is the only package manager; an npm lockfile breaks Dependabot
+# (npm cannot resolve workspace:* dependencies).
+package-lock.json
+yarn.lock
