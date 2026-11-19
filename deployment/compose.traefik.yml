@@ -20,8 +20,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    volumes:
-      - web-output:/app/.output
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -41,9 +39,6 @@ services:
       - "traefik.http.routers.devcents-web.tls.certresolver=cloudflare"
       - "traefik.http.services.devcents-web.loadbalancer.server.port=3000"
       - "traefik.docker.network=proxy"
-
-volumes:
-  web-output:
 
 networks:
   proxy:
