@@ -23,7 +23,7 @@ export function OAuthGrantsList() {
 
   return (
     <div className="mt-4">
-      <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-2">
+      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">
         connected apps (oauth)
       </p>
       <div className="border border-border">
@@ -37,7 +37,7 @@ export function OAuthGrantsList() {
           >
             <div className="min-w-0">
               <p className="font-mono text-[11px] text-foreground truncate">{g.clientName}</p>
-              <p className="font-mono text-[9px] text-muted-foreground mt-0.5 break-all">
+              <p className="font-mono text-[10px] text-muted-foreground mt-0.5 break-all">
                 {g.redirectHost ?? "unknown redirect"} · connected{" "}
                 {new Date(g.grantedAt).toLocaleDateString()} · access ends{" "}
                 {new Date(g.expiresAt).toLocaleDateString()}
@@ -46,7 +46,7 @@ export function OAuthGrantsList() {
             </div>
             <button
               onClick={() => revoke({ id: g._id })}
-              className="font-mono text-[9px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity shrink-0"
+              className="font-mono text-[10px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity shrink-0"
             >
               disconnect
             </button>

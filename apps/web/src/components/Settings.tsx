@@ -54,11 +54,11 @@ function Section({
   return (
     <div className="border-b border-border">
       <div className="px-6 py-5">
-        <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-0.5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-0.5">
           {title}
         </p>
         {subtitle && (
-          <p className="font-mono text-[11px] text-muted-foreground/60 mb-4">
+          <p className="font-mono text-[11px] text-muted-foreground mb-4">
             {subtitle}
           </p>
         )}
@@ -120,7 +120,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border",
+        "font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 border",
         on
           ? "border-primary/30 bg-primary/10 text-primary"
           : "border-border bg-transparent text-muted-foreground",
@@ -235,7 +235,7 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Current */}
           <div className="space-y-1.5">
-            <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               current passphrase
             </label>
             <input
@@ -251,13 +251,13 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
           {/* New */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 new passphrase
               </label>
               <button
                 type="button"
                 onClick={handleGenerate}
-                className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-primary"
+                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-primary"
               >
                 <RefreshCw className="h-2.5 w-2.5" /> generate
               </button>
@@ -314,7 +314,7 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
                   </div>
                   <span
                     className={cn(
-                      "font-mono text-[9px] uppercase tracking-widest transition-colors",
+                      "font-mono text-[10px] uppercase tracking-widest transition-colors",
                       strength.colorClass,
                     )}
                   >
@@ -322,7 +322,7 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
                   </span>
                 </div>
                 {strength.tips[0] && strength.score < 3 && (
-                  <p className="font-mono text-[9px] text-muted-foreground">
+                  <p className="font-mono text-[10px] text-muted-foreground">
                     → {strength.tips[0]}
                   </p>
                 )}
@@ -332,7 +332,7 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
 
           {/* Confirm */}
           <div className="space-y-1.5">
-            <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               confirm new passphrase
             </label>
             <input
@@ -608,14 +608,14 @@ function ApiAccessSection() {
                 <p className="font-mono text-[11px] text-foreground">
                   {t.name}
                 </p>
-                <p className="font-mono text-[9px] text-muted-foreground mt-0.5">
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
                   created {new Date(t.createdAt).toLocaleDateString()} ·{" "}
                   <TokenExpiryLabel expiresAt={t.expiresAt} />
                 </p>
               </div>
               <button
                 onClick={() => revokeTokenMutation({ id: t._id })}
-                className="font-mono text-[9px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity"
+                className="font-mono text-[10px] uppercase tracking-widest text-destructive hover:opacity-70 transition-opacity"
               >
                 revoke
               </button>
@@ -677,7 +677,7 @@ export function Settings() {
         {/* Page header */}
         <div className="sticky top-0 z-20 border-b border-border bg-background">
           <div className="max-w-2xl mx-auto px-6 py-4">
-            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">
               config
             </p>
             <h1 className="font-mono text-xl text-foreground">settings</h1>
@@ -761,7 +761,7 @@ export function Settings() {
                     onClick={bioEnabled ? handleDisableBio : handleEnableBio}
                   />
                   {bioLoading && (
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-primary">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-primary">
                       ◌ waiting for biometric…
                     </p>
                   )}

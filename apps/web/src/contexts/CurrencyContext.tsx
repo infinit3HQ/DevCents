@@ -6,6 +6,7 @@ import {
   type WalletBalances,
   type WalletInputTx,
 } from "@/lib/walletBalances";
+import { toBaseAtLockedRate } from "@/lib/lockedRate";
 
 type ExchangeRates = {
   [currencyCode: string]: number;
@@ -22,6 +23,12 @@ interface CurrencyContextType {
    * rates.
    */
   convertAmount: (amount: number, fromCurrency: string) => number;
+  /**
+   * Convert to the base currency using the rate locked on the transaction
+   * (falls back to today's rate). Use this for any historical total so the
+   * summary and the charts always agree.
+   */
+  convertLocked: (amount: number, fromCurrency: string, rateToUSD?: number) => number;
   /**
    * Walk a transaction history chronologically and return per-wallet
    * native-currency balances with greedy spillover. Returns null until
@@ -83,6 +90,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     [rates, ratesLoaded, baseCurrency],
   );
 
+  const convertLocked = useCallback(
+    (amount: number, fromCurrency: string, rateToUSD?: number) =>
+      toBaseAtLockedRate(amount, fromCurrency, rateToUSD, baseCurrency, rates),
+    [rates, baseCurrency],
+  );
+
   const computeBalances = useCallback(
     (txs: ReadonlyArray<WalletInputTx>): WalletBalances | null => {
       if (!ratesLoaded) return null;
@@ -96,13 +109,14 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       baseCurrency,
       setBaseCurrency: handleSetBaseCurrency,
       convertAmount,
+      convertLocked,
       computeBalances,
       rates,
       ratesLoaded,
     }),
     // handleSetBaseCurrency is stable enough; rest must be tracked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseCurrency, convertAmount, computeBalances, rates, ratesLoaded],
+    [baseCurrency, convertAmount, convertLocked, computeBalances, rates, ratesLoaded],
   );
 
   return (

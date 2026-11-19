@@ -1,62 +1,21 @@
 import { useUser } from "@clerk/tanstack-react-start";
-import { useCallback, useMemo, useState, type ElementType } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Wallet,
-  ReceiptText,
-  BarChart3,
-  CalendarClock,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+import { ReceiptText, BarChart3 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { TransactionList } from "@/components/TransactionList";
 import { SpendingCharts } from "@/components/SpendingCharts";
+import { DashboardSummary } from "@/components/DashboardSummary";
 import { MobileNav } from "@/components/MobileNav";
 import { Planning } from "@/components/Planning";
 import { useDecryptedTransactions } from "@/hooks/useDecryptedTransactions";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatAmountOnly } from "@/lib/currencyUtils";
 import { isTransferCategory } from "@/lib/categoryUtils";
 import { LedgerFilterContext, type LedgerFilter } from "@/contexts/LedgerFilterContext";
 
 type MobileTab = "overview" | "transactions" | "planning" | "analytics";
 type DesktopLeftPane = "analytics_category" | "analytics_monthly" | "planning";
-
-const TABS: { id: MobileTab; label: string; icon: ElementType }[] = [
-  { id: "overview", label: "Overview", icon: Wallet },
-  { id: "transactions", label: "Ledger", icon: ReceiptText },
-  { id: "planning", label: "Plan", icon: CalendarClock },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-];
-
-const fmt = (n: number, currencyCode: string) =>
-  formatAmountOnly(Math.abs(n), currencyCode);
-
-const Tag = ({
-  children,
-  color = "green",
-}: {
-  children: React.ReactNode;
-  color?: "green" | "red" | "muted";
-}) => {
-  const styles = {
-    green: "border-primary/25 bg-primary/10 text-primary",
-    red: "border-destructive/25 bg-destructive/10 text-destructive",
-    muted: "border-border bg-transparent text-muted-foreground",
-  }[color];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border",
-        styles,
-      )}
-    >
-      {children}
-    </span>
-  );
-};
 
 export function Dashboard() {
   const { user } = useUser();
@@ -65,7 +24,7 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<MobileTab>("overview");
   const [desktopLeftPane, setDesktopLeftPane] =
     useState<DesktopLeftPane>("analytics_category");
-  const { baseCurrency, computeBalances, rates, ratesLoaded } = useCurrency();
+  const { baseCurrency, computeBalances, convertLocked, rates, ratesLoaded } = useCurrency();
   const [ledgerFilter, setLedgerFilterState] = useState<LedgerFilter | null>(null);
   // Selecting a category in the chart filters the ledger. On mobile the
   // ledger is a separate tab, so jump to it.
@@ -102,224 +61,46 @@ export function Dashboard() {
     return totalUSD * baseFx;
   }, [wallets, rates, ratesLoaded, baseCurrency]);
 
-  // Income / expense / balance summed via per-row locked rateToUSD.
-  // Rows that don't have a locked rate (legacy / not yet backfilled)
-  // fall back to today's rate so the dashboard never silently swallows
-  // them. After the prod backfill ran, every row has rateToUSD set.
-  const stats = useMemo(() => {
-    if (!transactions || !ratesLoaded)
-      return { balance: 0, income: 0, expenses: 0, txCount: 0 };
-    const baseFx = rates[baseCurrency] ?? 1;
-    let incomeUSD = 0;
-    let expenseUSD = 0;
+  // Totals use the rate locked on each row (today's rate as fallback), the
+  // same conversion the charts use, so every number on the page agrees.
+  const { stats, monthStats } = useMemo(() => {
+    const empty = { income: 0, expenses: 0, net: 0 };
+    if (!transactions || !ratesLoaded) return { stats: empty, monthStats: empty };
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const all = { ...empty };
+    const month = { ...empty };
     for (const t of transactions) {
       // Own-money moves (bank → cash) aren't income or spending.
       if (isTransferCategory(t.category, t.type)) continue;
-      const locked = t.rateToUSD;
-      const valueUSD =
-        locked !== undefined && locked > 0
-          ? t.amount * locked
-          : t.amount / (rates[t.currency || "USD"] || 1);
-      if (t.type === "income") incomeUSD += valueUSD;
-      else expenseUSD += valueUSD;
+      const value = convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
+      const key = t.type === "income" ? "income" : "expenses";
+      all[key] += value;
+      if (t.date >= monthStart) month[key] += value;
     }
     return {
-      income: incomeUSD * baseFx,
-      expenses: expenseUSD * baseFx,
-      balance: (incomeUSD - expenseUSD) * baseFx,
-      txCount: transactions.length,
+      stats: { ...all, net: all.income - all.expenses },
+      monthStats: { ...month, net: month.income - month.expenses },
     };
-  }, [transactions, rates, ratesLoaded, baseCurrency]);
+  }, [transactions, ratesLoaded, convertLocked]);
+
+  const monthLabel = new Date().toLocaleString("default", { month: "short" }).toLowerCase();
 
   return (
     <LedgerFilterContext.Provider value={ledgerFilterValue}>
     <div className="bg-background text-foreground h-full flex flex-col overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ── HERO ──────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden border-b border-border shrink-0">
-          {/* Background dot grid */}
-          <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
-          {/* Subtle green radial glow at top-right */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full pointer-events-none bg-[radial-gradient(ellipse,color-mix(in_oklch,var(--color-primary),transparent_94%)_0%,transparent_70%)] opacity-100" />
-
-          <div className="max-w-7xl mx-auto w-full px-5 sm:px-8 py-6 sm:py-8 lg:py-10 relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              {/* Session line */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="status-dot" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  session::
-                </span>
-                <span className="font-mono text-[10px] text-primary/70">
-                  {userName}@devcents
-                </span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                {/* Per-wallet net worth */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">
-                    net_worth (per wallet, locked rates)
-                  </p>
-                  {!wallets ? (
-                    <div className="font-mono text-2xl text-muted-foreground">…</div>
-                  ) : Object.keys(wallets).length === 0 ? (
-                    <div className="font-mono text-sm text-muted-foreground">
-                      no transactions yet
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5 max-w-md">
-                      {Object.entries(wallets)
-                        .sort(([a], [b]) => a.localeCompare(b))
-                        .map(([ccy, balance]) => (
-                          <div
-                            key={ccy}
-                            className="flex items-baseline justify-between gap-4 border-l-2 border-border/40 pl-3"
-                          >
-                            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                              {ccy}
-                            </span>
-                            <span
-                              className={cn(
-                                "font-mono text-2xl sm:text-3xl num-display tabular-nums",
-                                balance < 0
-                                  ? "text-destructive"
-                                  : "text-foreground",
-                              )}
-                            >
-                              {balance < 0 ? "-" : ""}
-                              {fmt(balance, ccy)}
-                            </span>
-                          </div>
-                        ))}
-                      <div className="pt-2 mt-1 border-t border-border/30 flex items-baseline justify-between gap-4 pl-3">
-                        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/70">
-                          ≈ total at today's rate
-                        </span>
-                        <span className="font-mono text-sm text-muted-foreground tabular-nums">
-                          {totalApproxBase < 0 ? "-" : ""}
-                          {fmt(totalApproxBase, baseCurrency)}
-                          <span className="ml-1.5 text-[9px] uppercase tracking-widest opacity-70">
-                            {baseCurrency}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Quick badges */}
-                <div className="flex flex-wrap gap-2 shrink-0">
-                  <Tag color={stats.balance >= 0 ? "green" : "red"}>
-                    {stats.balance >= 0 ? (
-                      <ArrowUpRight className="h-3 w-3" />
-                    ) : (
-                      <ArrowDownRight className="h-3 w-3" />
-                    )}
-                    {stats.balance >= 0 ? "+" : "-"}
-                    {fmt(stats.balance, baseCurrency)} net
-                  </Tag>
-                  <Tag color="muted">{stats.txCount} tx</Tag>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.35, delay: 0.12 }}
-          className="border-b border-border shrink-0"
-        >
-          <div className="grid grid-cols-3">
-            {/* Income */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-primary/5">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-primary/40 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-primary/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
-                inflow
-              </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
-                <ArrowUpRight className="h-3 w-3 shrink-0 text-primary" />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest hidden sm:inline text-primary">
-                  income
-                </span>
-              </div>
-              <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
-                {fmt(stats.income, baseCurrency)}
-              </p>
-            </div>
-
-            {/* Expenses */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default border-r border-border group/stat transition-all duration-200 hover:bg-destructive/5">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-destructive/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-destructive/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
-                outflow
-              </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
-                <ArrowDownRight className="h-3 w-3 shrink-0 text-destructive" />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-destructive hidden sm:inline">
-                  expenses
-                </span>
-              </div>
-              <p className="font-mono text-base sm:text-2xl lg:text-3xl num-display text-foreground">
-                {fmt(stats.expenses, baseCurrency)}
-              </p>
-            </div>
-
-            {/* Net */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 relative cursor-default group/stat transition-all duration-200 hover:bg-muted/40">
-              <div className="absolute left-0 top-3 bottom-3 w-px bg-muted-foreground/50 transition-all duration-200 group-hover/stat:w-[2px] group-hover/stat:bg-muted-foreground/70" />
-              <p className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
-                balance
-              </p>
-              <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-2">
-                <Wallet className="h-3 w-3 shrink-0 text-muted-foreground" />
-                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:inline">
-                  net_pos
-                </span>
-              </div>
-              <p
-                className={`font-mono text-base sm:text-2xl lg:text-3xl num-display ${stats.balance < 0 ? "text-destructive" : "text-foreground"}`}
-              >
-                {stats.balance < 0 ? "-" : ""}
-                {fmt(stats.balance, baseCurrency)}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── MOBILE TABS ─────────────────────────────────────────────── */}
-        <div className="md:hidden sticky z-30 border-b border-border bg-background shrink-0">
-          <div className="flex">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex-1 flex flex-col items-center gap-1 py-3 text-[9px] font-mono uppercase tracking-widest transition-colors border-b",
-                    active
-                      ? "text-primary border-primary/70"
-                      : "text-muted-foreground hover:text-foreground border-transparent",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <DashboardSummary
+          userName={userName}
+          wallets={wallets}
+          totalBase={totalApproxBase}
+          baseCurrency={baseCurrency}
+          month={ratesLoaded && transactions ? monthStats : null}
+          monthLabel={monthLabel}
+        />
 
         {/* ── MOBILE CONTENT ──────────────────────────────────────────── */}
-        <div className="md:hidden grow overflow-y-auto pb-10">
+        <div className="md:hidden grow overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
           <AnimatePresence mode="wait">
             {activeTab === "overview" && (
               <motion.div
@@ -330,8 +111,8 @@ export function Dashboard() {
                 transition={{ duration: 0.15 }}
                 className="p-5"
               >
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
-                  // recent_activity
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
+                  // recent activity
                 </p>
                 <TransactionList limit={5} compact />
               </motion.div>
@@ -368,7 +149,7 @@ export function Dashboard() {
                 transition={{ duration: 0.15 }}
                 className="p-5"
               >
-                <Planning currentBalance={stats.balance} />
+                <Planning currentBalance={stats.net} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -388,8 +169,8 @@ export function Dashboard() {
                   <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {desktopLeftPane === "planning"
-                      ? "plan.view"
-                      : "analytics.view"}
+                      ? "plan"
+                      : "spending"}
                   </span>
                 </div>
                 <div className="flex items-center border border-border bg-card">
@@ -418,7 +199,7 @@ export function Dashboard() {
                 ) : desktopLeftPane === "analytics_monthly" ? (
                   <SpendingCharts mode="monthly" />
                 ) : (
-                  <Planning currentBalance={stats.balance} />
+                  <Planning currentBalance={stats.net} />
                 )}
               </div>
             </div>
@@ -430,11 +211,11 @@ export function Dashboard() {
                 <div className="flex items-center gap-2">
                   <ReceiptText className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    ledger.recent
+                    transactions
                   </span>
                 </div>
-                <span className="font-mono text-[9px] text-muted-foreground">
-                  {stats.txCount}_records
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {transactions?.length ?? 0} entries
                 </span>
               </div>
               <div className="grow overflow-y-auto">

@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Trash2, ArrowUpRight, ArrowDownRight, LayoutList, CalendarDays, CalendarRange, CalendarSync, ChevronDown, ChevronRight, Pencil, Filter, X, Search, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDecryptedTransactions, type DecryptedTransaction } from "@/hooks/useDecryptedTransactions";
 import { Id } from "../../convex/_generated/dataModel";
@@ -197,13 +198,11 @@ export function TransactionList({
 
   if (!transactions)
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="p-8 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
-      >
-        <span className="text-primary">$ </span>loading records...
-      </motion.div>
+      <div className="p-5 space-y-3" aria-busy="true" aria-label="Loading transactions">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="h-12 bg-muted/60 animate-pulse" />
+        ))}
+      </div>
     );
 
   // Only a truly empty ledger replaces the whole view; empty search/filter
@@ -211,14 +210,11 @@ export function TransactionList({
   const hasNarrowing = !!activeFilter || !!query || pendingDeletes.length > 0;
   if (transactions.length === 0 && !hasNarrowing)
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="m-5 p-8 text-center font-mono text-[10px] uppercase tracking-widest border border-dashed border-border text-muted-foreground"
-      >
-        <span className="text-primary">→ </span>no records found. input
-        required.
-      </motion.div>
+      <EmptyState
+        className="m-5"
+        title="No transactions yet"
+        hint="Add one by hand, or import a CSV export from your bank."
+      />
     );
 
   const emptyResult = transactions.length === 0 && (
@@ -238,7 +234,7 @@ export function TransactionList({
           </button>
         </>
       ) : (
-        "no records left."
+        "No transactions left."
       )}
     </div>
   );
@@ -246,7 +242,7 @@ export function TransactionList({
   const GroupControls = () => (
     <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-card/30 overflow-x-auto no-scrollbar">
       <div className="flex items-center gap-1.5 pr-3 mr-1.5 border-r border-border/50">
-        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80 whitespace-nowrap">view:</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">view:</span>
       </div>
       <div className="flex items-center gap-1">
         {[
@@ -262,7 +258,7 @@ export function TransactionList({
               key={m.id}
               onClick={() => setGroupBy(m.id as GroupBy)}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-none font-mono text-[9px] uppercase tracking-widest transition-all border",
+                "flex items-center gap-2 px-3 py-1.5 rounded-none font-mono text-[10px] uppercase tracking-widest transition-all border",
                 active
                   ? "bg-primary/10 text-primary border-primary/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
                   : "text-muted-foreground hover:text-foreground border-transparent hover:bg-white/5",
@@ -287,11 +283,11 @@ export function TransactionList({
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-4 flex justify-center shrink-0">
-          {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70" />}
+          {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
         </div>
         <div className="flex items-baseline gap-2 min-w-0">
           <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-foreground font-medium truncate">{name}</span>
-          <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">{count}_items</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground whitespace-nowrap">{count}_items</span>
         </div>
       </div>
       <div className="flex items-center gap-4 shrink-0">
@@ -326,10 +322,10 @@ export function TransactionList({
             onKeyDown={(e) => e.key === "Escape" && setSearch("")}
             placeholder="search description, category, amount…"
             aria-label="Search ledger"
-            className="flex-1 min-w-0 bg-transparent font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            className="flex-1 min-w-0 bg-transparent font-mono text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
           {query && (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground whitespace-nowrap">
               {transactions?.length ?? 0} found
             </span>
           )}
@@ -479,7 +475,7 @@ export function TransactionList({
                 key={i}
                 scope="col"
                 className={cn(
-                  "px-4 py-2.5 font-mono font-normal text-[9px] uppercase tracking-[0.2em] text-muted-foreground bg-card/50",
+                  "px-4 py-2.5 font-mono font-normal text-[10px] uppercase tracking-[0.2em] text-muted-foreground bg-card/50",
                   i === 0 && "w-24",
                   i === 1 && "w-[26%]",
                   i === 3 && "w-40 text-right",
@@ -563,7 +559,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 12 }}
-      transition={{ duration: 0.18, delay: index * 0.025 }}
+      transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.3) }}
       className="flex items-center gap-3 px-4 py-3 transition-colors border-b border-border/50 last:border-b-0 hover:bg-primary/5"
       style={{ borderLeftWidth: "3px", borderLeftColor: getCategoryMeta(t.category, t.type).color }}
     >
@@ -592,10 +588,10 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
           <CategoryDropdown
             t={t}
             updateTransaction={updateTransaction}
-            triggerClassName="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1 min-w-0 hover:text-foreground transition-colors focus:outline-none cursor-pointer"
+            triggerClassName="font-mono text-[10px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] relative after:absolute after:inset-x-0 after:-inset-y-3 after:content-[''] md:after:hidden flex items-center gap-1 min-w-0 hover:text-foreground transition-colors focus:outline-none cursor-pointer"
             iconClassName="h-3 w-3"
           />
-          <span className="font-mono text-[9px] text-muted-foreground opacity-60 whitespace-nowrap shrink-0">
+          <span className="font-mono text-[10px] text-muted-foreground opacity-60 whitespace-nowrap shrink-0">
             {new Date(t.date).toLocaleDateString(undefined, {
               month: "short",
               day: "numeric",
@@ -636,7 +632,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
                     },
                   }));
                 }}
-                className="h-7 w-7 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                className="h-10 w-10 md:h-7 md:w-7 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
               >
                 <Pencil className="h-3 w-3" />
               </button>
@@ -644,7 +640,7 @@ function TransactionMobileRow({ t, index, compact, deleteTransaction, updateTran
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-none transition-colors text-muted-foreground hover:text-destructive"
+              className="h-10 w-10 md:h-7 md:w-7 rounded-none transition-colors text-muted-foreground hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 deleteTransaction({ id: t._id as Id<"transactions"> });
@@ -720,7 +716,7 @@ function TransactionDesktopRow({ t, index, deleteTransaction, updateTransaction 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.15, delay: index * 0.02 }}
+      transition={{ duration: 0.15, delay: Math.min(index * 0.02, 0.3) }}
       className="group cursor-default tr-hover border-b border-border/80"
     >
       <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-muted-foreground">

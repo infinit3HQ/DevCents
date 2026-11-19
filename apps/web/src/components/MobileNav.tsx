@@ -41,7 +41,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
         <motion.div whileTap={{ scale: 0.85 }}>
           <Icon className="h-[18px] w-[18px]" />
         </motion.div>
-        <span className="text-[8px] font-mono uppercase tracking-widest">
+        <span className="text-[10px] font-mono uppercase tracking-widest">
           {tab.label}
         </span>
       </button>
@@ -84,7 +84,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             <div className="h-[18px] w-[18px] flex items-center justify-center">
               <UserButton />
             </div>
-            <span className="text-[8px] font-mono uppercase tracking-widest">
+            <span className="text-[10px] font-mono uppercase tracking-widest">
               account
             </span>
           </div>

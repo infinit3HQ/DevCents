@@ -6,6 +6,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatAmountOnly, getCurrencySymbol } from "@/lib/currencyUtils";
 import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryLabel, isTransferCategory, normalizeCategory } from "@/lib/categoryUtils";
 import { cn } from "@/lib/utils";
+import { EmptyState, PanelSkeleton } from "@/components/ui/EmptyState";
 import { useLedgerFilter } from "@/contexts/LedgerFilterContext";
 import { CategoryBudgets } from "@/components/CategoryBudgets";
 import { DAY_MS } from "@/lib/planningUtils";
@@ -114,7 +115,7 @@ function LegendRow({
       type="button"
       initial={{ opacity: 0, x: -4 }}
       animate={{ opacity: dimmed ? 0.45 : 1, x: 0 }}
-      transition={{ delay: 0.1 + index * 0.03 }}
+      transition={{ delay: Math.min(0.1 + index * 0.03, 0.4) }}
       onClick={onClick}
       aria-pressed={expanded === undefined ? active : undefined}
       aria-expanded={expanded}
@@ -130,7 +131,7 @@ function LegendRow({
         {entry.name}
       </span>
       {expanded !== undefined && <Chevron className="h-3 w-3 shrink-0 text-muted-foreground" />}
-      <span className="ml-auto tabular-nums text-muted-foreground/70 shrink-0 hidden @xs:inline">{amount}</span>
+      <span className="ml-auto tabular-nums text-muted-foreground shrink-0 hidden @xs:inline">{amount}</span>
       <ChangeBadge
         value={entry.value}
         prev={entry.prev}
@@ -174,7 +175,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
   const [smallExpanded, setSmallExpanded] = useState(false);
   const { filter: ledgerFilter, setFilter: setLedgerFilter } = useLedgerFilter();
   const transactions = useDecryptedTransactions();
-  const { baseCurrency, convertAmount } = useCurrency();
+  const { baseCurrency, convertLocked } = useCurrency();
   const currencySymbol = getCurrencySymbol(baseCurrency);
 
   // Current period plus the matching slice of the previous period, so
@@ -224,17 +225,17 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       if (t.type !== "expense" || t.date < range.prevStart || t.date > range.prevEnd) continue;
       if (isTransferCategory(t.category, t.type)) continue;
       const key = normalizeCategory(t.category, "expense");
-      out[key] = (out[key] ?? 0) + convertAmount(t.amount, t.currency || "USD");
+      out[key] = (out[key] ?? 0) + convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
     }
     return out;
-  }, [transactions, range, convertAmount]);
+  }, [transactions, range, convertLocked]);
 
   const categoryData = useMemo((): CategorySlice[] => {
     if (!filteredTransactions?.length) return [];
     const byCategory: Record<string, number> = {};
     for (const t of filteredTransactions) {
       if (t.type === "expense" && !isTransferCategory(t.category, t.type)) {
-        const converted = convertAmount(t.amount, t.currency || "USD");
+        const converted = convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
         // Merge legacy free-text values ("Food and Dining") into one slice.
         const key = normalizeCategory(t.category, "expense");
         byCategory[key] = (byCategory[key] ?? 0) + converted;
@@ -251,7 +252,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
         Icon: (CATEGORY_ICONS[key] ?? CATEGORY_ICONS.other) as LucideIcon,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredTransactions, convertAmount, prevByCategory, range.prevStart]);
+  }, [filteredTransactions, convertLocked, prevByCategory, range.prevStart]);
 
   const totalExpenses = categoryData.reduce((s, d) => s + d.value, 0);
 
@@ -301,7 +302,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 };
       if (isTransferCategory(t.category, t.type)) continue;
 
-      const converted = convertAmount(t.amount, t.currency || "USD");
+      const converted = convertLocked(t.amount, t.currency || "USD", t.rateToUSD);
       if (t.type === "income") byMonth[key].income += converted;
       else byMonth[key].expenses += converted;
     }
@@ -320,14 +321,15 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           expenses: Math.round(data.expenses * 100) / 100,
         };
       });
-  }, [filteredTransactions, convertAmount, baseCurrency]);
+  }, [filteredTransactions, convertLocked, baseCurrency]);
 
-  if (!transactions?.length)
+  if (transactions === undefined) return <PanelSkeleton />;
+  if (transactions.length === 0)
     return (
-      <div className="py-16 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
-        <span className="text-primary">{currencySymbol}</span> no data — add
-        transactions
-      </div>
+      <EmptyState
+        title="No spending to chart yet"
+        hint="Charts fill in as you add income and expenses."
+      />
     );
 
   const activeKey =
@@ -389,12 +391,12 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
               align="end"
               className="w-auto p-4 border border-border bg-card rounded-none"
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
-                // custom_range
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+                // custom range
               </p>
               <div className="flex items-end gap-3">
                 <div>
-                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                     from
                   </p>
                   <DatePickerField
@@ -408,7 +410,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                   />
                 </div>
                 <div>
-                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                     to
                   </p>
                   <DatePickerField
@@ -442,8 +444,8 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           transition={{ delay: 0.1 }}
           className="p-5 border border-border bg-card"
         >
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
-            // spending_by_category
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
+            // spending by category
           </p>
 
           {/* ── Horizontal spending breakdown bar ── */}
@@ -457,7 +459,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
                     key={entry.key}
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.6, delay: i * 0.05, ease: "easeOut" }}
+                    transition={{ duration: 0.6, delay: Math.min(i * 0.05, 0.3), ease: "easeOut" }}
                     onClick={() => handleSliceClick(entry)}
                     className={cn(
                       "h-full transition-opacity hover:opacity-80 cursor-pointer",
@@ -515,7 +517,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
             {/* Center total label */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
               <div className="text-center w-full">
-                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-0.5">
                   total
                 </p>
                 <p 
@@ -542,7 +544,7 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           </div>
 
           {/* ── Legend ── */}
-          <div className="flex items-center justify-between gap-3 mt-4 mb-2 font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground/70">
+          <div className="flex items-center justify-between gap-3 mt-4 mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             <span>click a category to filter the ledger</span>
             {range.prevLabel && <span className="shrink-0">change vs {range.prevLabel}</span>}
           </div>
@@ -600,8 +602,8 @@ export function SpendingCharts({ mode = "all" }: SpendingChartsProps) {
           transition={{ delay: 0.2 }}
           className="p-5 border border-border bg-card"
         >
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
-            // monthly_overview
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
+            // income vs spending by month
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyData} barGap={3} barCategoryGap="32%">

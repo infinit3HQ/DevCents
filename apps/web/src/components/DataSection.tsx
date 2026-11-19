@@ -248,8 +248,8 @@ export function DataSection() {
   return (
     <div className="border-b border-border">
       <div className="px-6 py-5">
-        <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-0.5">data</p>
-        <p className="font-mono text-[11px] text-muted-foreground/60 mb-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-0.5">data</p>
+        <p className="font-mono text-[11px] text-muted-foreground mb-4">
           export your ledger or keep a full backup. with encryption on, a forgotten passphrase can't be recovered, so keep a backup.
         </p>
         <div className="mt-4 space-y-3">

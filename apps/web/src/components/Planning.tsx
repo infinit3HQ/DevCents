@@ -313,16 +313,16 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
-            // forecast_console
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+            // forecast
           </p>
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
             <p className="font-mono text-xs uppercase tracking-widest text-foreground/80">
-              horizon_{horizon}d
+              next {horizon} days
             </p>
             <span className="font-mono text-[10px] text-muted-foreground">
-              projected_end:{" "}
+              projected end:{" "}
               <span
                 className={cn(
                   "num-display",
@@ -364,7 +364,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
             <PopoverTrigger asChild>
               <button
                 className={cn(
-                  "h-8 w-8 border border-border flex items-center justify-center transition-colors",
+                  "h-10 w-10 md:h-8 md:w-8 border border-border flex items-center justify-center transition-colors",
                   ![30, 60, 90, 180, 365].includes(horizon)
                     ? "bg-primary/10 text-primary border-primary/30"
                     : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
@@ -377,12 +377,12 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
               align="end"
               className="w-auto p-4 border border-border bg-card rounded-none"
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
-                // custom_range
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+                // custom range
               </p>
               <div className="flex items-end gap-3">
                 <div>
-                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                     from
                   </p>
                   <DatePickerField
@@ -394,7 +394,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                   />
                 </div>
                 <div>
-                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground mb-1">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
                     to
                   </p>
                   <DatePickerField
@@ -409,7 +409,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                   />
                 </div>
               </div>
-              <p className="font-mono text-[8px] text-muted-foreground/60 mt-2">
+              <p className="font-mono text-[10px] text-muted-foreground mt-2">
                 {horizon}d selected
               </p>
             </PopoverContent>
@@ -424,7 +424,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
-            label: "current_balance",
+            label: "balance now",
             value: currentBalance,
             icon: Wallet,
             tone: currentBalance >= 0 ? "text-foreground" : "text-destructive",
@@ -442,7 +442,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
             tone: "text-destructive",
           },
           {
-            label: "projected_end",
+            label: "projected end",
             value: summary.projectedEnd,
             icon: summary.projectedEnd >= 0 ? ArrowUpRight : ArrowDownRight,
             tone: summary.projectedEnd >= 0 ? "text-primary" : "text-destructive",
@@ -451,7 +451,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
           const Icon = s.icon;
           return (
             <div key={s.label} className="p-4 border border-border bg-card">
-              <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
                 {s.label}
               </p>
               <div className="flex items-center gap-2">
@@ -471,8 +471,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
       {/* Chart */}
       <div className="p-5 border border-border bg-card">
-        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
-          // projected_balance_curve
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-4">
+          // projected balance
         </p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={series}>
@@ -527,8 +527,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-              // upcoming_cashflow
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              // upcoming
             </p>
           </div>
           <span className="font-mono text-[10px] text-muted-foreground">
@@ -581,12 +581,12 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground opacity-80">
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-80">
                           {shortDate(e.date)}
                         </span>
                         <span
                           className={cn(
-                            "inline-flex items-center px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest border",
+                            "inline-flex items-center px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border",
                             badgeTone,
                           )}
                         >
@@ -597,7 +597,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         {e.description}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1">
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground border-l-2 border-border pl-[5px] flex items-center gap-1">
                           <Icon className="h-3 w-3" style={{ color: accent }} />
                           {categoryLabel}
                         </span>
@@ -627,7 +627,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               e.currency,
                             );
                           }}
-                          className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                         >
                           <Send className="h-3.5 w-3.5" />
                         </button>
@@ -646,8 +646,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-              // planned_items
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              // planned
             </p>
           </div>
           <AddPlanned
@@ -688,7 +688,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         </span>
                         <span
                           className={cn(
-                            "font-mono text-[9px] uppercase tracking-widest border px-2 py-0.5",
+                            "font-mono text-[10px] uppercase tracking-widest border px-2 py-0.5",
                             status === "planned"
                               ? "border-primary/25 bg-primary/10 text-primary"
                               : status === "posted"
@@ -703,7 +703,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         {p.description}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <Icon className="h-3 w-3" style={{ color: accent }} />
                           {categoryLabel}
                         </span>
@@ -733,7 +733,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               type: p.type,
                               date: toDateInput(p.date),
                             })}
-                            className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -750,7 +750,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                                 p.currency,
                               )
                             }
-                            className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                           >
                             <Send className="h-3.5 w-3.5" />
                           </button>
@@ -766,7 +766,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                                 status: "skipped",
                               })
                             }
-                            className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                            className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
                           >
                             <PauseCircle className="h-3.5 w-3.5" />
                           </button>
@@ -778,7 +778,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                           onClick={() =>
                             removePlanned({ id: p._id as Id<"planned"> })
                           }
-                          className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -796,8 +796,8 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Repeat className="h-4 w-4 text-muted-foreground" />
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-              // recurring_items
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              // recurring
             </p>
           </div>
           <AddRecurring
@@ -834,7 +834,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "font-mono text-[9px] uppercase tracking-widest border px-2 py-0.5",
+                          "font-mono text-[10px] uppercase tracking-widest border px-2 py-0.5",
                           r.active === false
                             ? "border-border bg-transparent text-muted-foreground"
                             : "border-primary/25 bg-primary/10 text-primary",
@@ -855,7 +855,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                       {r.description}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                         <Icon className="h-3 w-3" style={{ color: accent }} />
                         {categoryLabel}
                       </span>
@@ -885,7 +885,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                           startDate: toDateInput(r.startDate),
                           cadence: r.cadence,
                         })}
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -899,7 +899,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                             active: !(r.active !== false),
                           })
                         }
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
+                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors flex items-center justify-center"
                       >
                         {r.active === false ? (
                           <PlayCircle className="h-3.5 w-3.5" />
@@ -919,7 +919,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                               r.currency,
                             )
                           }
-                          className="h-8 w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
+                          className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                         >
                           <Send className="h-3.5 w-3.5" />
                         </button>
@@ -931,7 +931,7 @@ export function Planning({ currentBalance }: { currentBalance: number }) {
                         onClick={() =>
                           removeRecurring({ id: r._id as Id<"recurring"> })
                         }
-                        className="h-8 w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
+                        className="h-10 w-10 md:h-8 md:w-8 border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors flex items-center justify-center"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

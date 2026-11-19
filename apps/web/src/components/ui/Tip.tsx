@@ -20,7 +20,7 @@ export function Tip({
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent
           side={side}
-          className="rounded-none font-mono text-[9px] uppercase tracking-widest"
+          className="rounded-none font-mono text-[10px] uppercase tracking-widest"
         >
           {label}
         </TooltipContent>

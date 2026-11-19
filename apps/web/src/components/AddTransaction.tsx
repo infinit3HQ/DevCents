@@ -152,22 +152,22 @@ const ENTRY_MODES: Array<{
     id: "ledger",
     label: "ledger",
     icon: ReceiptText,
-    title: "new_entry::",
-    description: "append_record_to_ledger",
+    title: "New transaction",
+    description: "Money that already moved",
   },
   {
     id: "planned",
     label: "planned",
     icon: CalendarPlus,
-    title: "new_plan::",
-    description: "schedule_one_time_cashflow",
+    title: "Plan a payment",
+    description: "A one-off income or expense coming up",
   },
   {
     id: "recurring",
     label: "recurring",
     icon: Repeat,
-    title: "new_recur::",
-    description: "configure_repeatable_cashflow",
+    title: "Recurring entry",
+    description: "Something that repeats on a schedule",
   },
 ];
 
@@ -373,7 +373,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
   const header = useMemo(() => {
     const base = ENTRY_MODES.find((m) => m.id === mode) ?? ENTRY_MODES[0];
     if (!isEditing) return base;
-    return { ...base, title: `edit_${base.id}::`, description: `modify_existing_${base.id}_record` };
+    return { ...base, title: `Edit ${base.label}`, description: "Changes save to this entry only" };
   }, [mode, isEditing]);
 
   async function submitLedger(values: z.infer<typeof ledgerSchema>) {
@@ -563,7 +563,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
             <DrawerTitle className="font-mono text-lg tracking-[0.2em] text-center text-foreground uppercase">
               {header.title}
             </DrawerTitle>
-            <DrawerDescription className="font-mono text-[9px] uppercase tracking-widest text-center mt-2 text-muted-foreground">
+            <DrawerDescription className="font-mono text-[10px] uppercase tracking-widest text-center mt-2 text-muted-foreground">
               {header.description}
             </DrawerDescription>
           </DrawerHeader>
@@ -613,83 +613,16 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       onSubmit={txForm.handleSubmit(submitLedger)}
                       className="space-y-6"
                     >
-                      {/* Date field */}
                       <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.03 }}
-                      >
-                        <FormField
-                          control={txForm.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-                                Date
-                              </FormLabel>
-                              <FormControl>
-                                <DatePickerField
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  label="Entry date"
-                                  className="rounded-none"
-                                />
-                              </FormControl>
-                              <FormMessage className="text-[10px]" />
-                            </FormItem>
-                          )}
-                        />
-                      </motion.div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
-                        >
-                          <FormField
-                            control={txForm.control}
-                            name="type"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-                                  Type
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
-                                      <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
-                                    <SelectItem value="expense">
-                                      Expense
-                                    </SelectItem>
-                                    <SelectItem value="income">
-                                      Income
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage className="text-[10px]" />
-                              </FormItem>
-                            )}
-                          />
-                        </motion.div>
-
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
                         >
                           <FormField
                             control={txForm.control}
                             name="amount"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Amount
                                 </FormLabel>
                                 <FormControl>
@@ -701,7 +634,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                     </div>
                                     <AmountInput
                                       placeholder="0.00"
-                                      className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-base num-display border border-r-0 border-border text-foreground"
+                                      className="h-12 pl-12 rounded-none bg-transparent focus-visible:ring-0 font-mono text-xl num-display border border-r-0 border-border text-foreground"
                                       data-entry-autofocus="true"
                                       value={field.value}
                                       onChange={(v) => field.onChange(v)}
@@ -724,19 +657,92 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             )}
                           />
                         </motion.div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <FormField
+                            control={txForm.control}
+                            name="type"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                  Type
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                      <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
+                                    <SelectItem value="expense">
+                                      Expense
+                                    </SelectItem>
+                                    <SelectItem value="income">
+                                      Income
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage className="text-[10px]" />
+                              </FormItem>
+                            )}
+                          />
+                        </motion.div>
+                        <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <FormField
+                          control={txForm.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Category
+                              </FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
+                                  {txCategories.map((c) => (
+                                    <SelectItem key={c.value} value={c.value}>
+                                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+                                        <CategoryIcon value={c.value} />
+                                        <span className="truncate">{c.label}</span>
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage className="text-[10px]" />
+                            </FormItem>
+                          )}
+                        />
+                      </motion.div>
                       </div>
 
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
                       >
                         <FormField
                           control={txForm.control}
                           name="description"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Description
                               </FormLabel>
                               <FormControl>
@@ -755,36 +761,23 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
                       >
                         <FormField
                           control={txForm.control}
-                          name="category"
+                          name="date"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-                                Category
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                Date
                               </FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
-                                    <SelectValue placeholder="Select category" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
-                                  {txCategories.map((c) => (
-                                    <SelectItem key={c.value} value={c.value}>
-                                      <span className="flex items-center gap-2">
-                                        <CategoryIcon value={c.value} />
-                                        {c.label}
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <DatePickerField
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  label="Entry date"
+                                  className="rounded-none"
+                                />
+                              </FormControl>
                               <FormMessage className="text-[10px]" />
                             </FormItem>
                           )}
@@ -794,7 +787,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
                         className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
                       >
                         <DrawerClose asChild>
@@ -803,17 +795,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             type="button"
                             className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
                           >
-                            Abort
+                            Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "ledger"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {savingMode === "ledger"
-                            ? "Submitting..."
-                            : isEditing ? "Update Entry" : "Submit Entry"}
+                            ? "Saving..."
+                            : isEditing ? "Save changes" : "Add transaction"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "ledger" && (
@@ -846,14 +838,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
                         >
                           <FormField
                             control={plannedForm.control}
                             name="type"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Type
                                 </FormLabel>
                                 <Select
@@ -861,7 +852,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                   defaultValue={field.value}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                       <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -883,14 +874,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
                         >
                           <FormField
                             control={plannedForm.control}
                             name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Date
                                 </FormLabel>
                                 <FormControl>
@@ -911,14 +901,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
                       >
                         <FormField
                           control={plannedForm.control}
                           name="amount"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Amount
                               </FormLabel>
                               <FormControl>
@@ -957,14 +946,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
                       >
                         <FormField
                           control={plannedForm.control}
                           name="description"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Description
                               </FormLabel>
                               <FormControl>
@@ -983,14 +971,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
                       >
                         <FormField
                           control={plannedForm.control}
                           name="category"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Category
                               </FormLabel>
                               <Select
@@ -998,16 +985,16 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
                                   {plannedCategories.map((c) => (
                                     <SelectItem key={c.value} value={c.value}>
-                                      <span className="flex items-center gap-2">
+                                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap">
                                         <CategoryIcon value={c.value} />
-                                        {c.label}
+                                        <span className="truncate">{c.label}</span>
                                       </span>
                                     </SelectItem>
                                   ))}
@@ -1022,7 +1009,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
                         className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
                       >
                         <DrawerClose asChild>
@@ -1031,17 +1017,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             type="button"
                             className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
                           >
-                            Abort
+                            Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "planned"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {savingMode === "planned"
                             ? "Scheduling..."
-                            : isEditing ? "Update Plan" : "Schedule"}
+                            : isEditing ? "Save changes" : "Add to plan"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "planned" && (
@@ -1074,14 +1060,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
                         >
                           <FormField
                             control={recurringForm.control}
                             name="type"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Type
                                 </FormLabel>
                                 <Select
@@ -1089,7 +1074,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                   defaultValue={field.value}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                       <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -1111,14 +1096,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
                         >
                           <FormField
                             control={recurringForm.control}
                             name="cadence"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Cadence
                                 </FormLabel>
                                 <Select
@@ -1126,7 +1110,7 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                   defaultValue={field.value}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                    <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                       <SelectValue placeholder="Select cadence" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -1156,14 +1140,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 }}
                         >
                           <FormField
                             control={recurringForm.control}
                             name="startDate"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Start
                                 </FormLabel>
                                 <FormControl>
@@ -1183,14 +1166,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
                         >
                           <FormField
                             control={recurringForm.control}
                             name="amount"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                   Amount
                                 </FormLabel>
                                 <FormControl>
@@ -1230,14 +1212,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
                       >
                         <FormField
                           control={recurringForm.control}
                           name="description"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Description
                               </FormLabel>
                               <FormControl>
@@ -1256,14 +1237,13 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
                       >
                         <FormField
                           control={recurringForm.control}
                           name="category"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <FormLabel className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 Category
                               </FormLabel>
                               <Select
@@ -1271,16 +1251,16 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
+                                  <SelectTrigger className="h-12 rounded-none bg-transparent focus:ring-0 whitespace-nowrap [&>span]:truncate [&>span]:min-w-0 uppercase text-[10px] font-mono tracking-widest border border-border text-foreground/70">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="max-h-72 rounded-none font-mono text-[10px] uppercase tracking-widest border border-border bg-card text-foreground/70">
                                   {recurringCategories.map((c) => (
                                     <SelectItem key={c.value} value={c.value}>
-                                      <span className="flex items-center gap-2">
+                                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap">
                                         <CategoryIcon value={c.value} />
-                                        {c.label}
+                                        <span className="truncate">{c.label}</span>
                                       </span>
                                     </SelectItem>
                                   ))}
@@ -1295,7 +1275,6 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35 }}
                         className="pt-4 grid grid-cols-[1fr_2fr] gap-4"
                       >
                         <DrawerClose asChild>
@@ -1304,17 +1283,17 @@ export function AddTransaction({ trigger }: { trigger?: React.ReactNode }) {
                             type="button"
                             className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-colors hover:bg-white/5 border border-border text-muted-foreground bg-transparent"
                           >
-                            Abort
+                            Cancel
                           </Button>
                         </DrawerClose>
                         <Button
                           type="submit"
                           disabled={savingMode === "recurring"}
-                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25"
+                          className="h-14 rounded-none uppercase tracking-[0.2em] text-[10px] font-mono transition-all bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {savingMode === "recurring"
                             ? "Saving..."
-                            : isEditing ? "Update Recurring" : "Save Recurring"}
+                            : isEditing ? "Save changes" : "Add recurring"}
                         </Button>
                       </motion.div>
                       {submitError?.mode === "recurring" && (

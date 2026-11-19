@@ -378,7 +378,7 @@ function StrengthBar({ passphrase }: { passphrase: string }) {
         </div>
         <span
           className={cn(
-            "font-mono text-[9px] uppercase tracking-widest transition-colors",
+            "font-mono text-[10px] uppercase tracking-widest transition-colors",
             s.colorClass,
           )}
         >
@@ -386,7 +386,7 @@ function StrengthBar({ passphrase }: { passphrase: string }) {
         </span>
       </div>
       {s.tips.length > 0 && s.score < 3 && (
-        <p className="font-mono text-[9px] text-muted-foreground">
+        <p className="font-mono text-[10px] text-muted-foreground">
           → {s.tips[0]}
         </p>
       )}
@@ -456,7 +456,7 @@ function SetupDialog({
         <Shield className="h-4 w-4 text-primary shrink-0" />
         <div>
           <p className="font-mono text-sm text-foreground">enable_encryption</p>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">
             AES-256-GCM · PBKDF2-SHA256 · client-side only
           </p>
         </div>
@@ -477,13 +477,13 @@ function SetupDialog({
         {/* Passphrase */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               passphrase
             </label>
             <button
               type="button"
               onClick={handleGenerate}
-              className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest transition-colors text-primary hover:text-primary/80"
+              className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest transition-colors text-primary hover:text-primary/80"
             >
               <RefreshCw className="h-2.5 w-2.5" /> generate
             </button>
@@ -528,8 +528,8 @@ function SetupDialog({
 
         {/* Confirm */}
         <div className="space-y-1.5">
-          <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-            confirm_passphrase
+          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            confirm passphrase
           </label>
           <TermInput
             type={show ? "text" : "password"}
@@ -538,7 +538,7 @@ function SetupDialog({
             placeholder="repeat your passphrase"
           />
           {confirm && pass && confirm !== pass && (
-            <p className="text-destructive font-mono text-[9px]">
+            <p className="text-destructive font-mono text-[10px]">
               ↳ passphrases do not match
             </p>
           )}
@@ -649,7 +649,7 @@ function UnlockDialog({
         <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
         <div>
           <p className="font-mono text-sm text-foreground">unlock_session</p>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">
             AES-256-GCM · PBKDF2/600k · browser-only
           </p>
         </div>
@@ -663,7 +663,7 @@ function UnlockDialog({
           ["scope", "browser only"],
         ].map(([k, v]) => (
           <div key={k}>
-            <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {k}
             </p>
             <p className="font-mono text-[11px] text-foreground">{v}</p>
@@ -693,13 +693,13 @@ function UnlockDialog({
         {(!hasBiometric || showPass) && (
           <>
             {hasBiometric && (
-              <p className="font-mono text-[9px] uppercase tracking-widest text-center text-muted-foreground">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-center text-muted-foreground">
                 — or use passphrase —
               </p>
             )}
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1.5">
-                <label className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   passphrase
                 </label>
                 <TermInput
@@ -724,7 +724,7 @@ function UnlockDialog({
                 />
               </div>
               {error && (
-                <p className="text-destructive font-mono text-[9px]">{error}</p>
+                <p className="text-destructive font-mono text-[10px]">{error}</p>
               )}
               <div className="flex gap-3">
                 <TermBtn onClick={onSkip} variant="ghost">
@@ -754,7 +754,7 @@ function UnlockDialog({
             onClick={() => {
               onLockBiometric();
             }}
-            className="w-full font-mono text-[9px] uppercase tracking-widest transition-colors text-muted-foreground hover:text-destructive mt-4"
+            className="w-full font-mono text-[10px] uppercase tracking-widest transition-colors text-muted-foreground hover:text-destructive mt-4"
           >
             remove biometric registration
           </button>

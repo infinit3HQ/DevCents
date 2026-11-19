@@ -271,7 +271,7 @@ function ConsentScreen() {
                   Share Vault Key
                 </span>
               </div>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5">
                 Encrypted
               </span>
             </div>
@@ -342,7 +342,7 @@ function ConsentScreen() {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-border bg-muted/10 font-mono text-[9px] text-muted-foreground flex items-center justify-between">
+        <div className="px-6 py-3 border-t border-border bg-muted/10 font-mono text-[10px] text-muted-foreground flex items-center justify-between">
           <span>Logged in as {user?.primaryEmailAddress?.emailAddress ?? user?.fullName ?? "User"}</span>
           <span>DevCents v2.0</span>
         </div>

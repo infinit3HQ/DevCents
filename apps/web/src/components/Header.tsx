@@ -27,7 +27,7 @@ function EncryptionBadge() {
           className="hidden md:flex items-center gap-1.5 px-2.5 h-7 transition-all border border-border bg-transparent text-muted-foreground"
         >
           <ShieldOff className="h-3 w-3" />
-          <span className="font-mono text-[9px] uppercase tracking-widest">
+          <span className="font-mono text-[10px] uppercase tracking-widest">
             enc::off
           </span>
         </button>
@@ -42,7 +42,7 @@ function EncryptionBadge() {
           className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-amber-500/25 bg-amber-500/5 text-amber-500"
         >
           <ShieldAlert className="h-3 w-3" />
-          <span className="font-mono text-[9px] uppercase tracking-widest">
+          <span className="font-mono text-[10px] uppercase tracking-widest">
             enc::locked
           </span>
         </div>
@@ -57,7 +57,7 @@ function EncryptionBadge() {
         className="hidden md:flex items-center gap-1.5 px-2.5 h-7 border border-primary/20 bg-primary/5 text-primary"
       >
         <ShieldCheck className="h-3 w-3" />
-        <span className="font-mono text-[9px] uppercase tracking-widest">
+        <span className="font-mono text-[10px] uppercase tracking-widest">
           enc::aes-256
         </span>
       </div>

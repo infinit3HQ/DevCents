@@ -160,11 +160,11 @@ export function CategoryBudgets() {
       className="p-5 border border-border bg-card"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           // category_budgets · {monthLabel}
         </p>
         {sorted.length > 0 && (
-          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground tabular-nums">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums">
             {fmt(totalSpent)} / {fmt(totalLimit)} · {daysLeft}d left
           </p>
         )}
@@ -216,13 +216,13 @@ export function CategoryBudgets() {
                         onKeyDown={(e) => e.key === "Escape" && setEditing(null)}
                         className={INPUT_CLASS}
                       />
-                      <button type="submit" className="h-8 w-8 flex items-center justify-center border border-border text-primary hover:bg-primary/10" aria-label="Save">
+                      <button type="submit" className="h-10 w-10 md:h-8 md:w-8 flex items-center justify-center border border-border text-primary hover:bg-primary/10" aria-label="Save">
                         <Check className="h-3 w-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => removeBudget({ category: r.category }).then(() => setEditing(null))}
-                        className="h-8 w-8 flex items-center justify-center border border-border text-muted-foreground hover:text-destructive"
+                        className="h-10 w-10 md:h-8 md:w-8 flex items-center justify-center border border-border text-muted-foreground hover:text-destructive"
                         aria-label="Remove budget"
                         title="Remove budget"
                       >
@@ -232,7 +232,7 @@ export function CategoryBudgets() {
                   ) : (
                     <>
                       <span className="ml-auto tabular-nums text-foreground/80 shrink-0">
-                        {fmt(r.spent)} <span className="text-muted-foreground/70">/ {fmt(r.limit)}</span>
+                        {fmt(r.spent)} <span className="text-muted-foreground">/ {fmt(r.limit)}</span>
                       </span>
                       <button
                         type="button"
@@ -241,7 +241,7 @@ export function CategoryBudgets() {
                           setEditText(String(r.rawCurrency === baseCurrency ? r.rawLimit : Math.round(r.limit)));
                           setError(null);
                         }}
-                        className="h-6 w-6 flex items-center justify-center text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-foreground"
+                        className="h-10 w-10 md:h-6 md:w-6 flex items-center justify-center text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-foreground"
                         aria-label={`Edit ${getCategoryLabel(r.category, "expense")} budget`}
                       >
                         <Pencil className="h-3 w-3" />
@@ -259,8 +259,8 @@ export function CategoryBudgets() {
                 </div>
                 <p
                   className={cn(
-                    "mt-1 font-mono text-[9px] tabular-nums",
-                    remaining < 0 ? "text-destructive" : "text-muted-foreground/80",
+                    "mt-1 font-mono text-[10px] tabular-nums",
+                    remaining < 0 ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
                   {remaining < 0
