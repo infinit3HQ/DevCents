@@ -1,12 +1,15 @@
 import { ConvexHttpClient } from "convex/browser";
+import { ConvexError } from "convex/values";
 import { api } from "../../convex/_generated/api.js";
 import {
-  hashToken,
   decrypt,
   encrypt,
   base64ToSalt,
   deriveKey,
   importKeyFromBase64,
+  unwrapKeyForToken,
+  verifyPassphrase,
+  wrapKeyForToken,
 } from "@devcents/shared";
 import {
   normalizeCategory,
@@ -37,19 +40,14 @@ const CATEGORY_FILTER_SCHEMA = {
   description: `Filter by category. ${CATEGORY_HELP}`,
 };
 
-import { getOrigin } from "./oauthServer";
+import { getOrigin, readLimitedText } from "./oauthServer";
+import { getServerConvexUrl } from "./serverConfig";
 
-function getConvexUrl(): string {
-  const url =
-    (typeof process !== "undefined" && process.env && process.env.CONVEX_URL) ||
-    (typeof process !== "undefined" && process.env && process.env.VITE_CONVEX_URL) ||
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_CONVEX_URL) ||
-    "http://127.0.0.1:3210";
-  return url;
-}
+const MAX_MCP_BODY_BYTES = 256 * 1024;
+const MAX_BATCH_SIZE = 10;
 
 function getConvexClient() {
-  return new ConvexHttpClient(getConvexUrl());
+  return new ConvexHttpClient(getServerConvexUrl());
 }
 
 export const SUPPORTED_PROTOCOL_VERSIONS = [
@@ -78,7 +76,7 @@ export function getCorsHeaders(): Record<string, string> {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name, X-DevCents-API-Key, X-DevCents-Passphrase",
+      "Content-Type, Authorization, MCP-Protocol-Version, Mcp-Session-Id, Mcp-Method, Mcp-Name, X-DevCents-API-Key, X-DevCents-Passphrase",
   };
 }
 
@@ -445,53 +443,72 @@ export const TOOLS = [
 
 async function resolveEncryptionKey(
   client: ConvexHttpClient,
-  tokenHash: string,
+  rawToken: string,
   passphraseHeader?: string,
 ): Promise<{ key: CryptoKey | null; error?: string }> {
-  // 1. Check if key is attached directly to the API token or OAuth token record in Convex
-  let tokenLookupError: string | undefined;
+  let attached: { wrappedKey: string | null; legacyKeyB64: string | null };
+  let check: { salt: string; verificationHash: string } | null;
   try {
-    const keyB64 = await client.query(api.mcp.mcpGetTokenKey, { tokenHash });
-    if (keyB64) {
-      const key = await importKeyFromBase64(keyB64);
-      return { key };
-    }
-  } catch (err: any) {
-    console.warn("[mcp] Could not fetch attached key from token record:", err?.message || err);
-    tokenLookupError = err?.message || String(err);
+    [attached, check] = await Promise.all([
+      client.query(api.mcp.mcpGetTokenKey, { token: rawToken }),
+      client.query(api.mcp.mcpGetEncryptionCheck, { token: rawToken }),
+    ]);
+  } catch {
+    return { key: null, error: "Invalid or expired token." };
   }
 
-  // 2. Check X-DevCents-Passphrase request header or server env DEVCENTS_PASSPHRASE
-  const serverPassphrase =
+  // Every key is checked against the account's current verification value
+  // before use, so a key from before a passphrase change can never write
+  // rows the user can no longer decrypt.
+  const usable = async (key: CryptoKey) => !check || (await verifyPassphrase(key, check.verificationHash));
+  const stale = {
+    key: null,
+    error: "This token's encryption key no longer matches your passphrase. Create a new token or reconnect.",
+  };
+
+  // 1. Key attached to the token, wrapped with the raw token.
+  if (attached.wrappedKey) {
+    try {
+      const keyB64 = await unwrapKeyForToken(attached.wrappedKey, rawToken);
+      const key = await importKeyFromBase64(keyB64);
+      return (await usable(key)) ? { key } : stale;
+    } catch (err) {
+      console.error("[mcp] could not unwrap token key:", err);
+      return { key: null, error: "The encryption key attached to this token could not be unlocked." };
+    }
+  }
+
+  if (attached.legacyKeyB64) {
+    const key = await importKeyFromBase64(attached.legacyKeyB64);
+    if (!(await usable(key))) return stale;
+    // Older tokens stored the key in plaintext. Wrap it now so the plaintext
+    // copy is removed from the database.
+    try {
+      const wrappedKey = await wrapKeyForToken(attached.legacyKeyB64, rawToken);
+      await client.mutation(api.mcp.mcpUpgradeLegacyKey, { token: rawToken, wrappedKey });
+    } catch (err) {
+      console.error("[mcp] legacy key upgrade failed:", err);
+    }
+    return { key };
+  }
+
+  // 2. Passphrase from the request header, or the server-wide env var
+  //    (single-user self-hosting only).
+  const passphrase =
     passphraseHeader ||
     (typeof process !== "undefined" && process.env && process.env.DEVCENTS_PASSPHRASE);
 
-  if (serverPassphrase) {
-    try {
-      const saltB64 = await client.query(api.mcp.mcpGetEncryptionSalt, { tokenHash });
-      const salt = base64ToSalt(saltB64);
-      const key = await deriveKey(serverPassphrase, salt);
-      return { key };
-    } catch (err: any) {
-      console.error("[mcp] Error querying salt or deriving key:", err);
-      return {
-        key: null,
-        error: `Failed to derive key from server passphrase: ${err?.message || String(err)}`,
-      };
-    }
-  }
-
-  if (tokenLookupError) {
-    return {
-      key: null,
-      error: `Convex token lookup failed: ${tokenLookupError}`,
-    };
+  if (passphrase && check) {
+    const key = await deriveKey(passphrase, base64ToSalt(check.salt));
+    return (await usable(key))
+      ? { key }
+      : { key: null, error: "The configured passphrase is incorrect for this account." };
   }
 
   return {
     key: null,
     error:
-      "No encryption key is attached to this token in Convex. When generating a token or authorizing via OAuth, enter your passphrase to unlock zero-knowledge decryption. Otherwise, provide X-DevCents-Passphrase or set DEVCENTS_PASSPHRASE.",
+      "No encryption key is attached to this token. Create a remote token (or authorize via OAuth) and enter your passphrase when asked.",
   };
 }
 
@@ -506,15 +523,15 @@ function convertWithRates(amount: number, from: string, to: string, rates: Recor
 /** Spend vs limit for each category budget in `month` (YYYY-MM), in base currency. */
 async function categoryBudgetStatus(
   client: ReturnType<typeof getConvexClient>,
-  tokenHash: string,
+  mcpToken: string,
   key: CryptoKey,
   month: string,
 ) {
   const [budgets, rawTxs, settings, ratesRow] = await Promise.all([
-    client.query(api.mcp.mcpGetCategoryBudgets, { tokenHash }),
-    client.query(api.mcp.mcpGetAllTransactions, { tokenHash }),
-    client.query(api.mcp.mcpGetUserSettings, { tokenHash }),
-    client.query(api.mcp.mcpGetExchangeRates, { tokenHash }),
+    client.query(api.mcp.mcpGetCategoryBudgets, { token: mcpToken }),
+    client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken }),
+    client.query(api.mcp.mcpGetUserSettings, { token: mcpToken }),
+    client.query(api.mcp.mcpGetExchangeRates, { token: mcpToken }),
   ]);
   const base = settings.currency;
   const rates: Record<string, number> = ratesRow?.rates || { USD: 1 };
@@ -567,14 +584,14 @@ async function categoryBudgetStatus(
  */
 async function resolveCategory(
   client: ReturnType<typeof getConvexClient>,
-  tokenHash: string,
+  mcpToken: string,
   key: CryptoKey,
   category: string,
   type: "income" | "expense",
   description: string,
 ): Promise<string> {
   try {
-    const row = await client.query(api.mcp.mcpGetCategoryRules, { tokenHash });
+    const row = await client.query(api.mcp.mcpGetCategoryRules, { token: mcpToken });
     if (row) {
       const json = row.encrypted ? await decrypt(row.data, key) : row.data;
       const learned = matchRule(parseRules(json), description, type);
@@ -606,6 +623,20 @@ async function decryptItem(item: any, key: CryptoKey) {
   }
 }
 
+/**
+ * Turns an error into text safe to show an MCP client: validation messages
+ * thrown by our own Convex functions pass through, everything else (stack
+ * traces, request ids, internal URLs) is replaced with a generic message.
+ */
+export function publicToolError(e: unknown): string {
+  if (e instanceof ConvexError) {
+    const data = e.data as { code?: string; message?: string } | undefined;
+    if (data?.code === "UNAUTHENTICATED") return "Authentication error: invalid or expired token.";
+    if (data?.code === "INVALID_ARGUMENT" && data.message) return `Error: ${data.message}`;
+  }
+  return "The tool failed. Check the arguments and try again.";
+}
+
 export function handleMcpOptions(): Response {
   return new Response(null, {
     status: 204,
@@ -614,7 +645,7 @@ export function handleMcpOptions(): Response {
 }
 
 export function handleMcpGet(request?: Request): Response {
-  const origin = request ? getOrigin(request) : "https://devcents.012140.xyz";
+  const origin = request ? getOrigin(request) : "";
   return Response.json(
     {
       status: "ok",
@@ -642,9 +673,17 @@ export function handleMcpGet(request?: Request): Response {
 export async function handleMcpPost(request: Request): Promise<Response> {
   const origin = getOrigin(request);
 
+  const text = await readLimitedText(request, MAX_MCP_BODY_BYTES);
+  if (text === null) {
+    return Response.json(
+      { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Request body too large" } },
+      { status: 413, headers: getCorsHeaders() },
+    );
+  }
+
   let rawBody: any;
   try {
-    rawBody = await request.json();
+    rawBody = JSON.parse(text);
   } catch {
     return Response.json(
       {
@@ -730,7 +769,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
       const toolName = params?.name;
       const toolArgs = params?.arguments || {};
 
-      const effectiveToken = rawToken || toolArgs.api_key;
+      const effectiveToken = rawToken;
       if (!effectiveToken) {
         return {
           jsonrpc: "2.0",
@@ -748,10 +787,10 @@ export async function handleMcpPost(request: Request): Promise<Response> {
       }
 
       try {
-        const tokenHash = await hashToken(effectiveToken);
+        const mcpToken = effectiveToken;
         const { key, error: keyError } = await resolveEncryptionKey(
           client,
-          tokenHash,
+          effectiveToken,
           passphraseHeader,
         );
 
@@ -777,7 +816,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const offset = typeof toolArgs.offset === "number" ? Math.max(toolArgs.offset, 0) : 0;
           const sortOrder = toolArgs.sort === "asc" ? "asc" : "desc";
 
-          const raw = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const raw = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
 
           let filtered = await Promise.all(raw.map((t) => decryptItem(t, key)));
 
@@ -834,7 +873,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
         // ─── Tool 2: search_transactions ───────────────────────────────
         if (toolName === "search_transactions") {
-          const raw = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const raw = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
           const decrypted = await Promise.all(raw.map((t) => decryptItem(t, key)));
 
           const queryText = (toolArgs.query || "").toLowerCase().trim();
@@ -905,7 +944,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
         // ─── Tool 3: get_spending_summary ──────────────────────────────
         if (toolName === "get_spending_summary") {
-          const raw = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const raw = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
           const decrypted = await Promise.all(raw.map((t) => decryptItem(t, key)));
 
           const now = new Date();
@@ -977,7 +1016,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const horizonMs = nowMs + horizonDays * DAY_MS;
 
           // 1. Current balance from all historical transactions
-          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
           const decTxs = await Promise.all(rawTxs.map((t) => decryptItem(t, key)));
 
           let currentBalance = 0;
@@ -989,7 +1028,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
           // 2. Planned items in window
           const rawPlanned = await client.query(api.mcp.mcpGetPlanned, {
-            tokenHash,
+            token: mcpToken,
             status: "planned",
           });
           const decPlanned = await Promise.all(rawPlanned.map((p) => decryptItem(p, key)));
@@ -999,7 +1038,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
           // 3. Recurring items in window
           const rawRecurring = await client.query(api.mcp.mcpGetRecurring, {
-            tokenHash,
+            token: mcpToken,
             activeOnly: true,
           });
           const decRecurring = await Promise.all(rawRecurring.map((r) => decryptItem(r, key)));
@@ -1100,7 +1139,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
         // ─── Tool 5: get_wallet_balances ───────────────────────────────
         if (toolName === "get_wallet_balances") {
-          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
           const decTxs = await Promise.all(rawTxs.map((t) => decryptItem(t, key)));
 
           const balancesByCurrency: Record<string, number> = {};
@@ -1110,7 +1149,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             balancesByCurrency[ccy] = (balancesByCurrency[ccy] || 0) + (t.type === "income" ? amt : -amt);
           }
 
-          const ratesRow = await client.query(api.mcp.mcpGetExchangeRates, { tokenHash });
+          const ratesRow = await client.query(api.mcp.mcpGetExchangeRates, { token: mcpToken });
           const rates: Record<string, number> = ratesRow?.rates || { USD: 1 };
 
           let totalInUSD = 0;
@@ -1174,10 +1213,10 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const txDate = typeof date === "number" ? date : Date.now();
 
           const txId = await client.mutation(api.mcp.mcpAddTransaction, {
-            tokenHash,
+            token: mcpToken,
             amount: encryptedAmount,
             type,
-            category: await resolveCategory(client, tokenHash, key, category, type, description),
+            category: await resolveCategory(client, mcpToken, key, category, type, description),
             description: encryptedDescription,
             currency: currency ? currency.toUpperCase() : undefined,
             date: txDate,
@@ -1201,7 +1240,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
         // ─── Tool 7: get_planned_transactions ──────────────────────────
         if (toolName === "get_planned_transactions") {
           const raw = await client.query(api.mcp.mcpGetPlanned, {
-            tokenHash,
+            token: mcpToken,
             status: toolArgs.status,
           });
           const decrypted = await Promise.all(raw.map((p) => decryptItem(p, key)));
@@ -1238,10 +1277,10 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const encryptedDescription = await encrypt(description, key);
 
           const plannedId = await client.mutation(api.mcp.mcpAddPlanned, {
-            tokenHash,
+            token: mcpToken,
             amount: encryptedAmount,
             type,
-            category: await resolveCategory(client, tokenHash, key, category, type, description),
+            category: await resolveCategory(client, mcpToken, key, category, type, description),
             description: encryptedDescription,
             date,
             currency: currency ? currency.toUpperCase() : undefined,
@@ -1266,7 +1305,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
         if (toolName === "get_recurring_transactions") {
           const activeOnly = toolArgs.active_only !== false;
           const raw = await client.query(api.mcp.mcpGetRecurring, {
-            tokenHash,
+            token: mcpToken,
             activeOnly,
           });
           const decrypted = await Promise.all(raw.map((r) => decryptItem(r, key)));
@@ -1315,10 +1354,10 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           const encryptedDescription = await encrypt(description, key);
 
           const recurringId = await client.mutation(api.mcp.mcpAddRecurring, {
-            tokenHash,
+            token: mcpToken,
             amount: encryptedAmount,
             type,
-            category: await resolveCategory(client, tokenHash, key, category, type, description),
+            category: await resolveCategory(client, mcpToken, key, category, type, description),
             description: encryptedDescription,
             startDate: start_date,
             cadence,
@@ -1344,12 +1383,12 @@ export async function handleMcpPost(request: Request): Promise<Response> {
         if (toolName === "get_budget") {
           const targetMonth = toolArgs.month || new Date().toISOString().slice(0, 7);
           const budget = await client.query(api.mcp.mcpGetBudget, {
-            tokenHash,
+            token: mcpToken,
             month: targetMonth,
           });
 
           // Calculate actual spent in that month
-          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { tokenHash });
+          const rawTxs = await client.query(api.mcp.mcpGetAllTransactions, { token: mcpToken });
           const decTxs = await Promise.all(rawTxs.map((t) => decryptItem(t, key)));
 
           let actualSpent = 0;
@@ -1362,7 +1401,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             }
           }
 
-          const categoryStatus = await categoryBudgetStatus(client, tokenHash, key, targetMonth);
+          const categoryStatus = await categoryBudgetStatus(client, mcpToken, key, targetMonth);
           const limit = budget?.limit ?? null;
           const remaining = limit !== null ? limit - actualSpent : null;
           const percentUsed = limit !== null && limit > 0 ? (actualSpent / limit) * 100 : null;
@@ -1417,7 +1456,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           }
 
           const budgetId = await client.mutation(api.mcp.mcpSetBudget, {
-            tokenHash,
+            token: mcpToken,
             month,
             limit,
           });
@@ -1442,7 +1481,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             typeof toolArgs.month === "string" && /^\d{4}-\d{2}$/.test(toolArgs.month)
               ? toolArgs.month
               : new Date().toISOString().slice(0, 7);
-          const status = await categoryBudgetStatus(client, tokenHash, key, month);
+          const status = await categoryBudgetStatus(client, mcpToken, key, month);
           return {
             jsonrpc: "2.0",
             id,
@@ -1464,17 +1503,17 @@ export async function handleMcpPost(request: Request): Promise<Response> {
             };
           }
           if (limit === 0) {
-            await client.mutation(api.mcp.mcpSetCategoryBudget, { tokenHash, category: slug, remove: true });
+            await client.mutation(api.mcp.mcpSetCategoryBudget, { token: mcpToken, category: slug, remove: true });
             return {
               jsonrpc: "2.0",
               id,
               result: { content: [{ type: "text", text: `Removed the ${getCategoryLabel(slug, "expense")} budget.` }] },
             };
           }
-          const settings = await client.query(api.mcp.mcpGetUserSettings, { tokenHash });
+          const settings = await client.query(api.mcp.mcpGetUserSettings, { token: mcpToken });
           const ccy = (typeof currency === "string" && currency ? currency : settings.currency).toUpperCase();
           await client.mutation(api.mcp.mcpSetCategoryBudget, {
-            tokenHash,
+            token: mcpToken,
             category: slug,
             limit: await encrypt(String(limit), key),
             currency: ccy,
@@ -1493,7 +1532,7 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
         if (toolName === "get_exchange_rates") {
           const row = await client.query(api.mcp.mcpGetExchangeRates, {
-            tokenHash,
+            token: mcpToken,
             date: toolArgs.date,
           });
 
@@ -1525,17 +1564,13 @@ export async function handleMcpPost(request: Request): Promise<Response> {
           },
         };
       } catch (e: unknown) {
+        console.error(`[mcp] tool ${String(toolName)} failed:`, e);
         return {
           jsonrpc: "2.0",
           id,
           result: {
             isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error: ${e instanceof Error ? e.message : String(e)}`,
-              },
-            ],
+            content: [{ type: "text", text: publicToolError(e) }],
           },
         };
       }
@@ -1554,6 +1589,12 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 
   // Support batch JSON-RPC requests
   if (Array.isArray(rawBody)) {
+    if (rawBody.length === 0 || rawBody.length > MAX_BATCH_SIZE) {
+      return Response.json(
+        { jsonrpc: "2.0", id: null, error: { code: -32600, message: `Batch must contain 1-${MAX_BATCH_SIZE} messages` } },
+        { status: 400, headers: getCorsHeaders() },
+      );
+    }
     const responses = (await Promise.all(rawBody.map(handleSingleMessage))).filter(Boolean);
     return Response.json(responses, { headers: getCorsHeaders() });
   }

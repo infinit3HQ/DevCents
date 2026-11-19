@@ -1,46 +1,38 @@
 /**
- * Robustly retrieves environment variables across both client and server environments.
- * 
- * 1. Checks `import.meta.env` (Vite's build-time inlining).
- * 2. Checks `process.env` (Node's runtime environment for SSR).
+ * Reads a public (VITE_*) setting on both client and server.
+ *
+ * 1. `import.meta.env` — inlined by Vite at build time. Published Docker
+ *    images are built with `__VITE_*__` placeholders that the container
+ *    replaces at start-up (deployment/start.sh), so one image serves any
+ *    deployment.
+ * 2. `process.env` — available on the server during SSR.
+ *
+ * Vite only inlines explicit `import.meta.env.VITE_X` expressions, hence the
+ * per-key branches.
  */
+function isPlaceholder(value: string | undefined): boolean {
+  return !value || value.startsWith("__VITE_");
+}
+
 export function getEnv(key: string): string | undefined {
-  /**
-   * IMPORTANT: Vite's static analysis for environment variables only works with 
-   * explicit 'import.meta.env.VARIABLE_NAME' syntax.
-   */
   let value: string | undefined;
 
   if (key === "VITE_CONVEX_URL") {
     value = import.meta.env.VITE_CONVEX_URL;
-    if (value) console.log(`[env] Found ${key} in import.meta.env (length: ${value.length})`);
   } else if (key === "VITE_CLERK_PUBLISHABLE_KEY") {
     value = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-    if (value) console.log(`[env] Found ${key} in import.meta.env (length: ${value.length})`);
+  } else {
+    const dynamic = (import.meta.env as Record<string, unknown>)[key];
+    value = typeof dynamic === "string" ? dynamic : undefined;
   }
 
-  // Fallback for other variables or if static mapping failed
-  if (!value) {
-    // @ts-ignore
-    const viteValue = import.meta.env ? import.meta.env[key] : undefined;
-    if (viteValue && typeof viteValue === "string" && !viteValue.includes("__VITE_")) {
-      value = viteValue;
-      console.log(`[env] Found ${key} via dynamic import.meta.env[key]`);
-    }
+  if (isPlaceholder(value) && typeof process !== "undefined" && process.env) {
+    value = process.env[key];
   }
 
-  // Fallback to process.env (available on the server during SSR)
-  if (!value && typeof process !== "undefined" && process.env) {
-    const procValue = process.env[key];
-    if (procValue) {
-      value = procValue;
-      console.log(`[env] Found ${key} in process.env (length: ${procValue.length})`);
-    }
+  if (isPlaceholder(value)) {
+    console.warn(`[env] ${key} is not configured`);
+    return undefined;
   }
-
-  if (!value) {
-    console.warn(`[env] Variable ${key} NOT FOUND in any context`);
-  }
-
   return value;
 }

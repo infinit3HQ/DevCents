@@ -1,61 +1,84 @@
+# syntax=docker/dockerfile:1.7
+#
+# Targets:
+#   web        (default) the DevCents web app. Configured entirely at runtime,
+#              so one published image works for every deployment.
+#   functions  one-shot job that pushes the Convex functions and env vars to
+#              your Convex backend, then exits.
+
 # -------------------------
-# Build Stage
+# Dependencies + source
 # -------------------------
-# node:26-alpine tracks the newest Node 26 patch, including later security releases.
-FROM node:26-alpine AS builder
+# node:26-alpine tracks the newest Node 26 patch, including security releases.
+FROM node:26-alpine AS deps
 
 WORKDIR /app
-
-# Install pnpm
 RUN npm install -g pnpm@11
 
-# Copy workspace manifests first so pnpm can install workspace dependencies.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/mcp/package.json ./apps/mcp/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
-
 RUN pnpm install --frozen-lockfile
 
-# Copy application source code
 COPY . .
-
-# Build the application with production environment variables.
-ARG VITE_CONVEX_URL
-ARG VITE_CLERK_PUBLISHABLE_KEY
-
-# Ensure no local environment files override our variables and 
-# explicitly set them in a .env.production file that Vite will reliably pick up.
-RUN rm -f .env .env.* apps/web/.env.* && \
-    rm -rf apps/web/.output && \
-    if [ -z "$VITE_CONVEX_URL" ]; then echo "VITE_CONVEX_URL is required" && exit 1; fi && \
-    if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ]; then echo "VITE_CLERK_PUBLISHABLE_KEY is required" && exit 1; fi && \
-    echo "VITE_CONVEX_URL=$VITE_CONVEX_URL" > apps/web/.env.production && \
-    echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" >> apps/web/.env.production
-
-RUN pnpm --filter devcents build
+RUN rm -f .env .env.* apps/web/.env apps/web/.env.* && rm -rf apps/web/.output
 
 # -------------------------
-# Production Stage 
+# Build
 # -------------------------
-FROM node:26-alpine AS runner
+FROM deps AS builder
+
+# Public settings are baked in as placeholders and replaced when the container
+# starts (deployment/start.sh). Passing real values here still works for
+# private single-purpose builds.
+ARG VITE_CONVEX_URL=__VITE_CONVEX_URL__
+ARG VITE_CLERK_PUBLISHABLE_KEY=__VITE_CLERK_PUBLISHABLE_KEY__
+RUN printf 'VITE_CONVEX_URL=%s\nVITE_CLERK_PUBLISHABLE_KEY=%s\n' \
+      "$VITE_CONVEX_URL" "$VITE_CLERK_PUBLISHABLE_KEY" > apps/web/.env.production \
+ && pnpm --filter devcents build
+
+# -------------------------
+# Convex functions deployer
+# -------------------------
+FROM deps AS functions
+
+COPY deployment/deploy-functions.sh /usr/local/bin/deploy-functions
+RUN chmod 0755 /usr/local/bin/deploy-functions \
+ && chown -R node:node /app/apps/web
+USER node
+WORKDIR /app/apps/web
+ENTRYPOINT ["/usr/local/bin/deploy-functions"]
+
+# -------------------------
+# Web runtime
+# -------------------------
+FROM node:26-alpine AS web
+
+LABEL org.opencontainers.image.title="DevCents" \
+      org.opencontainers.image.description="Self-hosted, privacy-first personal finance" \
+      org.opencontainers.image.source="https://github.com/infinit3HQ/DevCents" \
+      org.opencontainers.image.licenses="AGPL-3.0-only"
+
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0
 
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV=production
+# Nitro's .output is self-contained (server dependencies are bundled), so no
+# node_modules are shipped. The pristine build is kept read-only as a template;
+# start.sh copies it and fills in the runtime settings.
+COPY --from=builder --chown=root:root /app/apps/web/.output /app/.output-template
+COPY deployment/start.sh deployment/inject_env.js /app/
+RUN chmod 0755 /app/start.sh \
+ && mkdir -p /app/.output \
+ && chown node:node /app/.output
 
-# Copy built assets and dependencies
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/web/.output ./.output
-
-# Copy the startup script
-COPY deployment/start.sh ./start.sh
-RUN chmod +x ./start.sh
-
-# Expose the port the app runs on (Nitro defaults to 3000)
+USER node
 EXPOSE 3000
 
-# Start the application using our wrapper script to inject env vars
-CMD ["./start.sh"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/.well-known/oauth-protected-resource || exit 1
+
+CMD ["/app/start.sh"]

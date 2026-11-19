@@ -18,11 +18,11 @@
 
 import { v } from "convex/values";
 import {
-  action,
+  internalAction,
   internalMutation,
   internalQuery,
 } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 function isoDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -146,7 +146,7 @@ type Outcome = {
   errors: { id: string; reason: string }[];
 };
 
-export const run = action({
+export const run = internalAction({
   args: {},
   handler: async (ctx) => {
     const stats: {
@@ -169,7 +169,7 @@ export const run = action({
     for (const t of txns) {
       try {
         const rate: number = await ctx.runAction(
-          api.exchangeRates.getRateToUSD,
+          internal.exchangeRates.rateToUSD,
           { date: isoDate(t.date), currency: t.currency },
         );
         await ctx.runMutation(internal.backfill.patchTransactionRate, {
@@ -195,7 +195,7 @@ export const run = action({
     for (const p of planned) {
       try {
         const rate: number = await ctx.runAction(
-          api.exchangeRates.getRateToUSD,
+          internal.exchangeRates.rateToUSD,
           { date: isoDate(p.date), currency: p.currency },
         );
         await ctx.runMutation(internal.backfill.patchPlannedRate, {
@@ -221,7 +221,7 @@ export const run = action({
     for (const r of recurring) {
       try {
         const rate: number = await ctx.runAction(
-          api.exchangeRates.getRateToUSD,
+          internal.exchangeRates.rateToUSD,
           { date: isoDate(r.date), currency: r.currency },
         );
         await ctx.runMutation(internal.backfill.patchRecurringRate, {

@@ -7,12 +7,14 @@
   "exports": {
     ".": "./src/index.ts",
     "./categories": "./src/categories.ts",
-    "./categoryRules": "./src/categoryRules.ts"
+    "./categoryRules": "./src/categoryRules.ts",
+    "./oauth": "./src/oauth.ts",
+    "./tokens": "./src/tokens.ts"
   },
   "dependencies": {
-    "convex": "^1.48.0"
+    "convex": "^1.51.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "^5.9.3"
   }
 }

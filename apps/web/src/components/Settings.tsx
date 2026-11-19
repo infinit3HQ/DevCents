@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { CurrencyCombobox } from "@/components/ui/CurrencyCombobox";
-import { hashToken } from "@devcents/shared";
+import { hashToken, generateSecretToken, wrapKeyForToken } from "@devcents/shared";
 import {
   isBiometricAvailable,
   registerBiometric,
@@ -33,8 +33,11 @@ import {
   exportKeyToBase64,
 } from "@devcents/shared";
 import { saveKey, clearKey } from "@devcents/shared";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvex } from "convex/react";
+import { ConvexError } from "convex/values";
+import { buildRotationPayload, UndecryptableRowsError } from "@/lib/reencrypt";
 import { DataSection } from "@/components/DataSection";
+import { OAuthGrantsList, TokenExpiryLabel, TOKEN_EXPIRY_OPTIONS } from "@/components/settings/TokenAccess";
 import { api } from "../../convex/_generated/api";
 
 // ─── Section wrapper ──────────────────────────────────────────────
@@ -133,7 +136,8 @@ function StatusBadge({
 function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
   const { user } = useUser();
   const settings = useQuery(api.encryptionSettings.get, user ? {} : "skip");
-  const setupMutation = useMutation(api.encryptionSettings.setup);
+  const rotateMutation = useMutation(api.encryptionSettings.rotate);
+  const convex = useConvex();
 
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -181,18 +185,30 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
         return;
       }
 
-      // Derive new key and save
+      // Derive the new key and re-encrypt everything under it. The server
+      // swaps salt, hash and all ciphertexts in one transaction.
       const newSalt = await generateSalt();
       const newKey = await deriveKey(next, newSalt);
       const hash = await createVerificationHash(newKey);
-      await setupMutation({
+      const exported = await convex.query(api.backup.exportAll, {});
+      const payload = await buildRotationPayload(exported, oldKey, newKey);
+      await rotateMutation({
+        currentVerificationHash: settings.verificationHash,
         salt: saltToBase64(newSalt),
         verificationHash: hash,
+        ...payload,
       });
       await saveKey(user.id, newKey);
-      onClose();
-    } catch {
-      setError("err: failed to update passphrase");
+      // The in-memory key in EncryptionProvider is still the old one.
+      window.location.reload();
+    } catch (err) {
+      if (err instanceof UndecryptableRowsError) {
+        setError(`err: ${err.message}. Delete or re-enter them, then try again. Nothing was changed.`);
+      } else if (err instanceof ConvexError && (err.data as { code?: string })?.code === "ROTATION_CONFLICT") {
+        setError("err: your data changed while updating; please try again (nothing was changed)");
+      } else {
+        setError("err: failed to update passphrase (nothing was changed)");
+      }
     } finally {
       setLoading(false);
     }
@@ -359,17 +375,6 @@ function ChangePassphraseModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── API Token Helpers ────────────────────────────────────────────
-
-function generateRawToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return `dct_live_${hex}`;
-}
-
 // ─── API & AI Access Section ──────────────────────────────────────
 
 function ApiAccessSection() {
@@ -384,6 +389,7 @@ function ApiAccessSection() {
   const [passphraseError, setPassphraseError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [expiryDays, setExpiryDays] = useState<number>(90);
 
   const mcpUrl = typeof window !== "undefined" ? `${window.location.origin}/mcp` : "https://devcents.012140.xyz/mcp";
 
@@ -432,12 +438,16 @@ function ApiAccessSection() {
         keyB64 = await exportKeyToBase64(key);
       }
 
-      const raw = generateRawToken();
+      const raw = generateSecretToken("dct_live_");
       const hash = await hashToken(raw);
+      // The key is wrapped with the raw token: the server stores only the
+      // token's hash, so the database alone can't unlock it.
+      const wrappedKey = keyB64 ? await wrapKeyForToken(keyB64, raw) : undefined;
       await generateTokenMutation({
         name: showPassphraseInput ? `Remote Token ${tokens.length + 1}` : `Token ${tokens.length + 1}`,
         tokenHash: hash,
-        keyB64,
+        wrappedKey,
+        expiresAt: expiryDays > 0 ? Date.now() + expiryDays * 24 * 60 * 60 * 1000 : undefined,
       });
       setNewToken(raw);
       setPassphrase("");
@@ -555,6 +565,20 @@ function ApiAccessSection() {
         </div>
       ) : (
         <div className="space-y-2">
+          <label className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            new tokens expire after
+            <select
+              value={expiryDays}
+              onChange={(e) => setExpiryDays(Number(e.target.value))}
+              className="bg-background border border-border px-2 py-1 text-foreground normal-case tracking-normal"
+            >
+              {TOKEN_EXPIRY_OPTIONS.map((o) => (
+                <option key={o.days} value={o.days}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Row
             label="generate remote token"
             value="create token with server decryption for remote Claude & Cursor"
@@ -585,7 +609,8 @@ function ApiAccessSection() {
                   {t.name}
                 </p>
                 <p className="font-mono text-[9px] text-muted-foreground mt-0.5">
-                  created {new Date(t.createdAt).toLocaleDateString()}
+                  created {new Date(t.createdAt).toLocaleDateString()} ·{" "}
+                  <TokenExpiryLabel expiresAt={t.expiresAt} />
                 </p>
               </div>
               <button
@@ -598,6 +623,7 @@ function ApiAccessSection() {
           ))}
         </div>
       )}
+      <OAuthGrantsList />
     </Section>
   );
 }

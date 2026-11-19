@@ -1,6 +1,13 @@
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { internalMutation, mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { sha256Hex } from "@devcents/shared/oauth";
 import { EXPENSE_CATEGORY_VALUES, normalizeCategory } from "@devcents/shared/categories";
+import { assertMaxLength, assertTokenHash } from "./lib/serverAuth";
+
+const MAX_TOKENS_PER_USER = 25;
+const MAX_TOKEN_LIFETIME_MS = 366 * 24 * 60 * 60 * 1000;
+const MAX_WRAPPED_KEY_LENGTH = 512;
+const MAX_TEXT_LENGTH = 4_000; // encrypted description/amount, base64
 
 // ─── Token Management (Used by Frontend) ────────────────────────────────
 
@@ -8,21 +15,37 @@ export const generateToken = mutation({
   args: {
     name: v.string(),
     tokenHash: v.string(),
-    keyB64: v.optional(v.string()),
+    wrappedKey: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const tokenId = await ctx.db.insert("apiTokens", {
+    assertTokenHash(args.tokenHash);
+    assertMaxLength(args.name, 100, "name");
+    if (args.wrappedKey) assertMaxLength(args.wrappedKey, MAX_WRAPPED_KEY_LENGTH, "wrappedKey");
+    const now = Date.now();
+    if (args.expiresAt !== undefined && (args.expiresAt <= now || args.expiresAt > now + MAX_TOKEN_LIFETIME_MS)) {
+      throw new Error("expiresAt must be in the future and within one year");
+    }
+
+    const existing = await ctx.db
+      .query("apiTokens")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .take(MAX_TOKENS_PER_USER);
+    if (existing.length >= MAX_TOKENS_PER_USER) {
+      throw new Error(`At most ${MAX_TOKENS_PER_USER} tokens; revoke one first`);
+    }
+
+    return await ctx.db.insert("apiTokens", {
       userId: identity.subject,
       name: args.name,
       tokenHash: args.tokenHash,
-      keyB64: args.keyB64,
-      createdAt: Date.now(),
+      wrappedKey: args.wrappedKey,
+      expiresAt: args.expiresAt,
+      createdAt: now,
     });
-
-    return tokenId;
   },
 });
 
@@ -38,11 +61,13 @@ export const listTokens = query({
       .order("desc")
       .collect();
 
-    // Do not return the hash to the frontend for display
+    // Never return the hash or key material to the frontend.
     return tokens.map((t) => ({
       _id: t._id,
       name: t.name,
       createdAt: t.createdAt,
+      expiresAt: t.expiresAt ?? null,
+      hasKey: Boolean(t.wrappedKey || t.keyB64),
     }));
   },
 });
@@ -69,14 +94,31 @@ export const revokeToken = mutation({
  * Helper to authenticate an MCP request using a token hash.
  * Checks both standard apiTokens and oauth_tokens.
  */
-async function authenticateMCP(ctx: QueryCtx | MutationCtx, tokenHash: string): Promise<{ userId: string; keyB64: string | null }> {
+type McpAuth = {
+  userId: string;
+  wrappedKey: string | null;
+  legacyKeyB64: string | null;
+};
+
+/**
+ * Authenticates with the raw bearer token, hashed here. A stolen hash (for
+ * example from a database dump) is therefore not a usable credential.
+ */
+async function authenticateMCP(ctx: QueryCtx | MutationCtx, rawToken: string): Promise<McpAuth> {
+  if (!rawToken || rawToken.length > 200) throw new ConvexError({ code: "UNAUTHENTICATED" });
+  const tokenHash = await sha256Hex(rawToken);
+  const now = Date.now();
   const token = await ctx.db
     .query("apiTokens")
     .withIndex("by_hash", (q) => q.eq("tokenHash", tokenHash))
     .first();
 
-  if (token) {
-    return { userId: token.userId, keyB64: token.keyB64 ?? null };
+  if (token && (token.expiresAt === undefined || token.expiresAt > now)) {
+    return {
+      userId: token.userId,
+      wrappedKey: token.wrappedKey ?? null,
+      legacyKeyB64: token.keyB64 ?? null,
+    };
   }
 
   const oauthToken = await ctx.db
@@ -84,42 +126,107 @@ async function authenticateMCP(ctx: QueryCtx | MutationCtx, tokenHash: string): 
     .withIndex("by_hash", (q) => q.eq("tokenHash", tokenHash))
     .first();
 
-  if (oauthToken && oauthToken.expiresAt > Date.now()) {
-    return { userId: oauthToken.userId, keyB64: oauthToken.keyB64 ?? null };
+  if (oauthToken && oauthToken.expiresAt > now) {
+    return {
+      userId: oauthToken.userId,
+      wrappedKey: oauthToken.wrappedKey ?? null,
+      legacyKeyB64: oauthToken.keyB64 ?? null,
+    };
   }
 
-  throw new Error("Invalid or expired API / OAuth Token");
+  throw new ConvexError({ code: "UNAUTHENTICATED" });
 }
 
-export const mcpGetEncryptionSalt = query({
-  args: {
-    tokenHash: v.string(),
-  },
+function assertTextFields(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.length > MAX_TEXT_LENGTH) {
+      throw new ConvexError({ code: "INVALID_ARGUMENT", message: "A field is too long" });
+    }
+  }
+}
+
+/** Salt and verification value, so the MCP server can check a key before using it. */
+export const mcpGetEncryptionCheck = query({
+  args: { token: v.string() },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     const settings = await ctx.db
       .query("encryption_settings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-
-    if (!settings) throw new Error("Encryption not configured for this user");
-    return settings.salt;
+    return settings ? { salt: settings.salt, verificationHash: settings.verificationHash } : null;
   },
 });
 
+/** Wrapped key for this token (needs the raw token to unwrap), or a legacy plaintext key. */
 export const mcpGetTokenKey = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
   },
   handler: async (ctx, args) => {
-    const auth = await authenticateMCP(ctx, args.tokenHash);
-    return auth.keyB64;
+    const auth = await authenticateMCP(ctx, args.token);
+    return { wrappedKey: auth.wrappedKey, legacyKeyB64: auth.legacyKeyB64 };
+  },
+});
+
+/**
+ * Replaces a legacy plaintext key with a wrapped one. Called by the MCP server
+ * the first time an old token is used, so plaintext keys disappear over time.
+ */
+export const mcpUpgradeLegacyKey = mutation({
+  args: { token: v.string(), wrappedKey: v.string() },
+  handler: async (ctx, args) => {
+    assertMaxLength(args.wrappedKey, MAX_WRAPPED_KEY_LENGTH, "wrappedKey");
+    await authenticateMCP(ctx, args.token);
+    const tokenHash = await sha256Hex(args.token);
+    const apiToken = await ctx.db
+      .query("apiTokens")
+      .withIndex("by_hash", (q) => q.eq("tokenHash", tokenHash))
+      .first();
+    if (apiToken?.keyB64) {
+      await ctx.db.patch(apiToken._id, { wrappedKey: args.wrappedKey, keyB64: undefined });
+      return true;
+    }
+    const oauthToken = await ctx.db
+      .query("oauth_tokens")
+      .withIndex("by_hash", (q) => q.eq("tokenHash", tokenHash))
+      .first();
+    if (oauthToken?.keyB64 && oauthToken.expiresAt > Date.now()) {
+      // Only the access-token wrap is possible here (the refresh token is not
+      // presented); the legacy key stays until the next refresh rotates it.
+      await ctx.db.patch(oauthToken._id, { wrappedKey: args.wrappedKey });
+      return true;
+    }
+    return false;
+  },
+});
+
+/**
+ * Admin-only cleanup: removes every remaining plaintext key. Tokens that were
+ * never upgraded keep working for reads that don't need decryption; users
+ * create a new remote token to restore decryption. Run with:
+ *   npx convex run mcp:purgeLegacyPlaintextKeys --url ... --admin-key ...
+ */
+export const purgeLegacyPlaintextKeys = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let purged = 0;
+    for (const table of ["apiTokens", "oauth_tokens", "oauth_codes"] as const) {
+      const rows = await ctx.db.query(table).collect();
+      for (const row of rows) {
+        if (row.keyB64) {
+          await ctx.db.patch(row._id, { keyB64: undefined });
+          purged++;
+        }
+      }
+    }
+    return { purged };
   },
 });
 
 export const mcpGetTransactions = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     limit: v.optional(v.number()),
     type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
     since: v.optional(v.number()),
@@ -127,7 +234,7 @@ export const mcpGetTransactions = query({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
 
     const limit = Math.min(args.limit ?? 50, 500);
 
@@ -151,10 +258,10 @@ export const mcpGetTransactions = query({
 
 export const mcpGetAllTransactions = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
 
     return await ctx.db
       .query("transactions")
@@ -166,7 +273,7 @@ export const mcpGetAllTransactions = query({
 
 export const mcpAddTransaction = mutation({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
     type: v.union(v.literal("income"), v.literal("expense")),
@@ -176,9 +283,10 @@ export const mcpAddTransaction = mutation({
     encrypted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
+    assertTextFields(args.amount, args.description, args.category, args.currency);
 
-    const { tokenHash, ...transactionData } = args;
+    const { token, ...transactionData } = args;
 
     const transactionId = await ctx.db.insert("transactions", {
       userId,
@@ -192,11 +300,11 @@ export const mcpAddTransaction = mutation({
 
 export const mcpGetPlanned = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     status: v.optional(v.union(v.literal("planned"), v.literal("posted"), v.literal("skipped"))),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     const rows = await ctx.db
       .query("planned")
       .withIndex("by_user_date", (q) => q.eq("userId", userId))
@@ -212,7 +320,7 @@ export const mcpGetPlanned = query({
 
 export const mcpAddPlanned = mutation({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
     rateToUSD: v.optional(v.number()),
@@ -223,8 +331,9 @@ export const mcpAddPlanned = mutation({
     encrypted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
-    const { tokenHash, ...data } = args;
+    const { userId } = await authenticateMCP(ctx, args.token);
+    assertTextFields(args.amount, args.description, args.category, args.currency);
+    const { token, ...data } = args;
 
     return await ctx.db.insert("planned", {
       userId,
@@ -237,11 +346,11 @@ export const mcpAddPlanned = mutation({
 
 export const mcpGetRecurring = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     const items = await ctx.db
       .query("recurring")
       .withIndex("by_user_startDate", (q) => q.eq("userId", userId))
@@ -256,7 +365,7 @@ export const mcpGetRecurring = query({
 
 export const mcpAddRecurring = mutation({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     amount: v.union(v.number(), v.string()),
     currency: v.optional(v.string()),
     rateToUSD: v.optional(v.number()),
@@ -273,8 +382,9 @@ export const mcpAddRecurring = mutation({
     encrypted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
-    const { tokenHash, ...data } = args;
+    const { userId } = await authenticateMCP(ctx, args.token);
+    assertTextFields(args.amount, args.description, args.category, args.currency);
+    const { token, ...data } = args;
 
     return await ctx.db.insert("recurring", {
       userId,
@@ -286,9 +396,9 @@ export const mcpAddRecurring = mutation({
 });
 
 export const mcpGetCategoryRules = query({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     return await ctx.db
       .query("categoryRules")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -297,9 +407,9 @@ export const mcpGetCategoryRules = query({
 });
 
 export const mcpGetCategoryBudgets = query({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     return await ctx.db
       .query("categoryBudgets")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -310,7 +420,7 @@ export const mcpGetCategoryBudgets = query({
 /** Sets a category's monthly limit; `remove: true` deletes it. */
 export const mcpSetCategoryBudget = mutation({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     category: v.string(),
     limit: v.optional(v.union(v.number(), v.string())),
     currency: v.optional(v.string()),
@@ -318,9 +428,9 @@ export const mcpSetCategoryBudget = mutation({
     remove: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     if (!EXPENSE_CATEGORY_VALUES.includes(args.category) || args.category === "transfer")
-      throw new Error(`Unknown expense category: ${args.category}`);
+      throw new ConvexError({ code: "INVALID_ARGUMENT", message: `Unknown expense category: ${args.category.slice(0, 40)}` });
     const existing = await ctx.db
       .query("categoryBudgets")
       .withIndex("by_user_category", (q) => q.eq("userId", userId).eq("category", args.category))
@@ -329,7 +439,9 @@ export const mcpSetCategoryBudget = mutation({
       if (existing) await ctx.db.delete(existing._id);
       return null;
     }
-    if (args.limit === undefined || !args.currency) throw new Error("limit and currency are required");
+    if (args.limit === undefined || !args.currency) {
+      throw new ConvexError({ code: "INVALID_ARGUMENT", message: "limit and currency are required" });
+    }
     const fields = { limit: args.limit, currency: args.currency.toUpperCase(), encrypted: args.encrypted };
     if (existing) {
       await ctx.db.patch(existing._id, fields);
@@ -341,11 +453,11 @@ export const mcpSetCategoryBudget = mutation({
 
 export const mcpGetBudget = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     month: v.string(), // "YYYY-MM"
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     return await ctx.db
       .query("budgets")
       .withIndex("by_user_month", (q) => q.eq("userId", userId).eq("month", args.month))
@@ -355,12 +467,12 @@ export const mcpGetBudget = query({
 
 export const mcpSetBudget = mutation({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     month: v.string(), // "YYYY-MM"
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     const existing = await ctx.db
       .query("budgets")
       .withIndex("by_user_month", (q) => q.eq("userId", userId).eq("month", args.month))
@@ -380,9 +492,9 @@ export const mcpSetBudget = mutation({
 });
 
 export const mcpGetUserSettings = query({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (ctx, args) => {
-    const { userId } = await authenticateMCP(ctx, args.tokenHash);
+    const { userId } = await authenticateMCP(ctx, args.token);
     const settings = await ctx.db
       .query("user_settings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -395,11 +507,11 @@ export const mcpGetUserSettings = query({
 
 export const mcpGetExchangeRates = query({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     date: v.optional(v.string()), // "YYYY-MM-DD"
   },
   handler: async (ctx, args) => {
-    await authenticateMCP(ctx, args.tokenHash);
+    await authenticateMCP(ctx, args.token);
     const targetDate = args.date ?? new Date().toISOString().split("T")[0];
     const row = await ctx.db
       .query("exchangeRates")
