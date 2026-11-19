@@ -39,7 +39,7 @@
     "convex-helpers": "^0.1.136",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.43.0",
-    "lucide-react": "^0.561.0",
+    "lucide-react": "^1.75.0",
     "nitro": "npm:nitro-nightly@3.0.1-20261027-023028-e1743f2e",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
