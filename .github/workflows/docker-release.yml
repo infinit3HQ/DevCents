@@ -32,11 +32,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -54,7 +54,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -62,12 +62,12 @@ jobs:
         id: version
         run: echo "tag=v$(date -u +'%Y.%m.%d')-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -75,7 +75,7 @@ jobs:
 
       - name: Web image metadata
         id: web-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.WEB_IMAGE }}
           tags: |
@@ -85,7 +85,7 @@ jobs:
 
       - name: Functions image metadata
         id: fn-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.FUNCTIONS_IMAGE }}
           tags: |
@@ -94,7 +94,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build web image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/Dockerfile
@@ -114,7 +114,7 @@ jobs:
           format: table
 
       - name: Build functions image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/Dockerfile
@@ -136,7 +136,7 @@ jobs:
       # On pull requests: build every architecture, push nothing.
       - name: Build and push web image
         id: web-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/Dockerfile
@@ -153,7 +153,7 @@ jobs:
       # On pull requests: build every architecture, push nothing.
       - name: Build and push functions image
         id: fn-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/Dockerfile
@@ -169,7 +169,7 @@ jobs:
 
       - name: Attest web image
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.WEB_IMAGE }}
           subject-digest: ${{ steps.web-push.outputs.digest }}
@@ -177,7 +177,7 @@ jobs:
 
       - name: Attest functions image
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.FUNCTIONS_IMAGE }}
           subject-digest: ${{ steps.fn-push.outputs.digest }}
