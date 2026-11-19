@@ -8,7 +8,7 @@ to GHCR on every release:
 |---|---|
 | `ghcr.io/infinit3hq/devcents` | Web app (port 3000) |
 | `ghcr.io/infinit3hq/devcents-functions` | Pushes Convex functions and settings, then exits |
-| `ghcr.io/get-convex/convex-backend` | Convex backend (port 3210) |
+| `ghcr.io/convex/convex-backend` | Convex backend (port 3210) |
 
 Both DevCents images are multi-arch (amd64, arm64), carry SBOM and build
 provenance attestations, and are configured entirely through environment

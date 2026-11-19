@@ -26,7 +26,7 @@ services:
 
   convex:
     # Pin this to a specific tag or digest for reproducible upgrades.
-    image: ${CONVEX_BACKEND_IMAGE:-ghcr.io/get-convex/convex-backend:latest}
+    image: ${CONVEX_BACKEND_IMAGE:-ghcr.io/convex/convex-backend:latest}
     restart: unless-stopped
     depends_on:
       postgres:
